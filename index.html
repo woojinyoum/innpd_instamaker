@@ -115,9 +115,43 @@ input[type=color]{width:32px;height:26px;background:transparent;border:1px solid
 
 .img-up{border:2px dashed var(--brd);border-radius:6px;padding:7px;text-align:center;font-size:10px;color:var(--dim);cursor:pointer}
 .img-up:hover{border-color:var(--acc)}
+
+/* ===== License Gate ===== */
+.lic-gate{position:fixed;inset:0;background:radial-gradient(1200px 600px at 10% -10%,#1a1a3a 0%,transparent 60%),radial-gradient(800px 500px at 110% 10%,#0e3a44 0%,transparent 60%),rgba(10,11,15,.98);backdrop-filter:blur(20px);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px}
+.lic-card{background:var(--panel);border:1px solid var(--brd);border-radius:18px;padding:40px 36px;width:100%;max-width:420px;text-align:center;box-shadow:0 20px 80px rgba(0,0,0,.5)}
+.lic-logo{width:56px;height:56px;margin:0 auto 18px;border-radius:16px;background:linear-gradient(135deg,var(--acc),var(--acc2));display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:0 0 40px rgba(124,92,255,.4)}
+.lic-title{font-size:20px;font-weight:800;margin-bottom:6px}
+.lic-sub{font-size:13px;color:var(--dim);margin-bottom:24px;line-height:1.5}
+.lic-input{width:100%;background:var(--panel2);border:1px solid var(--brd);border-radius:10px;color:var(--txt);padding:14px 16px;font-size:15px;font-family:'Menlo','Monaco',monospace;letter-spacing:.05em;outline:none;text-align:center;transition:all .15s}
+.lic-input:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(124,92,255,.15)}
+.lic-input::placeholder{color:var(--dim);opacity:.5}
+.lic-err{font-size:12px;color:var(--red);margin-top:10px;min-height:16px}
+.lic-btn{width:100%;background:linear-gradient(135deg,var(--acc),#5b3dff);color:#fff;border:none;padding:13px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;margin-top:16px;transition:all .15s}
+.lic-btn:hover{box-shadow:0 4px 20px rgba(124,92,255,.45);transform:translateY(-1px)}
+.lic-btn:active{transform:translateY(0)}
+.lic-btn:disabled{opacity:.6;cursor:not-allowed;transform:none}
+.lic-info{font-size:11px;color:var(--dim);margin-top:18px;line-height:1.6}
+.lic-info a{color:var(--acc);text-decoration:none}
+.lic-logout{position:fixed;bottom:14px;right:14px;z-index:500;font-size:10px;color:var(--dim);background:var(--panel);border:1px solid var(--brd);padding:5px 10px;border-radius:5px;cursor:pointer;opacity:.4;transition:opacity .2s}
+.lic-logout:hover{opacity:1}
 </style>
 </head>
 <body>
+
+<!-- License Gate -->
+<div class="lic-gate" id="licGate">
+  <div class="lic-card">
+    <div class="lic-logo">🔐</div>
+    <div class="lic-title">Insta Card News Maker</div>
+    <div class="lic-sub">수강생 접근 코드를 입력하세요</div>
+    <input type="text" class="lic-input" id="licInput" placeholder="ICNM-XXXX-XXXX-XXXX" autocomplete="off" spellcheck="false"/>
+    <div class="lic-err" id="licErr"></div>
+    <button class="lic-btn" id="licBtn">입장</button>
+    <div class="lic-info">접근 코드가 없으신가요?<br/>강의를 결제하신 후 발급받을 수 있습니다.</div>
+  </div>
+</div>
+<button class="lic-logout" id="licLogout" style="display:none">로그아웃</button>
+
 <div class="app">
   <header class="topbar">
     <h1><span class="logo"></span>Insta Card News Maker</h1>
@@ -240,6 +274,65 @@ input[type=color]{width:32px;height:26px;background:transparent;border:1px solid
 <div class="toast" id="toast"></div>
 
 <script>
+/* ===== License Gate ===== */
+const SB_URL='https://iaaqlulsisddpdlzqsnv.supabase.co';
+const SB_KEY='sb_publishable_k8J-7uGm4RHGlbPRypBsiQ_LuQ6h1DL';
+
+async function verifyKey(k){
+  try{
+    const r=await fetch(SB_URL+'/rest/v1/licenses?key=eq.'+encodeURIComponent(k)+'&active=eq.true&select=key,expires_at',{
+      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
+    });
+    if(!r.ok)return{ok:false,msg:'서버 오류 (네트워크 확인)'};
+    const d=await r.json();
+    if(!d.length)return{ok:false,msg:'잘못된 코드이거나 비활성화된 코드입니다'};
+    const L=d[0];
+    if(L.expires_at&&new Date(L.expires_at)<new Date())return{ok:false,msg:'만료된 코드입니다'};
+    return{ok:true};
+  }catch(e){return{ok:false,msg:'네트워크 오류: '+e.message}}
+}
+
+async function licCheck(){
+  const gate=document.getElementById('licGate');
+  const logout=document.getElementById('licLogout');
+  const saved=localStorage.getItem('lic_key');
+  if(saved){
+    const r=await verifyKey(saved);
+    if(r.ok){gate.style.display='none';logout.style.display='block';return}
+    localStorage.removeItem('lic_key');
+    document.getElementById('licErr').textContent='저장된 코드가 만료되었습니다';
+  }
+  gate.style.display='flex';
+  document.getElementById('licInput').focus();
+}
+
+document.getElementById('licBtn').onclick=async()=>{
+  const input=document.getElementById('licInput');
+  const err=document.getElementById('licErr');
+  const btn=document.getElementById('licBtn');
+  const k=input.value.trim().toUpperCase();
+  if(!k){err.textContent='코드를 입력하세요';return}
+  err.textContent='';btn.disabled=true;btn.textContent='확인 중...';
+  const r=await verifyKey(k);
+  if(r.ok){
+    localStorage.setItem('lic_key',k);
+    document.getElementById('licGate').style.display='none';
+    document.getElementById('licLogout').style.display='block';
+  }else{
+    err.textContent=r.msg;
+    btn.disabled=false;btn.textContent='입장';
+    input.focus();input.select();
+  }
+};
+document.getElementById('licInput').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('licBtn').click()});
+document.getElementById('licLogout').onclick=()=>{
+  if(!confirm('로그아웃 하시겠습니까?'))return;
+  localStorage.removeItem('lic_key');location.reload();
+};
+
+// Start license check immediately
+licCheck();
+
 /* ===== State ===== */
 const S={cards:[],idx:0,ko:null,grid:false};
 
