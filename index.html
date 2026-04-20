@@ -456,21 +456,23 @@ document.getElementById('trBtn').onclick=async()=>{
   const lm={en:'English',ja:'Japanese',zh:'Simplified Chinese',es:'Spanish',vi:'Vietnamese',id:'Indonesian',th:'Thai',fr:'French',de:'German'};
   sLoad(lm[l]+' 번역 중...','');
   const userGuide=(document.getElementById('trPrompt').value||'').trim();
-  try{const pl=S.cards.map((c,i)=>({i,title:c.title,body:c.body}));const res=await api({sys:`You are a native ${lm[l]} social media content localizer, not a literal translator. You understand the target country's contemporary culture, slang, tone, internet humor, generational sensibilities, and what feels natural to native speakers in 2026. You rewrite Korean content so it reads as if it was originally written by a native speaker for their own audience — never translationese, never awkward.${userGuide?'\n\nUSER INSTRUCTIONS (HIGHEST PRIORITY — follow these strictly):\n'+userGuide:''}`,content:[{type:'text',text:`Localize the following Korean Instagram card content into ${lm[l]} for native speakers in the target country.${userGuide?'\n\nADDITIONAL USER INSTRUCTIONS (must follow):\n'+userGuide:''}
+  console.log('[번역 지침]',userGuide||'(없음)');
+  const sysPrompt=userGuide
+    ? `CRITICAL USER INSTRUCTIONS (MUST FOLLOW ABOVE ALL ELSE):\n${userGuide}\n\n---\n\nYou are a native ${lm[l]} social media content localizer. You rewrite Korean content so it reads as if written by a native speaker. But the USER INSTRUCTIONS above override any default style — follow them strictly.`
+    : `You are a native ${lm[l]} social media content localizer, not a literal translator. You understand the target country's contemporary culture, slang, tone, internet humor, generational sensibilities, and what feels natural to native speakers in 2026. You rewrite Korean content so it reads as if it was originally written by a native speaker for their own audience — never translationese, never awkward.`;
+  try{const pl=S.cards.map((c,i)=>({i,title:c.title,body:c.body}));const res=await api({sys:sysPrompt,content:[{type:'text',text:`${userGuide?'=== USER INSTRUCTIONS (HIGHEST PRIORITY) ===\n'+userGuide+'\n===========================================\n\n':''}Localize the following Korean Instagram card content into ${lm[l]} for native speakers.
 
-STRICT RULES:
-- DO NOT translate literally. Rewrite so it feels native, contemporary, and culturally appropriate for ${lm[l]} speakers today.
-- Match the viral/hooking tone of Korean card news — short, punchy, emotionally grabbing titles.
-- Use current slang, idioms, and phrasing that native speakers actually use in 2026 on social media.
-- Adapt cultural references: if something is Korea-specific (won amounts, Korean places, etc.), keep the fact but phrase it the way a local journalist or creator would.
-- Keep titles SHORT (visual impact matters). Preserve any {highlight braces} exactly in the output.
+RULES:
+- ${userGuide?'USER INSTRUCTIONS above override everything else. Follow them exactly.':'Rewrite naturally — never literal translation.'}
+- Match viral/hooking tone — short, punchy titles.
+- Preserve any {highlight braces} exactly in output.
 - Preserve line breaks (\\n) in titles.
 
 Return ONLY valid JSON:
 {"cards":[{"i":0,"title":"...","body":"..."}]}
 
 Input:
-${JSON.stringify(pl,null,2)}`}],max:3000});
+${JSON.stringify(pl,null,2)}${userGuide?'\n\nREMEMBER: USER INSTRUCTIONS = "'+userGuide+'" — apply to every title and body.':''}`}],max:3000});
   pj(res).cards.forEach(c=>{if(S.cards[c.i]){S.cards[c.i].title=c.title;S.cards[c.i].body=c.body}});render();hLoad();toast('번역 완료')}catch(e){hLoad();toast('오류: '+e.message)}
 };
 
