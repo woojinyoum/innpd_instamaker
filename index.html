@@ -419,7 +419,7 @@ const drop=(dId,tId,pId,fId,cb)=>{const d=document.getElementById(dId),f=documen
 drop('d1','d1t','d1p','f1',u=>img1=u);drop('d2','d2t','d2p','f2',u=>img2=u);
 
 /* Claude API */
-const api=async({sys,content,max=2000})=>{const k=$k.value.trim();if(!k)throw Error('API 키');const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':k,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:$m.value,max_tokens:max,system:sys,messages:[{role:'user',content}]})});if(!r.ok){const t=await r.text();throw Error(`API ${r.status}: ${t.slice(0,200)}`)}return(await r.json()).content[0].text};
+const api=async({sys,content,max=2000})=>{const k=$k.value.trim();if(!k)throw Error('API 키');const payload={model:$m.value,max_tokens:max,system:sys,messages:[{role:'user',content}]};console.log('%c[API 전송]','color:#0ea5e9;font-weight:bold',{model:payload.model,system:sys,userContent:content});const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':k,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify(payload)});if(!r.ok){const t=await r.text();throw Error(`API ${r.status}: ${t.slice(0,200)}`)}return(await r.json()).content[0].text};
 const pj=t=>{const m=t.match(/\{[\s\S]*\}/);if(!m)throw Error('JSON 파싱 실패');return JSON.parse(m[0])};
 
 /* Analyze */
@@ -455,8 +455,10 @@ document.getElementById('trBtn').onclick=async()=>{
   if(l==='ko'){if(S.ko){S.cards[0].title=S.ko.title;S.cards[0].body=S.ko.body;(S.ko.scenes||[]).forEach((s,i)=>{if(S.cards[i+1]){S.cards[i+1].title=s.title;S.cards[i+1].body=s.body}});render();toast('복원')}return}
   const lm={en:'English',ja:'Japanese',zh:'Simplified Chinese',es:'Spanish',vi:'Vietnamese',id:'Indonesian',th:'Thai',fr:'French',de:'German'};
   sLoad(lm[l]+' 번역 중...','');
-  const userGuide=(document.getElementById('trPrompt').value||'').trim();
-  console.log('[번역 지침]',userGuide||'(없음)');
+  const tpEl=document.getElementById('trPrompt');
+  const userGuide=((tpEl&&tpEl.value)||localStorage.getItem('tr_prompt')||'').trim();
+  console.log('%c[번역 지침]','color:#7c5cff;font-weight:bold',userGuide||'(없음)');
+  if(userGuide)toast('지침 적용: '+userGuide.slice(0,30)+(userGuide.length>30?'...':''));
   const sysPrompt=userGuide
     ? `CRITICAL USER INSTRUCTIONS (MUST FOLLOW ABOVE ALL ELSE):\n${userGuide}\n\n---\n\nYou are a native ${lm[l]} social media content localizer. You rewrite Korean content so it reads as if written by a native speaker. But the USER INSTRUCTIONS above override any default style — follow them strictly.`
     : `You are a native ${lm[l]} social media content localizer, not a literal translator. You understand the target country's contemporary culture, slang, tone, internet humor, generational sensibilities, and what feels natural to native speakers in 2026. You rewrite Korean content so it reads as if it was originally written by a native speaker for their own audience — never translationese, never awkward.`;
