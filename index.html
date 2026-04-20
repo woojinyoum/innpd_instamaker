@@ -278,6 +278,17 @@ input[type=color]{width:32px;height:26px;background:transparent;border:1px solid
 const SB_URL='https://iaaqlulsisddpdlzqsnv.supabase.co';
 const SB_KEY='sb_publishable_k8J-7uGm4RHGlbPRypBsiQ_LuQ6h1DL';
 
+const MAX_DEVICES=2;
+function getDeviceId(){
+  let id=localStorage.getItem('device_id');
+  if(!id){id='dev-'+crypto.randomUUID();localStorage.setItem('device_id',id)}
+  return id;
+}
+async function getIP(){
+  try{const r=await fetch('https://api.ipify.org?format=json');const d=await r.json();return d.ip}catch{return null}
+}
+const SB_HEADERS={'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'};
+
 async function verifyKey(k){
   try{
     const r=await fetch(SB_URL+'/rest/v1/licenses?key=eq.'+encodeURIComponent(k)+'&active=eq.true&select=key,expires_at',{
@@ -288,6 +299,31 @@ async function verifyKey(k){
     if(!d.length)return{ok:false,msg:'잘못된 코드이거나 비활성화된 코드입니다'};
     const L=d[0];
     if(L.expires_at&&new Date(L.expires_at)<new Date())return{ok:false,msg:'만료된 코드입니다'};
+
+    // Device binding: max 2 devices per key
+    const devId=getDeviceId();
+    const sr=await fetch(SB_URL+'/rest/v1/license_sessions?license_key=eq.'+encodeURIComponent(k)+'&select=device_id',{headers:SB_HEADERS});
+    if(!sr.ok)return{ok:false,msg:'세션 조회 실패'};
+    const sessions=await sr.json();
+    const exists=sessions.find(s=>s.device_id===devId);
+    const ip=await getIP();
+    const ua=navigator.userAgent;
+
+    if(exists){
+      // Update last_used_at
+      await fetch(SB_URL+'/rest/v1/license_sessions?license_key=eq.'+encodeURIComponent(k)+'&device_id=eq.'+encodeURIComponent(devId),{
+        method:'PATCH',headers:SB_HEADERS,body:JSON.stringify({last_used_at:new Date().toISOString(),ip:ip})
+      });
+      return{ok:true};
+    }
+    if(sessions.length>=MAX_DEVICES){
+      return{ok:false,msg:'이 코드는 이미 '+MAX_DEVICES+'개 기기에서 사용 중입니다. 관리자에게 초기화를 요청하세요'};
+    }
+    // Register new device
+    const ins=await fetch(SB_URL+'/rest/v1/license_sessions',{
+      method:'POST',headers:SB_HEADERS,body:JSON.stringify({license_key:k,device_id:devId,ip:ip,user_agent:ua})
+    });
+    if(!ins.ok)return{ok:false,msg:'기기 등록 실패'};
     return{ok:true};
   }catch(e){return{ok:false,msg:'네트워크 오류: '+e.message}}
 }
