@@ -163,6 +163,7 @@ input[type=color]{width:32px;height:26px;background:transparent;border:1px solid
     <h3>API</h3>
     <div class="field"><label>Key <label id="lockLabel" style="display:inline;cursor:pointer;margin-left:6px;color:var(--acc)"><input type="checkbox" id="lockApi" style="display:none"/><span id="lockIcon">🔓 잠금</span></label></label><input type="password" id="apiKey" placeholder="sk-ant-..."/></div>
     <div class="field"><label>모델</label><select id="model"><option value="claude-opus-4-6">Opus 4.6</option><option value="claude-sonnet-4-6" selected>Sonnet 4.6</option><option value="claude-haiku-4-5-20251001">Haiku 4.5</option></select></div>
+    <div class="field"><label>번역 지침 (선택)</label><textarea id="trPrompt" placeholder="예) 존댓말로 번역해줘, 10대 말투로, 전문용어는 원어 유지 등" style="width:100%;min-height:70px;background:var(--bg);border:1px solid var(--brd);color:var(--txt);border-radius:7px;padding:8px;font-size:12px;font-family:inherit;resize:vertical"></textarea></div>
     <div class="sep"></div>
 
     <h3>인스타그램 원본</h3>
@@ -396,6 +397,7 @@ const mk=()=>({id:crypto.randomUUID(),img:null,media:null,mediaType:null,title:'
 /* Persist */
 const $k=document.getElementById('apiKey');$k.value=localStorage.getItem('ak')||'';$k.onchange=()=>localStorage.setItem('ak',$k.value);
 const $m=document.getElementById('model');$m.value=localStorage.getItem('am')||'claude-sonnet-4-6';$m.onchange=()=>localStorage.setItem('am',$m.value);
+const $tp=document.getElementById('trPrompt');$tp.value=localStorage.getItem('tr_prompt')||'';$tp.oninput=()=>localStorage.setItem('tr_prompt',$tp.value);
 
 /* API Lock */
 const $lock=document.getElementById('lockApi'),$lockIcon=document.getElementById('lockIcon');
@@ -453,7 +455,8 @@ document.getElementById('trBtn').onclick=async()=>{
   if(l==='ko'){if(S.ko){S.cards[0].title=S.ko.title;S.cards[0].body=S.ko.body;(S.ko.scenes||[]).forEach((s,i)=>{if(S.cards[i+1]){S.cards[i+1].title=s.title;S.cards[i+1].body=s.body}});render();toast('복원')}return}
   const lm={en:'English',ja:'Japanese',zh:'Simplified Chinese',es:'Spanish',vi:'Vietnamese',id:'Indonesian',th:'Thai',fr:'French',de:'German'};
   sLoad(lm[l]+' 번역 중...','');
-  try{const pl=S.cards.map((c,i)=>({i,title:c.title,body:c.body}));const res=await api({sys:`You are a native ${lm[l]} social media content localizer, not a literal translator. You understand the target country's contemporary culture, slang, tone, internet humor, generational sensibilities, and what feels natural to native speakers in 2026. You rewrite Korean content so it reads as if it was originally written by a native speaker for their own audience — never translationese, never awkward.`,content:[{type:'text',text:`Localize the following Korean Instagram card content into ${lm[l]} for native speakers in the target country.
+  const userGuide=(document.getElementById('trPrompt').value||'').trim();
+  try{const pl=S.cards.map((c,i)=>({i,title:c.title,body:c.body}));const res=await api({sys:`You are a native ${lm[l]} social media content localizer, not a literal translator. You understand the target country's contemporary culture, slang, tone, internet humor, generational sensibilities, and what feels natural to native speakers in 2026. You rewrite Korean content so it reads as if it was originally written by a native speaker for their own audience — never translationese, never awkward.${userGuide?'\n\nUSER INSTRUCTIONS (HIGHEST PRIORITY — follow these strictly):\n'+userGuide:''}`,content:[{type:'text',text:`Localize the following Korean Instagram card content into ${lm[l]} for native speakers in the target country.${userGuide?'\n\nADDITIONAL USER INSTRUCTIONS (must follow):\n'+userGuide:''}
 
 STRICT RULES:
 - DO NOT translate literally. Rewrite so it feels native, contemporary, and culturally appropriate for ${lm[l]} speakers today.
