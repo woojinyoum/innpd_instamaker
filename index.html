@@ -163,7 +163,7 @@ input[type=color]{width:32px;height:26px;background:transparent;border:1px solid
     <h3>API</h3>
     <div class="field"><label>Key <label id="lockLabel" style="display:inline;cursor:pointer;margin-left:6px;color:var(--acc)"><input type="checkbox" id="lockApi" style="display:none"/><span id="lockIcon">🔓 잠금</span></label></label><input type="password" id="apiKey" placeholder="sk-ant-..."/></div>
     <div class="field"><label>모델</label><select id="model"><option value="claude-opus-4-6">Opus 4.6</option><option value="claude-sonnet-4-6" selected>Sonnet 4.6</option><option value="claude-haiku-4-5-20251001">Haiku 4.5</option></select></div>
-    <div class="field"><label>번역 지침 (선택)</label><textarea id="trPrompt" placeholder="예) 존댓말로 번역해줘, 10대 말투로, 전문용어는 원어 유지 등" style="width:100%;min-height:70px;background:var(--bg);border:1px solid var(--brd);color:var(--txt);border-radius:7px;padding:8px;font-size:12px;font-family:inherit;resize:vertical"></textarea></div>
+    <div class="field"><label>지침 (분석 & 번역 공통, 선택)</label><textarea id="trPrompt" placeholder="예) 제목은 숫자 포함, 본문은 존댓말, 전문용어 유지 등" style="width:100%;min-height:70px;background:var(--bg);border:1px solid var(--brd);color:var(--txt);border-radius:7px;padding:8px;font-size:12px;font-family:inherit;resize:vertical"></textarea></div>
     <div class="sep"></div>
 
     <h3>인스타그램 원본</h3>
@@ -174,8 +174,7 @@ input[type=color]{width:32px;height:26px;background:transparent;border:1px solid
 
     <h3>번역 & 다운로드</h3>
     <div class="field"><label>언어</label><select id="lang"><option value="ko">한국어</option><option value="en">English</option><option value="ja">日本語</option><option value="zh">简体中文</option><option value="es">Espanol</option><option value="vi">Tieng Viet</option><option value="id">Indonesia</option><option value="th">ไทย</option><option value="fr">Francais</option><option value="de">Deutsch</option></select></div>
-    <div id="trGuidePreview" style="font-size:11px;color:#7c5cff;background:rgba(124,92,255,.08);border:1px solid rgba(124,92,255,.3);border-radius:6px;padding:6px 8px;margin-bottom:8px;display:none"></div>
-    <div class="row"><button class="gh" id="trBtn">번역 <span style="font-size:10px;opacity:.6">v3</span></button><button id="dlBtn">다운로드</button></div>
+    <div class="row"><button class="gh" id="trBtn">번역</button><button id="dlBtn">다운로드</button></div>
   </aside>
 
   <!-- CENTER -->
@@ -398,10 +397,7 @@ const mk=()=>({id:crypto.randomUUID(),img:null,media:null,mediaType:null,title:'
 /* Persist */
 const $k=document.getElementById('apiKey');$k.value=localStorage.getItem('ak')||'';$k.onchange=()=>localStorage.setItem('ak',$k.value);
 const $m=document.getElementById('model');$m.value=localStorage.getItem('am')||'claude-sonnet-4-6';$m.onchange=()=>localStorage.setItem('am',$m.value);
-const $tp=document.getElementById('trPrompt');$tp.value=localStorage.getItem('tr_prompt')||'';
-const $tgp=document.getElementById('trGuidePreview');
-function updGuidePrev(){const v=($tp.value||'').trim();if(v){$tgp.style.display='block';$tgp.textContent='📌 적용 지침: '+v}else{$tgp.style.display='none'}}
-$tp.oninput=()=>{localStorage.setItem('tr_prompt',$tp.value);updGuidePrev()};updGuidePrev();
+const $tp=document.getElementById('trPrompt');$tp.value=localStorage.getItem('tr_prompt')||'';$tp.oninput=()=>localStorage.setItem('tr_prompt',$tp.value);
 
 /* API Lock */
 const $lock=document.getElementById('lockApi'),$lockIcon=document.getElementById('lockIcon');
@@ -429,13 +425,16 @@ const pj=t=>{const m=t.match(/\{[\s\S]*\}/);if(!m)throw Error('JSON 파싱 실�
 /* Analyze */
 document.getElementById('goBtn').onclick=async()=>{
   if(!img1&&!img2){toast('이미지 업로드');return}if(!$k.value.trim()){toast('API 키 입력');return}
+  const tpEl=document.getElementById('trPrompt');const userGuide=((tpEl&&tpEl.value)||localStorage.getItem('tr_prompt')||'').trim();
+  console.log('%c[분석 지침]','color:#7c5cff;font-weight:bold',userGuide||'(없음)');
+  if(userGuide)toast('지침 적용: '+userGuide.slice(0,30)+(userGuide.length>30?'...':''));
   sLoad('분석 중...','',['\uC774\uBBF8\uC9C0 \uC77D\uB294 \uC911...','\uB0B4\uC6A9 \uBD84\uC11D \uC911...','\uCE74\uB4DC \uC7AC\uAD6C\uC131 \uC911...','\uC644\uB8CC!']);sStep(0);
   try{
     const uc=[];
     if(img1){const[m,b]=img1.split(',');uc.push({type:'image',source:{type:'base64',media_type:m.match(/data:(.*?);/)[1],data:b}},{type:'text',text:'위: 메인 이미지'})}
     if(img2){const[m,b]=img2.split(',');uc.push({type:'image',source:{type:'base64',media_type:m.match(/data:(.*?);/)[1],data:b}},{type:'text',text:'위: 본문 캡쳐 (OCR)'})}
     sStep(1);
-    uc.push({type:'text',text:`위 인스타 게시물을 분석하세요.
+    uc.push({type:'text',text:`${userGuide?'=== 사용자 지침 (최우선 준수) ===\n'+userGuide+'\n================================\n\n':''}위 인스타 게시물을 분석하세요.
 1. 이미지를 보고 사람들이 스크롤을 멈출 강렬한 후킹 제목을 만드세요.
 2. 본문 캡쳐가 있으면 텍스트를 정확히 OCR해서 요약하세요.
 
@@ -443,10 +442,13 @@ JSON만 답변:
 {"title":"후킹 제목 (15자 이내)","body":"본문 OCR 후 핵심 요약 (3~5문장)"}
 
 규칙:
-- title: 숫자, 반전, 궁금증, 감정 자극 활용한 후킹
+- ${userGuide?'위 사용자 지침을 최우선으로 따르세요 (아래 규칙보다 우선).':'title: 숫자, 반전, 궁금증, 감정 자극 활용한 후킹'}
 - body: 본문 캡쳐에서 읽은 내용을 간결하게 요약
-- 이모지 금지, 한국어`});
-    const res=await api({sys:'인스타그램 바이럴 전문가. 이미지에서 후킹 제목을 뽑고, 본문을 정확히 OCR하여 요약합니다.',content:uc});
+- 이모지 금지, 한국어${userGuide?'\n\n다시 강조: 사용자 지침 "'+userGuide+'" 를 제목과 본문에 반드시 적용.':''}`});
+    const sys=userGuide
+      ? `최우선 사용자 지침 (반드시 준수):\n${userGuide}\n\n---\n\n인스타그램 바이럴 전문가. 이미지에서 후킹 제목을 뽑고, 본문을 정확히 OCR하여 요약합니다. 단, 위 사용자 지침이 모든 기본 스타일보다 우선합니다.`
+      : '인스타그램 바이럴 전문가. 이미지에서 후킹 제목을 뽑고, 본문을 정확히 OCR하여 요약합니다.';
+    const res=await api({sys,content:uc});
     sStep(2);const p=pj(res);S.cards=[];S.ko=p;
     const c1=mk();c1.title=p.title;c1.body=p.body||'';S.cards.push(c1);
     S.idx=0;sStep(3);setTimeout(()=>{hLoad();render();toast('분석 완료!')},300);
