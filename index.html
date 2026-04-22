@@ -238,7 +238,7 @@ input[type=color]{width:32px;height:26px;background:transparent;border:1px solid
 
       <!-- Title Style -->
       <div class="tp" data-p="tstyle">
-        <div class="field"><label>제목</label><textarea id="eT" rows="2"></textarea></div>
+        <div class="field"><label>제목</label><textarea id="eT" rows="4" style="resize:vertical;min-height:60px;overflow-y:auto"></textarea></div>
         <div class="field"><label>본문 (참고용)</label><textarea id="eB" rows="3"></textarea></div>
         <div class="sep"></div>
         <div class="field"><label>크기 px</label><div class="sr"><input type="range" id="tz" min="40" max="140" value="80"/><span class="v" id="tzv">80</span></div></div>
@@ -579,7 +579,7 @@ function go(i){if(i>=0&&i<S.cards.length){S.idx=i;slideTO();updateUI();rEd()}}
 /* Nav buttons */
 document.getElementById('pv').onclick=()=>go(S.idx-1);
 document.getElementById('nx').onclick=()=>go(S.idx+1);
-document.getElementById('addBtn').onclick=()=>{saveSnap();S.cards.splice(S.idx+1,0,mk());S.idx++;render();toast('장면 추가')};
+document.getElementById('addBtn').onclick=()=>{saveSnap();const nc=mk();if(S.cards[0]&&S.cards[0].logo){nc.logo={...S.cards[0].logo}}S.cards.splice(S.idx+1,0,nc);S.idx++;render();toast('장면 추가')};
 document.getElementById('rmBtn').onclick=()=>{if(S.cards.length<=1)return;saveSnap();S.cards.splice(S.idx,1);if(S.idx>=S.cards.length)S.idx--;render();toast('삭제')};
 
 /* Keyboard */
@@ -607,6 +607,7 @@ function rEd(){
   if(!c){ns.style.display='block';ed.style.display='none';document.getElementById('rTitle').textContent='편집';return}
   ns.style.display='none';ed.style.display='block';document.getElementById('rTitle').textContent=`카드 ${S.idx+1}`;
   sv('eT',c.title);sv('eB',c.body);
+  const eT=document.getElementById('eT');eT.style.height='auto';eT.style.height=Math.max(60,eT.scrollHeight)+'px';
   sv('gc',c.g.c);sv('gx',c.g.c);sr('gh','ghv',c.g.h,'%');sr('go','gov',c.g.o,'%');sr('gs','gsv',c.g.s,'%');
   sr('tz','tzv',c.t.z);sv('tc',c.t.c);sv('tx',c.t.c);sv('thc',c.t.hc);sv('thx',c.t.hc);sr('tb','tbv',c.t.b);sv('ta',c.t.a);sv('tw',c.t.w);
   sr('tlh','tlhv',c.t.lh,'%');sr('tls','tlsv',c.t.ls,'px');
@@ -620,24 +621,25 @@ const sv=(id,v)=>{const e=document.getElementById(id);if(document.activeElement!
 const sr=(id,vid,v,s='')=>{const e=document.getElementById(id);if(document.activeElement!==e)e.value=v;document.getElementById(vid).textContent=v+s};
 const cur=()=>S.cards[S.idx];
 const up=fn=>{const c=cur();if(!c)return;saveSnap();fn(c);refreshCard()};
+const upLogo=fn=>{if(!S.cards.length)return;saveSnap();S.cards.forEach(c=>fn(c));refreshCard()};
 function refreshCard(){render()}
 
 /* Tabs */
 document.querySelectorAll('.tabs button').forEach(b=>{b.onclick=()=>{document.querySelectorAll('.tabs button').forEach(x=>x.classList.remove('on'));b.classList.add('on');document.querySelectorAll('.tp').forEach(p=>p.classList.remove('show'));document.querySelector(`[data-p="${b.dataset.t}"]`).classList.add('show')}});
 
 /* Text */
-document.getElementById('eT').oninput=e=>up(c=>c.title=e.target.value);
+document.getElementById('eT').oninput=e=>{const ta=e.target;ta.style.height='auto';ta.style.height=Math.max(60,ta.scrollHeight)+'px';up(c=>c.title=e.target.value)};
 document.getElementById('eB').oninput=e=>up(c=>c.body=e.target.value);
 
 /* Logo */
 document.getElementById('logoUp').onclick=()=>document.getElementById('logoF').click();
-document.getElementById('logoF').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader;r.onload=ev=>{up(c=>{c.logo.src=ev.target.result});document.getElementById('logoControls').style.display='block'};r.readAsDataURL(f)};
-document.getElementById('logoSize').oninput=e=>{const v=+e.target.value;document.getElementById('logoSizeV').textContent=v;up(c=>c.logo.size=v)};
-document.getElementById('logoPad').oninput=e=>{const v=+e.target.value;document.getElementById('logoPadV').textContent=v;up(c=>c.logo.pad=v)};
-document.querySelectorAll('[data-lp]').forEach(b=>{b.onclick=()=>up(c=>{c.logo.pos=b.dataset.lp;c.logo.useXY=false})});
-document.getElementById('logoX').oninput=e=>{const v=+e.target.value;document.getElementById('logoXV').textContent=v;up(c=>{c.logo.x=v;c.logo.useXY=true})};
-document.getElementById('logoY').oninput=e=>{const v=+e.target.value;document.getElementById('logoYV').textContent=v;up(c=>{c.logo.y=v;c.logo.useXY=true})};
-document.getElementById('logoRm').onclick=()=>{up(c=>{c.logo.src=null;c.logo.useXY=false});document.getElementById('logoControls').style.display='none'};
+document.getElementById('logoF').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader;r.onload=ev=>{upLogo(c=>{c.logo.src=ev.target.result});document.getElementById('logoControls').style.display='block'};r.readAsDataURL(f)};
+document.getElementById('logoSize').oninput=e=>{const v=+e.target.value;document.getElementById('logoSizeV').textContent=v;upLogo(c=>c.logo.size=v)};
+document.getElementById('logoPad').oninput=e=>{const v=+e.target.value;document.getElementById('logoPadV').textContent=v;upLogo(c=>c.logo.pad=v)};
+document.querySelectorAll('[data-lp]').forEach(b=>{b.onclick=()=>upLogo(c=>{c.logo.pos=b.dataset.lp;c.logo.useXY=false})});
+document.getElementById('logoX').oninput=e=>{const v=+e.target.value;document.getElementById('logoXV').textContent=v;upLogo(c=>{c.logo.x=v;c.logo.useXY=true})};
+document.getElementById('logoY').oninput=e=>{const v=+e.target.value;document.getElementById('logoYV').textContent=v;upLogo(c=>{c.logo.y=v;c.logo.useXY=true})};
+document.getElementById('logoRm').onclick=()=>{upLogo(c=>{c.logo.src=null;c.logo.useXY=false});document.getElementById('logoControls').style.display='none'};
 
 /* Helpers */
 const sp=(o,p,v)=>{const ps=p.split('.');let x=o;for(let i=0;i<ps.length-1;i++)x=x[ps[i]];x[ps[ps.length-1]]=v};
