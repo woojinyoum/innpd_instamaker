@@ -412,6 +412,8 @@ const sLoad=(s,u,steps)=>{document.getElementById('ls').textContent=s;document.g
 const sStep=i=>{document.querySelectorAll('#lss .si').forEach((s,j)=>{s.className='si';if(j<i){s.classList.add('dn');s.querySelector('i').textContent='\u2713'}if(j===i)s.classList.add('ac')})};
 const hLoad=()=>document.getElementById('ov').classList.remove('on');
 const rgba=(h,a)=>{const n=h.replace('#','');return`rgba(${parseInt(n.substring(0,2),16)},${parseInt(n.substring(2,4),16)},${parseInt(n.substring(4,6),16)},${a})`};
+// Normalize full-width / alt brackets to {} so highlight regex works after translation
+const normBraces=s=>(s||'').replace(/[｛「『【〔《〈]/g,'{').replace(/[｝」』】〕》〉]/g,'}');
 
 /* Image upload */
 let img1=null,img2=null;
@@ -473,7 +475,7 @@ document.getElementById('trBtn').onclick=async()=>{
 RULES:
 - ${userGuide?'USER INSTRUCTIONS above override everything else. Follow them exactly.':'Rewrite naturally — never literal translation.'}
 - Match viral/hooking tone — short, punchy titles.
-- Preserve any {highlight braces} exactly in output.
+- Preserve any highlight braces exactly as ASCII { and } (NEVER use full-width ｛｝ or 「」『』 etc — always use plain { }).
 - Preserve line breaks (\\n) in titles.
 
 Return ONLY valid JSON:
@@ -514,7 +516,7 @@ function bCard(c){
     tt.style.paintOrder='stroke fill';
   }
   // {중괄호} 강조 처리
-  let html=c.title.replace(/\n/g,'<br>');
+  let html=normBraces(c.title).replace(/\n/g,'<br>');
   html=html.replace(/\{([^}]+)\}/g,'<span style="color:'+c.t.hc+';-webkit-text-stroke:inherit">$1</span>');
   tt.innerHTML=html;el.appendChild(tt);
   // Grid overlay (3x3)
@@ -772,7 +774,7 @@ function drawOverlay(ctx,c,logoImg){
     }
     return out2.length?out2:[''];
   };
-  const rawLines=c.title.split('\n');
+  const rawLines=normBraces(c.title).split('\n');
   const lines=[];rawLines.forEach(ln=>wrapLine(ln).forEach(w=>lines.push(w)));
   const lh=c.t.z*((c.t.lh||120)/100);
   const xBase=c.t.a==='center'?540:c.t.a==='right'?1020:60;
@@ -894,7 +896,7 @@ async function renderVideoCard(c){
         // Auto word-wrap
         const _maxW=1080-120;
         const _wrap=(txt)=>{if(!txt)return[''];const tokens=txt.split(/(\s+)/);const out=[];let cur='';for(const tk of tokens){const test=cur+tk;if(ctx.measureText(test).width<=_maxW||!cur){cur=test}else{out.push(cur.trimEnd());cur=tk.trimStart()}}if(cur)out.push(cur.trimEnd());const out2=[];for(const ln of out){if(ctx.measureText(ln).width<=_maxW){out2.push(ln);continue}let buf='';for(const ch of ln){if(ctx.measureText(buf+ch).width>_maxW&&buf){out2.push(buf);buf=ch}else{buf+=ch}}if(buf)out2.push(buf)}return out2.length?out2:['']};
-        const _rawLines=c.title.split('\n');const lines=[];_rawLines.forEach(ln=>_wrap(ln).forEach(w=>lines.push(w)));
+        const _rawLines=normBraces(c.title).split('\n');const lines=[];_rawLines.forEach(ln=>_wrap(ln).forEach(w=>lines.push(w)));
         const lh=c.t.z*(c.t.lh/100);
         const xBase=c.t.a==='center'?540:c.t.a==='right'?1020:60;
         ctx.textAlign=c.t.a;
