@@ -413,7 +413,9 @@ const sStep=i=>{document.querySelectorAll('#lss .si').forEach((s,j)=>{s.classNam
 const hLoad=()=>document.getElementById('ov').classList.remove('on');
 const rgba=(h,a)=>{const n=h.replace('#','');return`rgba(${parseInt(n.substring(0,2),16)},${parseInt(n.substring(2,4),16)},${parseInt(n.substring(4,6),16)},${a})`};
 // Normalize full-width / alt brackets to {} so highlight regex works after translation
-const normBraces=s=>(s||'').replace(/[｛「『【〔《〈]/g,'{').replace(/[｝」』】〕》〉]/g,'}');
+const normBraces=s=>(s||'').replace(/[｛「『【〔《〈❴⟨⦃]/g,'{').replace(/[｝」』】〕》〉❵⟩⦄]/g,'}');
+// Split a line into parts with highlight state (h:true for inside {}), carrying state across lines
+function splitHL(line,startInHL){const parts=[];let buf='';let hl=!!startInHL;for(const ch of line){if(ch==='{'){if(buf){parts.push({t:buf,h:hl});buf=''}hl=true}else if(ch==='}'){if(buf){parts.push({t:buf,h:hl});buf=''}hl=false}else{buf+=ch}}if(buf)parts.push({t:buf,h:hl});return{parts,hlEnd:hl}}
 
 // DOM-based line wrapping - matches CSS word-break:keep-all exactly
 function getWrappedLines(text,opts){
@@ -545,9 +547,17 @@ function bCard(c){
     tt.style.webkitTextStroke=sk+'px '+skC;
     tt.style.paintOrder='stroke fill';
   }
-  // {중괄호} 강조 처리
-  let html=normBraces(c.title).replace(/\n/g,'<br>');
-  html=html.replace(/\{([^}]+)\}/g,'<span style="color:'+c.t.hc+';-webkit-text-stroke:inherit">$1</span>');
+  // {중괄호} 강조 처리 - DOTALL regex (non-greedy, matches across \n)
+  const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const raw=normBraces(c.title);
+  let html='';let inHL=false;let buf='';
+  for(const ch of raw){
+    if(ch==='{'){if(buf)html+=inHL?`<span style="color:${c.t.hc};-webkit-text-stroke:inherit">${esc(buf)}</span>`:esc(buf);buf='';inHL=true}
+    else if(ch==='}'){if(buf)html+=inHL?`<span style="color:${c.t.hc};-webkit-text-stroke:inherit">${esc(buf)}</span>`:esc(buf);buf='';inHL=false}
+    else if(ch==='\n'){if(buf)html+=inHL?`<span style="color:${c.t.hc};-webkit-text-stroke:inherit">${esc(buf)}</span>`:esc(buf);buf='';html+='<br>'}
+    else buf+=ch;
+  }
+  if(buf)html+=inHL?`<span style="color:${c.t.hc};-webkit-text-stroke:inherit">${esc(buf)}</span>`:esc(buf);
   tt.innerHTML=html;el.appendChild(tt);
   // Grid overlay (3x3)
   const gOv=document.createElement('div');gOv.className='grid-ov'+(S.grid?' on':'');
@@ -788,15 +798,11 @@ function drawOverlay(ctx,c,logoImg){
   const lh=c.t.z*((c.t.lh||120)/100);
   const xBase=c.t.a==='center'?540:c.t.a==='right'?1020:60;
   ctx.textAlign=c.t.a;
+  let _hlState=false;
   lines.forEach((line,li)=>{
     const yy=1350-c.t.b+(li-(lines.length-1))*lh;
-    const parts=[];const re=/\{([^}]+)\}/g;let last=0,m;
-    while((m=re.exec(line))!==null){
-      if(m.index>last)parts.push({t:line.slice(last,m.index),h:false});
-      parts.push({t:m[1],h:true});last=re.lastIndex;
-    }
-    if(last<line.length)parts.push({t:line.slice(last),h:false});
-    if(!parts.length)parts.push({t:line,h:false});
+    const _sp=splitHL(line,_hlState);_hlState=_sp.hlEnd;
+    const parts=_sp.parts.length?_sp.parts:[{t:line,h:false}];
     if(c.t.a==='center'||c.t.a==='right'){
       ctx.textAlign='left';
       let tw=0;parts.forEach(p=>{tw+=ctx.measureText(p.t).width});
@@ -906,18 +912,11 @@ async function renderVideoCard(c){
         const lh=c.t.z*(c.t.lh/100);
         const xBase=c.t.a==='center'?540:c.t.a==='right'?1020:60;
         ctx.textAlign=c.t.a;
+        let _hlV=false;
         lines.forEach((line,li)=>{
           const yy=1350-c.t.b+(li-(lines.length-1))*lh;
-          // Parse {highlighted} parts
-          const parts=[];let rem=line,m;
-          const re=/\{([^}]+)\}/g;let last=0;
-          while((m=re.exec(line))!==null){
-            if(m.index>last)parts.push({t:line.slice(last,m.index),h:false});
-            parts.push({t:m[1],h:true});last=re.lastIndex;
-          }
-          if(last<line.length)parts.push({t:line.slice(last),h:false});
-          if(!parts.length)parts.push({t:line,h:false});
-          // If aligned center/right, draw whole line per part with offset
+          const _s=splitHL(line,_hlV);_hlV=_s.hlEnd;
+          const parts=_s.parts.length?_s.parts:[{t:line,h:false}];
           if(c.t.a==='center'||c.t.a==='right'){
             // Measure total width to manually position
             ctx.textAlign='left';
