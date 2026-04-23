@@ -825,7 +825,9 @@ function drawOverlay(ctx,c,logoImg){
 }
 
 /* Render image card to PNG blob */
+async function ensureFont(c){try{const w=c.t.w||'900',z=c.t.z||80;await document.fonts.load(`${w} ${z}px 'Noto Sans KR'`);await document.fonts.ready}catch(e){}}
 async function renderImageCard(c){
+  await ensureFont(c);
   const canvas=document.createElement('canvas');canvas.width=1080;canvas.height=1350;
   const ctx=canvas.getContext('2d');
   // Background: image, or fallback gradient
@@ -852,7 +854,8 @@ async function renderImageCard(c){
   return new Promise(res=>canvas.toBlob(b=>res(b),'image/png'));
 }
 
-function renderVideoCard(c){
+async function renderVideoCard(c){
+  await ensureFont(c);
   return new Promise((resolve,reject)=>{
     const canvas=document.createElement('canvas');canvas.width=1080;canvas.height=1350;
     const ctx=canvas.getContext('2d');
