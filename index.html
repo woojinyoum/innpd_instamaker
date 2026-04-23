@@ -402,7 +402,7 @@ const $tp=document.getElementById('trPrompt');$tp.value=localStorage.getItem('tr
 /* API Lock */
 const $lock=document.getElementById('lockApi'),$lockIcon=document.getElementById('lockIcon');
 let apiLocked=localStorage.getItem('ak_lock')==='1';
-function applyLock(){$k.disabled=apiLocked;$m.disabled=apiLocked;$lockIcon.textContent=apiLocked?'🔒 잠금':'🔓 해제';if(apiLocked)$k.type='password'}
+function applyLock(){$k.disabled=apiLocked;$m.disabled=false;$lockIcon.textContent=apiLocked?'🔒 잠금':'🔓 해제';if(apiLocked)$k.type='password'}
 $lock.checked=apiLocked;applyLock();
 $lock.onchange=()=>{apiLocked=$lock.checked;localStorage.setItem('ak_lock',apiLocked?'1':'0');applyLock()};
 
