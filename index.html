@@ -415,6 +415,36 @@ const rgba=(h,a)=>{const n=h.replace('#','');return`rgba(${parseInt(n.substring(
 // Normalize full-width / alt brackets to {} so highlight regex works after translation
 const normBraces=s=>(s||'').replace(/[｛「『【〔《〈]/g,'{').replace(/[｝」』】〕》〉]/g,'}');
 
+// DOM-based line wrapping - matches CSS word-break:keep-all exactly
+function getWrappedLines(text,opts){
+  const {fontSize,fontWeight,fontFamily="'Noto Sans KR',sans-serif",letterSpacing=0,maxWidth}=opts;
+  const host=document.createElement('div');
+  host.style.cssText=`position:absolute;left:-99999px;top:0;width:${maxWidth}px;font-family:${fontFamily};font-size:${fontSize}px;font-weight:${fontWeight};letter-spacing:${letterSpacing}px;line-height:1;word-break:keep-all;white-space:normal;visibility:hidden`;
+  document.body.appendChild(host);
+  const out=[];
+  const rawLines=(text||'').split('\n');
+  rawLines.forEach(line=>{
+    if(!line){out.push('');return}
+    host.innerHTML='';
+    const tokens=[];
+    // Split preserving spaces: every word + each following space becomes its own token
+    const parts=line.split(/(\s+)/);
+    parts.forEach(p=>{if(p.length)tokens.push(p)});
+    const spans=[];
+    tokens.forEach(tk=>{
+      // For each non-space token, wrap whole token in a span (keep-all unit).
+      // For spaces: wrap in span too so offsetTop tracks them.
+      const sp=document.createElement('span');sp.textContent=tk;host.appendChild(sp);spans.push({t:tk,el:sp})
+    });
+    // Group by offsetTop
+    const groups=new Map();
+    spans.forEach(s=>{const y=s.el.offsetTop;if(!groups.has(y))groups.set(y,'');groups.set(y,groups.get(y)+s.t)});
+    [...groups.keys()].sort((a,b)=>a-b).forEach(y=>{out.push(groups.get(y).replace(/\s+$/,''))});
+  });
+  document.body.removeChild(host);
+  return out.length?out:[''];
+}
+
 /* Image upload */
 let img1=null,img2=null;
 const drop=(dId,tId,pId,fId,cb)=>{const d=document.getElementById(dId),f=document.getElementById(fId);d.onclick=()=>f.click();d.ondragover=e=>{e.preventDefault();d.classList.add('drag')};d.ondragleave=()=>d.classList.remove('drag');d.ondrop=e=>{e.preventDefault();d.classList.remove('drag');e.dataTransfer.files[0]&&rd(e.dataTransfer.files[0])};f.onchange=e=>e.target.files[0]&&rd(e.target.files[0]);function rd(f){const r=new FileReader;r.onload=e=>{const u=e.target.result;document.getElementById(pId).src=u;document.getElementById(pId).style.display='block';document.getElementById(tId).style.display='none';cb(u)};r.readAsDataURL(f)}};
@@ -753,29 +783,8 @@ function drawOverlay(ctx,c,logoImg){
   ctx.shadowColor=rgba(c.t.shc||'#000',shA2);ctx.shadowBlur=c.t.shb||0;
   ctx.shadowOffsetX=c.t.shx||0;ctx.shadowOffsetY=c.t.shy||0;
   if((c.t.sk||0)>0){ctx.strokeStyle=c.t.skc;ctx.lineWidth=c.t.sk*2;ctx.lineJoin='round'}
-  // Auto word-wrap (mirrors CSS word-break:keep-all + left:60/right:60)
-  const maxW=1080-120;
-  const wrapLine=(txt)=>{
-    if(!txt)return[''];
-    const tokens=txt.split(/(\s+)/); // keep spaces
-    const out=[];let cur='';
-    for(const tk of tokens){
-      const test=cur+tk;
-      if(ctx.measureText(test).width<=maxW||!cur){cur=test}
-      else{out.push(cur.trimEnd());cur=tk.trimStart()}
-    }
-    if(cur)out.push(cur.trimEnd());
-    // If a single token itself is wider than maxW, hard break by chars
-    const out2=[];
-    for(const ln of out){
-      if(ctx.measureText(ln).width<=maxW){out2.push(ln);continue}
-      let buf='';for(const ch of ln){if(ctx.measureText(buf+ch).width>maxW&&buf){out2.push(buf);buf=ch}else{buf+=ch}}
-      if(buf)out2.push(buf);
-    }
-    return out2.length?out2:[''];
-  };
-  const rawLines=normBraces(c.title).split('\n');
-  const lines=[];rawLines.forEach(ln=>wrapLine(ln).forEach(w=>lines.push(w)));
+  // Use DOM-based wrapping so canvas matches preview exactly
+  const lines=getWrappedLines(normBraces(c.title),{fontSize:c.t.z,fontWeight:c.t.w,letterSpacing:(c.t.ls||0),maxWidth:1080-120});
   const lh=c.t.z*((c.t.lh||120)/100);
   const xBase=c.t.a==='center'?540:c.t.a==='right'?1020:60;
   ctx.textAlign=c.t.a;
@@ -893,10 +902,7 @@ async function renderVideoCard(c){
         ctx.font=_font;
         const shA2=c.t.sha/100;ctx.shadowColor=rgba(c.t.shc,shA2);ctx.shadowBlur=c.t.shb;ctx.shadowOffsetX=c.t.shx||0;ctx.shadowOffsetY=c.t.shy||0;
         if(c.t.sk>0){ctx.strokeStyle=c.t.skc;ctx.lineWidth=c.t.sk*2;ctx.lineJoin='round'}
-        // Auto word-wrap
-        const _maxW=1080-120;
-        const _wrap=(txt)=>{if(!txt)return[''];const tokens=txt.split(/(\s+)/);const out=[];let cur='';for(const tk of tokens){const test=cur+tk;if(ctx.measureText(test).width<=_maxW||!cur){cur=test}else{out.push(cur.trimEnd());cur=tk.trimStart()}}if(cur)out.push(cur.trimEnd());const out2=[];for(const ln of out){if(ctx.measureText(ln).width<=_maxW){out2.push(ln);continue}let buf='';for(const ch of ln){if(ctx.measureText(buf+ch).width>_maxW&&buf){out2.push(buf);buf=ch}else{buf+=ch}}if(buf)out2.push(buf)}return out2.length?out2:['']};
-        const _rawLines=normBraces(c.title).split('\n');const lines=[];_rawLines.forEach(ln=>_wrap(ln).forEach(w=>lines.push(w)));
+        const lines=getWrappedLines(normBraces(c.title),{fontSize:c.t.z,fontWeight:c.t.w,letterSpacing:(c.t.ls||0),maxWidth:1080-120});
         const lh=c.t.z*(c.t.lh/100);
         const xBase=c.t.a==='center'?540:c.t.a==='right'?1020:60;
         ctx.textAlign=c.t.a;
