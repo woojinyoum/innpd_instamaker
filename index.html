@@ -414,8 +414,19 @@ const hLoad=()=>document.getElementById('ov').classList.remove('on');
 const rgba=(h,a)=>{const n=h.replace('#','');return`rgba(${parseInt(n.substring(0,2),16)},${parseInt(n.substring(2,4),16)},${parseInt(n.substring(4,6),16)},${a})`};
 // Normalize full-width / alt brackets to {} so highlight regex works after translation
 const normBraces=s=>(s||'').replace(/[｛「『【〔《〈❴⟨⦃]/g,'{').replace(/[｝」』】〕》〉❵⟩⦄]/g,'}');
-// Split a line into parts with highlight state (h:true for inside {}), carrying state across lines
-function splitHL(line,startInHL){const parts=[];let buf='';let hl=!!startInHL;for(const ch of line){if(ch==='{'){if(buf){parts.push({t:buf,h:hl});buf=''}hl=true}else if(ch==='}'){if(buf){parts.push({t:buf,h:hl});buf=''}hl=false}else{buf+=ch}}if(buf)parts.push({t:buf,h:hl});return{parts,hlEnd:hl}}
+// Preprocess: convert ONLY balanced {...} pairs into control chars \x01...\x02.
+// Unmatched { or } stay as literal characters (so "{only" does NOT trigger highlight).
+function preprocessHL(title){
+  const txt=title||'';let out='';const stack=[];
+  for(const ch of txt){
+    if(ch==='{'){stack.push(out.length);out+=ch}
+    else if(ch==='}'){if(stack.length){const oi=stack.pop();out=out.slice(0,oi)+'\x01'+out.slice(oi+1)+'\x02'}else{out+=ch}}
+    else{out+=ch}
+  }
+  return out;
+}
+// Split a line into parts with highlight state, using \x01/\x02 markers; carries state across lines.
+function splitHL(line,startInHL){const parts=[];let buf='';let hl=!!startInHL;for(const ch of line){if(ch==='\x01'){if(buf){parts.push({t:buf,h:hl});buf=''}hl=true}else if(ch==='\x02'){if(buf){parts.push({t:buf,h:hl});buf=''}hl=false}else{buf+=ch}}if(buf)parts.push({t:buf,h:hl});return{parts,hlEnd:hl}}
 
 // DOM-based line wrapping - matches CSS word-break:keep-all exactly
 function getWrappedLines(text,opts){
@@ -547,13 +558,13 @@ function bCard(c){
     tt.style.webkitTextStroke=sk+'px '+skC;
     tt.style.paintOrder='stroke fill';
   }
-  // {중괄호} 강조 처리 - DOTALL regex (non-greedy, matches across \n)
+  // {중괄호} 강조 처리 - 쌍이 완성된 경우에만 강조색 적용
   const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  const raw=normBraces(c.title);
+  const raw=preprocessHL(normBraces(c.title));
   let html='';let inHL=false;let buf='';
   for(const ch of raw){
-    if(ch==='{'){if(buf)html+=inHL?`<span style="color:${c.t.hc};-webkit-text-stroke:inherit">${esc(buf)}</span>`:esc(buf);buf='';inHL=true}
-    else if(ch==='}'){if(buf)html+=inHL?`<span style="color:${c.t.hc};-webkit-text-stroke:inherit">${esc(buf)}</span>`:esc(buf);buf='';inHL=false}
+    if(ch==='\x01'){if(buf)html+=inHL?`<span style="color:${c.t.hc};-webkit-text-stroke:inherit">${esc(buf)}</span>`:esc(buf);buf='';inHL=true}
+    else if(ch==='\x02'){if(buf)html+=inHL?`<span style="color:${c.t.hc};-webkit-text-stroke:inherit">${esc(buf)}</span>`:esc(buf);buf='';inHL=false}
     else if(ch==='\n'){if(buf)html+=inHL?`<span style="color:${c.t.hc};-webkit-text-stroke:inherit">${esc(buf)}</span>`:esc(buf);buf='';html+='<br>'}
     else buf+=ch;
   }
@@ -794,7 +805,7 @@ function drawOverlay(ctx,c,logoImg){
   ctx.shadowOffsetX=c.t.shx||0;ctx.shadowOffsetY=c.t.shy||0;
   if((c.t.sk||0)>0){ctx.strokeStyle=c.t.skc;ctx.lineWidth=c.t.sk*2;ctx.lineJoin='round'}
   // Use DOM-based wrapping so canvas matches preview exactly
-  const lines=getWrappedLines(normBraces(c.title),{fontSize:c.t.z,fontWeight:c.t.w,letterSpacing:(c.t.ls||0),maxWidth:1080-120});
+  const lines=getWrappedLines(preprocessHL(normBraces(c.title)),{fontSize:c.t.z,fontWeight:c.t.w,letterSpacing:(c.t.ls||0),maxWidth:1080-120});
   const lh=c.t.z*((c.t.lh||120)/100);
   const xBase=c.t.a==='center'?540:c.t.a==='right'?1020:60;
   ctx.textAlign=c.t.a;
@@ -908,7 +919,7 @@ async function renderVideoCard(c){
         ctx.font=_font;
         const shA2=c.t.sha/100;ctx.shadowColor=rgba(c.t.shc,shA2);ctx.shadowBlur=c.t.shb;ctx.shadowOffsetX=c.t.shx||0;ctx.shadowOffsetY=c.t.shy||0;
         if(c.t.sk>0){ctx.strokeStyle=c.t.skc;ctx.lineWidth=c.t.sk*2;ctx.lineJoin='round'}
-        const lines=getWrappedLines(normBraces(c.title),{fontSize:c.t.z,fontWeight:c.t.w,letterSpacing:(c.t.ls||0),maxWidth:1080-120});
+        const lines=getWrappedLines(preprocessHL(normBraces(c.title)),{fontSize:c.t.z,fontWeight:c.t.w,letterSpacing:(c.t.ls||0),maxWidth:1080-120});
         const lh=c.t.z*(c.t.lh/100);
         const xBase=c.t.a==='center'?540:c.t.a==='right'?1020:60;
         ctx.textAlign=c.t.a;
