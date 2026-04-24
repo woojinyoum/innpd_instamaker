@@ -479,20 +479,43 @@ document.getElementById('goBtn').onclick=async()=>{
     if(img1){const[m,b]=img1.split(',');uc.push({type:'image',source:{type:'base64',media_type:m.match(/data:(.*?);/)[1],data:b}},{type:'text',text:'위: 메인 이미지'})}
     if(img2){const[m,b]=img2.split(',');uc.push({type:'image',source:{type:'base64',media_type:m.match(/data:(.*?);/)[1],data:b}},{type:'text',text:'위: 본문 캡쳐 (OCR)'})}
     sStep(1);
-    uc.push({type:'text',text:`${userGuide?'=== 사용자 지침 (최우선 준수) ===\n'+userGuide+'\n================================\n\n':''}위 인스타 게시물을 분석하세요.
-1. 이미지를 보고 사람들이 스크롤을 멈출 강렬한 후킹 제목을 만드세요.
-2. 본문 캡쳐가 있으면 텍스트를 정확히 OCR해서 요약하세요.
+    uc.push({type:'text',text:`${userGuide?'=== 사용자 지침 (최우선 준수) ===\n'+userGuide+'\n================================\n\n':''}위 인스타그램 게시물을 정확히 분석하세요.
+
+작업:
+1) 메인 이미지 관찰 → 본문 내용을 기반으로 스크롤을 멈출 강렬한 후킹 제목을 작성
+2) 본문 캡쳐가 있으면 글자를 하나도 빠짐없이 정확하게 OCR하고, 핵심만 자연스럽게 요약
+
+${userGuide?'위 "사용자 지침" 을 제목과 본문 모두에 반드시 적용하세요. 아래 기본 규칙보다 우선합니다.':'기본 규칙:\n- title: 숫자·반전·궁금증·감정 자극을 활용한 후킹 문장 (짧고 강렬)\n- body: 본문의 사실을 정확하게 유지하되 자연스러운 한국어 문장으로 다듬어 요약'}
+
+공통 규칙:
+- 본문 정보(숫자, 이름, 장소, 날짜 등)는 OCR한 그대로 정확하게 유지
+- 어색한 기계 번역체 금지. 사람이 직접 쓴 것처럼 자연스럽게
+- 제목에 이모지 금지
+- 한국어로 작성
 
 JSON만 답변:
-{"title":"후킹 제목 (15자 이내)","body":"본문 OCR 후 핵심 요약 (3~5문장)"}
-
-규칙:
-- ${userGuide?'위 사용자 지침을 최우선으로 따르세요 (아래 규칙보다 우선).':'title: 숫자, 반전, 궁금증, 감정 자극 활용한 후킹'}
-- body: 본문 캡쳐에서 읽은 내용을 간결하게 요약
-- 이모지 금지, 한국어${userGuide?'\n\n다시 강조: 사용자 지침 "'+userGuide+'" 를 제목과 본문에 반드시 적용.':''}`});
+{"title":"후킹 제목","body":"본문 OCR 기반 자연스러운 요약 (3~5문장)"}${userGuide?'\n\n한 번 더 강조: 사용자 지침 "'+userGuide+'"을(를) 반드시 적용.':''}`});
     const sys=userGuide
-      ? `최우선 사용자 지침 (반드시 준수):\n${userGuide}\n\n---\n\n인스타그램 바이럴 전문가. 이미지에서 후킹 제목을 뽑고, 본문을 정확히 OCR하여 요약합니다. 단, 위 사용자 지침이 모든 기본 스타일보다 우선합니다.`
-      : '인스타그램 바이럴 전문가. 이미지에서 후킹 제목을 뽑고, 본문을 정확히 OCR하여 요약합니다.';
+      ? `당신은 한국 인스타그램 바이럴 콘텐츠 전문가입니다.
+
+=== 절대 준수 사용자 지침 (최우선) ===
+${userGuide}
+=====================================
+
+위 사용자 지침이 모든 기본 스타일보다 우선합니다. 제목과 본문 모두에 반드시 적용하세요.
+
+기본 원칙(지침과 충돌하지 않을 때만 적용):
+- 이미지를 정확히 관찰하고, 본문 캡쳐의 글자를 하나도 빠뜨리지 않고 OCR
+- 본문 요약은 원문 사실을 정확하게 유지하면서 자연스러운 한국어로 다듬기
+- 후킹 제목은 숫자·반전·궁금증·감정을 활용해 짧고 강렬하게`
+      : `당신은 한국 인스타그램 바이럴 콘텐츠 전문가입니다.
+
+원칙:
+- 메인 이미지를 정확히 관찰하고 맥락을 파악
+- 본문 캡쳐의 글자를 하나도 빠짐없이 정확하게 OCR (숫자·이름·날짜 포함)
+- 본문 요약은 원문 사실 그대로 유지하면서 **자연스럽고 매끄러운 한국어**로 다듬기 (기계 번역체 절대 금지)
+- 후킹 제목: 숫자·반전·궁금증·감정 자극을 활용해 짧고 강렬하게
+- 독자가 보자마자 "뭐?" 하고 멈출 만한 임팩트`;
     const res=await api({sys,content:uc});
     sStep(2);const p=pj(res);S.cards=[];S.ko=p;
     const c1=mk();c1.title=p.title;c1.body=p.body||'';S.cards.push(c1);
@@ -511,17 +534,43 @@ document.getElementById('trBtn').onclick=async()=>{
   console.log('%c[번역 지침]','color:#7c5cff;font-weight:bold',userGuide||'(없음)');
   if(userGuide)toast('지침 적용: '+userGuide.slice(0,30)+(userGuide.length>30?'...':''));
   const sysPrompt=userGuide
-    ? `CRITICAL USER INSTRUCTIONS (MUST FOLLOW ABOVE ALL ELSE):\n${userGuide}\n\n---\n\nYou are a native ${lm[l]} social media content localizer. You rewrite Korean content so it reads as if written by a native speaker. But the USER INSTRUCTIONS above override any default style — follow them strictly.`
-    : `You are a native ${lm[l]} social media content localizer, not a literal translator. You understand the target country's contemporary culture, slang, tone, internet humor, generational sensibilities, and what feels natural to native speakers in 2026. You rewrite Korean content so it reads as if it was originally written by a native speaker for their own audience — never translationese, never awkward.`;
-  try{const pl=S.cards.map((c,i)=>({i,title:c.title,body:c.body}));const res=await api({sys:sysPrompt,content:[{type:'text',text:`${userGuide?'=== USER INSTRUCTIONS (HIGHEST PRIORITY) ===\n'+userGuide+'\n===========================================\n\n':''}Localize the following Korean Instagram card content into ${lm[l]} for native speakers.
+    ? `You are a professional native ${lm[l]} content writer working on Korean Instagram card news for ${lm[l]} audiences.
 
-RULES:
-- ${userGuide?'USER INSTRUCTIONS above override everything else. Follow them exactly.':'Rewrite naturally — never literal translation.'}
-- Match viral/hooking tone — short, punchy titles.
-- Preserve any highlight braces exactly as ASCII { and } (NEVER use full-width ｛｝ or 「」『』 etc — always use plain { }).
-- Preserve line breaks (\\n) in titles.
+=== ABSOLUTE USER INSTRUCTIONS (HIGHEST PRIORITY — MUST FOLLOW STRICTLY) ===
+${userGuide}
+=======================================================================
 
-Return ONLY valid JSON:
+These user instructions override EVERY default style rule below. Apply them to every single title and body. If they conflict with defaults, the user instructions WIN.
+
+Your default approach (apply when not conflicting with user instructions):
+- You are a native ${lm[l]} speaker writing for other native ${lm[l]} speakers in 2026.
+- Translate the MEANING and EMOTION, not the words. Rewrite so it reads as if originally written by a ${lm[l]} journalist/creator, not translated from Korean.
+- Use natural, contemporary ${lm[l]} syntax, idioms, slang, and punctuation conventions. Never translationese.
+- Match Korean card news tone: punchy, hooky, emotionally grabbing, scroll-stopping.
+- Preserve accurate information (numbers, names, facts) even while rewriting stylistically.`
+    : `You are a professional native ${lm[l]} content writer, NOT a translator.
+
+Your job: take Korean Instagram card news and REWRITE it as if you were a native ${lm[l]} journalist/creator writing it originally for your own local audience in 2026.
+
+Strict principles:
+- TRANSLATE MEANING, NOT WORDS. Never word-for-word. Never translationese. Never awkward phrasing.
+- Write in natural, contemporary ${lm[l]} — the exact tone/syntax/slang that native speakers actually use today on social media.
+- Match Korean card news style: short, punchy, emotionally hooky, scroll-stopping.
+- Preserve accuracy: numbers, names, dates, facts must stay correct even as you rewrite the phrasing.
+- Adapt cultural references naturally (e.g., Korean won → keep the amount but phrase it how a local journalist would explain it).
+- Body text: read it like a native would want to read it — natural paragraph flow, clear logic, no Korean grammar artifacts.
+- Never mention that this is translated. Write as if it was always in ${lm[l]}.`;
+  try{const pl=S.cards.map((c,i)=>({i,title:c.title,body:c.body}));const res=await api({sys:sysPrompt,content:[{type:'text',text:`${userGuide?'=== USER INSTRUCTIONS (HIGHEST PRIORITY — FOLLOW EXACTLY) ===\n'+userGuide+'\n=============================================================\n\n':''}Rewrite the following Korean Instagram card content into natural ${lm[l]} for native speakers.
+
+${userGuide?'Apply the USER INSTRUCTIONS above to EVERY title and body. They override defaults.':'Write as a native '+lm[l]+' creator would — meaning-based rewrite, not literal translation.'}
+
+Technical rules:
+- Preserve {highlight} braces as plain ASCII { and } (never ｛｝ or 「」).
+- Preserve \\n line breaks in titles exactly where appropriate.
+- Keep titles SHORT and punchy (visual impact).
+- Body: natural paragraph flow in ${lm[l]}, not Korean-sentence-order calqued.
+
+Return ONLY valid JSON (no markdown, no commentary):
 {"cards":[{"i":0,"title":"...","body":"..."}]}
 
 Input:
