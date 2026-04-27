@@ -265,6 +265,10 @@ input[type=color]{width:32px;height:26px;background:transparent;border:1px solid
             <div class="field"><label>가로 위치 (px)</label><div class="sr"><input type="range" id="mox" min="-1000" max="1000" value="0"/><span class="v" id="moxV">0</span></div></div>
             <div class="field" style="margin-bottom:0"><label>세로 위치 (px)</label><div class="sr"><input type="range" id="moy" min="-1500" max="1500" value="0"/><span class="v" id="moyV">0</span></div></div>
           </fieldset>
+          <fieldset id="mvolField" style="display:none;border:1px solid var(--brd);border-radius:8px;padding:10px 12px 6px;margin:8px 0;background:rgba(255,255,255,.02)">
+            <legend style="font-size:11px;color:var(--acc);padding:0 6px;font-weight:600;letter-spacing:.3px">🔊 영상 음량</legend>
+            <div class="field" style="margin-bottom:0"><label>음량 (%)</label><div class="sr"><input type="range" id="mvol" min="0" max="100" value="100"/><span class="v" id="mvolV">100</span></div></div>
+          </fieldset>
         </div>
         <div class="field"><label>정렬</label><select id="ta"><option value="left">왼쪽</option><option value="center">가운데</option><option value="right">오른쪽</option></select></div>
         <div class="field"><label>두께</label><select id="tw"><option value="900" selected>Black</option><option value="700">Bold</option><option value="500">Medium</option></select></div>
@@ -433,7 +437,7 @@ document.addEventListener('keydown',e=>{
     e.preventDefault();undo();
   }
 });
-const mk=()=>({id:crypto.randomUUID(),img:null,media:null,mediaType:null,mvy:0,mct:0,mcb:0,mcl:0,mcr:0,mzoom:100,mox:0,moy:0,title:'제목',body:'',g:{c:'#000000',h:60,o:95,s:50},t:{z:80,c:'#ffffff',b:200,a:'left',w:'900',hc:'#ffcc00',lh:120,ls:0,sk:0,skc:'#000000',shb:30,shang:180,shdist:4,shx:0,shy:4,shc:'#000000',sha:80},b:{on:true,z:26,c:'#ffffff',t:60,r:50,w:320},logo:{src:null,size:120,pad:40,pos:'tr',x:0,y:0,useXY:false}});
+const mk=()=>({id:crypto.randomUUID(),img:null,media:null,mediaType:null,mvy:0,mct:0,mcb:0,mcl:0,mcr:0,mzoom:100,mox:0,moy:0,mvol:100,title:'제목',body:'',g:{c:'#000000',h:60,o:95,s:50},t:{z:80,c:'#ffffff',b:200,a:'left',w:'900',hc:'#ffcc00',lh:120,ls:0,sk:0,skc:'#000000',shb:30,shang:180,shdist:4,shx:0,shy:4,shc:'#000000',sha:80},b:{on:true,z:26,c:'#ffffff',t:60,r:50,w:320},logo:{src:null,size:120,pad:40,pos:'tr',x:0,y:0,useXY:false}});
 
 /* Persist */
 const $k=document.getElementById('apiKey');$k.value=localStorage.getItem('ak')||'';$k.onchange=()=>localStorage.setItem('ak',$k.value);
@@ -649,7 +653,9 @@ function bCard(c){
   if(c.media){
     const wrap=document.createElement('div');wrap.style.cssText='position:absolute;inset:0;overflow:hidden;z-index:1';
     if(c.mediaType==='video'){
-      const v=document.createElement('video');v.src=c.media;v.autoplay=true;v.loop=true;v.muted=true;v.playsInline=true;
+      const vol=(c.mvol==null?100:c.mvol)/100;
+      const v=document.createElement('video');v.src=c.media;v.autoplay=true;v.loop=true;v.playsInline=true;
+      v.muted=vol===0;v.volume=vol;
       const apply=()=>applyMediaCrop(v,c,v.videoWidth,v.videoHeight,wrap);
       v.onloadedmetadata=apply;if(v.videoWidth)apply();
       wrap.appendChild(v);
@@ -796,7 +802,9 @@ function rEd(){
   sv('gc',c.g.c);sv('gx',c.g.c);sr('gh','ghv',c.g.h,'%');sr('go','gov',c.g.o,'%');sr('gs','gsv',c.g.s,'%');
   sr('tz','tzv',c.t.z);sv('tc',c.t.c);sv('tx',c.t.c);sv('thc',c.t.hc);sv('thx',c.t.hc);sr('tb','tbv',c.t.b);sv('ta',c.t.a);sv('tw',c.t.w);
   // Show media crop/zoom/move sliders only when media attached
-  const mcF=document.getElementById('mediaCropFields');if(mcF){mcF.style.display=c.media?'block':'none';sr('mct','mctV',c.mct||0);sr('mcb','mcbV',c.mcb||0);sr('mcl','mclV',c.mcl||0);sr('mcr','mcrV',c.mcr||0);sr('mzoom','mzoomV',c.mzoom||100);sr('mox','moxV',c.mox||0);sr('moy','moyV',c.moy||0)}
+  const mcF=document.getElementById('mediaCropFields');if(mcF){mcF.style.display=c.media?'block':'none';sr('mct','mctV',c.mct||0);sr('mcb','mcbV',c.mcb||0);sr('mcl','mclV',c.mcl||0);sr('mcr','mcrV',c.mcr||0);sr('mzoom','mzoomV',c.mzoom||100);sr('mox','moxV',c.mox||0);sr('moy','moyV',c.moy||0);sr('mvol','mvolV',c.mvol==null?100:c.mvol)}
+  // Show volume slider only for video
+  const mvF=document.getElementById('mvolField');if(mvF){mvF.style.display=(c.media&&c.mediaType==='video')?'block':'none'}
   sr('tlh','tlhv',c.t.lh,'%');sr('tls','tlsv',c.t.ls,'px');
   sr('tsk','tskv',c.t.sk);sv('tskc',c.t.skc);sv('tskx',c.t.skc);
   sr('tshb','tshbv',c.t.shb);sr('shang','shangV',c.t.shang||0,'°');sr('shdist','shdistV',c.t.shdist||0,'px');sv('tshc',c.t.shc);sv('tshx',c.t.shc);sr('tsha','tshav',c.t.sha,'%');updateWheel();
@@ -835,7 +843,7 @@ const bC=(cid,xid,path)=>{document.getElementById(cid).oninput=e=>{document.getE
 
 bC('gc','gx','g.c');bR('gh','ghv','g.h','%');bR('go','gov','g.o','%');bR('gs','gsv','g.s','%');
 bR('tz','tzv','t.z');bC('tc','tx','t.c');bC('thc','thx','t.hc');bR('tb','tbv','t.b');
-['mct','mcb','mcl','mcr','mzoom','mox','moy'].forEach(id=>{document.getElementById(id).oninput=e=>{const v=+e.target.value;document.getElementById(id+'V').textContent=v;up(c=>{c[id]=v})}});
+['mct','mcb','mcl','mcr','mzoom','mox','moy','mvol'].forEach(id=>{document.getElementById(id).oninput=e=>{const v=+e.target.value;document.getElementById(id+'V').textContent=v;up(c=>{c[id]=v})}});
 document.getElementById('ta').onchange=e=>up(c=>c.t.a=e.target.value);
 document.getElementById('tw').onchange=e=>up(c=>c.t.w=e.target.value);
 bR('tlh','tlhv','t.lh','%');bR('tls','tlsv','t.ls','px');
@@ -1032,13 +1040,25 @@ async function renderVideoCard(c){
   return new Promise((resolve,reject)=>{
     const canvas=document.createElement('canvas');canvas.width=1080;canvas.height=HH;
     const ctx=canvas.getContext('2d');
-    const vid=document.createElement('video');vid.src=c.media;vid.muted=true;vid.playsInline=true;
+    const vid=document.createElement('video');vid.src=c.media;vid.muted=false;vid.playsInline=true;vid.crossOrigin='anonymous';
+    const vol=(c.mvol==null?100:c.mvol)/100;
     vid.onloadeddata=()=>{
       const duration=Math.min(vid.duration,30)*1000; // max 30s
       const mimeType=MediaRecorder.isTypeSupported('video/mp4;codecs=avc1')?'video/mp4;codecs=avc1':
                       MediaRecorder.isTypeSupported('video/webm;codecs=vp9')?'video/webm;codecs=vp9':'video/webm';
       const ext=mimeType.startsWith('video/mp4')?'mp4':'webm';
       const stream=canvas.captureStream(30);
+      // Audio pipeline: source -> gain (volume) -> destination -> add to canvas stream
+      try{
+        const ACtx=window.AudioContext||window.webkitAudioContext;
+        const aCtx=new ACtx();
+        const aSrc=aCtx.createMediaElementSource(vid);
+        const gain=aCtx.createGain();gain.gain.value=vol;
+        const aDst=aCtx.createMediaStreamDestination();
+        aSrc.connect(gain);gain.connect(aDst);
+        // Don't connect to aCtx.destination — user shouldn't hear it during recording
+        aDst.stream.getAudioTracks().forEach(t=>stream.addTrack(t));
+      }catch(e){console.warn('audio pipeline failed:',e)}
       const rec=new MediaRecorder(stream,{mimeType,videoBitsPerSecond:8000000});
       const chunks=[];
       rec.ondataavailable=e=>{if(e.data.size>0)chunks.push(e.data)};
