@@ -248,7 +248,7 @@ input[type=color]{width:32px;height:26px;background:transparent;border:1px solid
         <div class="field"><label>크기 px</label><div class="sr"><input type="range" id="tz" min="40" max="140" value="80"/><span class="v" id="tzv">80</span></div></div>
         <div class="field"><label>색상</label><div class="row" style="align-items:center"><input type="color" id="tc" value="#ffffff"/><input type="text" id="tx" value="#ffffff" style="flex:2"/></div></div>
         <div class="field"><label>강조 색상 <span style="color:var(--dim);font-size:9px">제목에서 {중괄호}로 감싼 부분</span></label><div class="row" style="align-items:center"><input type="color" id="thc" value="#ffcc00"/><input type="text" id="thx" value="#ffcc00" style="flex:2"/></div></div>
-        <div class="field"><label>위치 (하단 px)</label><div class="sr"><input type="range" id="tb" min="40" max="700" value="200"/><span class="v" id="tbv">200</span></div></div>
+        <div class="field"><label>위치 (하단 px)</label><div class="sr"><input type="range" id="tb" min="0" max="1250" value="200"/><span class="v" id="tbv">200</span></div></div>
         <div class="field"><label>정렬</label><select id="ta"><option value="left">왼쪽</option><option value="center">가운데</option><option value="right">오른쪽</option></select></div>
         <div class="field"><label>두께</label><select id="tw"><option value="900" selected>Black</option><option value="700">Bold</option><option value="500">Medium</option></select></div>
         <div class="field"><label>행간 (line-height)</label><div class="sr"><input type="range" id="tlh" min="80" max="200" value="120"/><span class="v" id="tlhv">120%</span></div></div>
@@ -386,8 +386,9 @@ function applyMode(){
   if(tw){tw.style.height=PV_H()+'px'}
   document.querySelectorAll('.track .s').forEach(s=>{s.style.height=PV_H()+'px'});
   document.querySelectorAll('.card').forEach(c=>{c.style.height=H()+'px'});
-  // Update logoY range
+  // Update logoY and title bottom slider ranges based on mode
   const ly=document.getElementById('logoY');if(ly){ly.max=H()}
+  const tb=document.getElementById('tb');if(tb){tb.max=H()-100}
   // Update tabs
   const tp=document.getElementById('tabPost'),tr=document.getElementById('tabReels');
   if(tp&&tr){
@@ -622,7 +623,7 @@ function bCard(c){
   tt.style.fontSize=(c.t.z)+'px';
   tt.style.color=c.t.c;
   tt.style.bottom=(c.t.b)+'px';
-  tt.style.textAlign=c.t.a;
+  tt.style.setProperty('text-align',c.t.a,'important');
   tt.style.fontWeight=c.t.w;
   tt.style.lineHeight=(c.t.lh||120)+'%';
   tt.style.letterSpacing=(c.t.ls||0)+'px';
