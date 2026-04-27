@@ -250,13 +250,19 @@ input[type=color]{width:32px;height:26px;background:transparent;border:1px solid
         <div class="field"><label>강조 색상 <span style="color:var(--dim);font-size:9px">제목에서 {중괄호}로 감싼 부분</span></label><div class="row" style="align-items:center"><input type="color" id="thc" value="#ffcc00"/><input type="text" id="thx" value="#ffcc00" style="flex:2"/></div></div>
         <div class="field"><label>위치 (하단 px)</label><div class="sr"><input type="range" id="tb" min="0" max="1250" value="200"/><span class="v" id="tbv">200</span></div></div>
         <div id="mediaCropFields" style="display:none">
-          <div class="field"><label>자르기 - 위 (%)</label><div class="sr"><input type="range" id="mct" min="0" max="80" value="0"/><span class="v" id="mctV">0</span></div></div>
-          <div class="field"><label>아래 (%)</label><div class="sr"><input type="range" id="mcb" min="0" max="80" value="0"/><span class="v" id="mcbV">0</span></div></div>
-          <div class="field"><label>왼쪽 (%)</label><div class="sr"><input type="range" id="mcl" min="0" max="80" value="0"/><span class="v" id="mclV">0</span></div></div>
-          <div class="field"><label>오른쪽 (%)</label><div class="sr"><input type="range" id="mcr" min="0" max="80" value="0"/><span class="v" id="mcrV">0</span></div></div>
-          <div class="field"><label>확대/축소 (%)</label><div class="sr"><input type="range" id="mzoom" min="50" max="300" value="100"/><span class="v" id="mzoomV">100</span></div></div>
-          <div class="field"><label>가로 위치 (px)</label><div class="sr"><input type="range" id="mox" min="-1000" max="1000" value="0"/><span class="v" id="moxV">0</span></div></div>
-          <div class="field"><label>세로 위치 (px)</label><div class="sr"><input type="range" id="moy" min="-1500" max="1500" value="0"/><span class="v" id="moyV">0</span></div></div>
+          <fieldset style="border:1px solid var(--brd);border-radius:8px;padding:10px 12px 6px;margin:8px 0;background:rgba(255,255,255,.02)">
+            <legend style="font-size:11px;color:var(--acc);padding:0 6px;font-weight:600;letter-spacing:.3px">📐 크기 조절 (자르기)</legend>
+            <div class="field"><label>위 (%)</label><div class="sr"><input type="range" id="mct" min="0" max="80" value="0"/><span class="v" id="mctV">0</span></div></div>
+            <div class="field"><label>아래 (%)</label><div class="sr"><input type="range" id="mcb" min="0" max="80" value="0"/><span class="v" id="mcbV">0</span></div></div>
+            <div class="field"><label>왼쪽 (%)</label><div class="sr"><input type="range" id="mcl" min="0" max="80" value="0"/><span class="v" id="mclV">0</span></div></div>
+            <div class="field" style="margin-bottom:0"><label>오른쪽 (%)</label><div class="sr"><input type="range" id="mcr" min="0" max="80" value="0"/><span class="v" id="mcrV">0</span></div></div>
+          </fieldset>
+          <fieldset style="border:1px solid var(--brd);border-radius:8px;padding:10px 12px 6px;margin:8px 0;background:rgba(255,255,255,.02)">
+            <legend style="font-size:11px;color:var(--acc);padding:0 6px;font-weight:600;letter-spacing:.3px">🔍 확대 & 위치 이동</legend>
+            <div class="field"><label>확대/축소 (%)</label><div class="sr"><input type="range" id="mzoom" min="50" max="300" value="100"/><span class="v" id="mzoomV">100</span></div></div>
+            <div class="field"><label>가로 위치 (px)</label><div class="sr"><input type="range" id="mox" min="-1000" max="1000" value="0"/><span class="v" id="moxV">0</span></div></div>
+            <div class="field" style="margin-bottom:0"><label>세로 위치 (px)</label><div class="sr"><input type="range" id="moy" min="-1500" max="1500" value="0"/><span class="v" id="moyV">0</span></div></div>
+          </fieldset>
         </div>
         <div class="field"><label>정렬</label><select id="ta"><option value="left">왼쪽</option><option value="center">가운데</option><option value="right">오른쪽</option></select></div>
         <div class="field"><label>두께</label><select id="tw"><option value="900" selected>Black</option><option value="700">Bold</option><option value="500">Medium</option></select></div>
