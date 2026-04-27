@@ -609,20 +609,20 @@ ${JSON.stringify(pl,null,2)}${userGuide?'\n\nREMEMBER: USER INSTRUCTIONS = "'+us
   pj(res).cards.forEach(c=>{if(S.cards[c.i]){S.cards[c.i].title=c.title;S.cards[c.i].body=c.body}});render();hLoad();toast('번역 완료')}catch(e){hLoad();toast('오류: '+e.message)}
 };
 
-/* Compute crop placement so cropped region covers card. */
+/* Crop = hide top/bottom/left/right portions WITHOUT zooming. Cropped areas show card background. */
 function applyMediaCrop(media,c,nw,nh){
   if(!nw||!nh)return;
   const HH=H();
-  const mct=Math.max(0,Math.min(80,c.mct||0)),mcb=Math.max(0,Math.min(80,c.mcb||0)),mcl=Math.max(0,Math.min(80,c.mcl||0)),mcr=Math.max(0,Math.min(80,c.mcr||0));
-  const visW=Math.max(1,100-mcl-mcr),visH=Math.max(1,100-mct-mcb);
-  const sx=nw*mcl/100,sy=nh*mct/100;
-  const sw=nw*visW/100,sh=nh*visH/100;
-  const scale=Math.max(1080/sw,HH/sh);
+  const mct=c.mct||0,mcb=c.mcb||0,mcl=c.mcl||0,mcr=c.mcr||0;
+  // Original cover-fit (uncropped) scale and position — NEVER changes when cropping
+  const scale=Math.max(1080/nw,HH/nh);
   const dispW=nw*scale,dispH=nh*scale;
-  const left=(1080-sw*scale)/2-sx*scale,top=(HH-sh*scale)/2-sy*scale;
+  const left=(1080-dispW)/2,top=(HH-dispH)/2;
   media.style.position='absolute';media.style.left=left+'px';media.style.top=top+'px';
   media.style.width=dispW+'px';media.style.height=dispH+'px';
   media.style.maxWidth='none';media.style.maxHeight='none';media.style.objectFit='fill';
+  // Clip-path uses % of element box; element box matches source aspect, so % == source %
+  media.style.clipPath=`inset(${mct}% ${mcr}% ${mcb}% ${mcl}%)`;
 }
 
 /* ===== Build card DOM ===== */
@@ -984,11 +984,12 @@ async function renderImageCard(c){
     await new Promise((res,rej)=>{img.onload=res;img.onerror=rej});
     const iw=img.naturalWidth,ih=img.naturalHeight;
     const mct=c.mct||0,mcb=c.mcb||0,mcl=c.mcl||0,mcr=c.mcr||0;
+    const scale=Math.max(1080/iw,HH/ih);
+    const fullDw=iw*scale,fullDh=ih*scale;
+    const fullDx=(1080-fullDw)/2,fullDy=(HH-fullDh)/2;
     const sx=iw*mcl/100,sy=ih*mct/100;
     const sw=iw*Math.max(1,100-mcl-mcr)/100,sh=ih*Math.max(1,100-mct-mcb)/100;
-    const scale=Math.max(1080/sw,HH/sh);
-    const dw=sw*scale,dh=sh*scale;
-    ctx.drawImage(img,sx,sy,sw,sh,(1080-dw)/2,(HH-dh)/2,dw,dh);
+    ctx.drawImage(img,sx,sy,sw,sh,fullDx+sx*scale,fullDy+sy*scale,sw*scale,sh*scale);
   }else{
     const g=ctx.createLinearGradient(0,0,1080,HH);
     g.addColorStop(0,'#2a2a4a');g.addColorStop(1,'#1a1a2a');
@@ -1028,11 +1029,12 @@ async function renderVideoCard(c){
         // Draw video frame
         const vw=vid.videoWidth,vh=vid.videoHeight;
         const mct=c.mct||0,mcb=c.mcb||0,mcl=c.mcl||0,mcr=c.mcr||0;
+        const scale=Math.max(1080/vw,HH/vh);
+        const fullDw=vw*scale,fullDh=vh*scale;
+        const fullDx=(1080-fullDw)/2,fullDy=(HH-fullDh)/2;
         const sx=vw*mcl/100,sy=vh*mct/100;
         const sw=vw*Math.max(1,100-mcl-mcr)/100,sh=vh*Math.max(1,100-mct-mcb)/100;
-        const scale=Math.max(1080/sw,HH/sh);
-        const dw=sw*scale,dh=sh*scale;
-        ctx.drawImage(vid,sx,sy,sw,sh,(1080-dw)/2,(HH-dh)/2,dw,dh);
+        ctx.drawImage(vid,sx,sy,sw,sh,fullDx+sx*scale,fullDy+sy*scale,sw*scale,sh*scale);
         // Draw gradient
         const gh=HH*c.g.h/100;
         const grd=ctx.createLinearGradient(0,HH-gh,0,HH);
