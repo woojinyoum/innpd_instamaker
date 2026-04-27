@@ -618,23 +618,27 @@ ${JSON.stringify(pl,null,2)}${userGuide?'\n\nREMEMBER: USER INSTRUCTIONS = "'+us
   pj(res).cards.forEach(c=>{if(S.cards[c.i]){S.cards[c.i].title=c.title;S.cards[c.i].body=c.body}});render();hLoad();toast('번역 완료')}catch(e){hLoad();toast('오류: '+e.message)}
 };
 
-/* Crop = clip the card viewport to a sub-rect; zoom/move = transform the media inside. */
+/* Crop = clip card viewport to sub-rect; zoom = scale to cover the cropped (visible) area; move = pan. */
 function applyMediaCrop(media,c,nw,nh,wrap){
   if(!nw||!nh)return;
   const HH=H();
   const mct=c.mct||0,mcb=c.mcb||0,mcl=c.mcl||0,mcr=c.mcr||0;
   const mzoom=(c.mzoom||100)/100, mox=c.mox||0, moy=c.moy||0;
-  // Apply crop to wrap (clips card viewport)
+  // Visible (un-cropped) viewport in card coords
+  const visX=1080*mcl/100, visY=HH*mct/100;
+  const visW=1080-1080*mcl/100-1080*mcr/100, visH=HH-HH*mct/100-HH*mcb/100;
+  // Apply crop to wrap (clips card viewport to visible area)
   if(wrap){wrap.style.clipPath=`inset(${mct*HH/100}px ${mcr*1080/100}px ${mcb*HH/100}px ${mcl*1080/100}px)`}
-  // Base cover-fit position (NEVER changes with crop) — same scale always
-  const scale=Math.max(1080/nw,HH/nh);
+  // Base scale to COVER the cropped area, then multiply by user zoom
+  const base=Math.max(visW/nw,visH/nh);
+  const scale=base*mzoom;
   const dispW=nw*scale,dispH=nh*scale;
-  const left=(1080-dispW)/2,top=(HH-dispH)/2;
+  const cx=visX+visW/2, cy=visY+visH/2;
+  const left=cx+mox-dispW/2, top=cy+moy-dispH/2;
   media.style.position='absolute';media.style.left=left+'px';media.style.top=top+'px';
   media.style.width=dispW+'px';media.style.height=dispH+'px';
   media.style.maxWidth='none';media.style.maxHeight='none';media.style.objectFit='fill';
-  media.style.transformOrigin='center center';
-  media.style.transform=`translate(${mox}px,${moy}px) scale(${mzoom})`;
+  media.style.transform='none';
 }
 
 /* ===== Build card DOM ===== */
@@ -997,17 +1001,13 @@ async function renderImageCard(c){
     const iw=img.naturalWidth,ih=img.naturalHeight;
     const mct=c.mct||0,mcb=c.mcb||0,mcl=c.mcl||0,mcr=c.mcr||0;
     const mzoom=(c.mzoom||100)/100,mox=c.mox||0,moy=c.moy||0;
-    const scale=Math.max(1080/iw,HH/ih);
-    const fullDw=iw*scale,fullDh=ih*scale;
-    const fullDx=(1080-fullDw)/2,fullDy=(HH-fullDh)/2;
-    // Clip to un-cropped region (card viewport minus crop borders)
-    const clipX=1080*mcl/100,clipY=HH*mct/100;
-    const clipW=1080-1080*mcl/100-1080*mcr/100,clipH=HH-HH*mct/100-HH*mcb/100;
-    ctx.save();ctx.beginPath();ctx.rect(clipX,clipY,clipW,clipH);ctx.clip();
-    // Apply zoom + translate around card center
-    const cx=540,cy=HH/2;
-    ctx.translate(cx+mox,cy+moy);ctx.scale(mzoom,mzoom);ctx.translate(-cx,-cy);
-    ctx.drawImage(img,fullDx,fullDy,fullDw,fullDh);
+    const visX=1080*mcl/100,visY=HH*mct/100;
+    const visW=1080-1080*mcl/100-1080*mcr/100,visH=HH-HH*mct/100-HH*mcb/100;
+    const base=Math.max(visW/iw,visH/ih);const scale=base*mzoom;
+    const dw=iw*scale,dh=ih*scale;
+    const cx=visX+visW/2,cy=visY+visH/2;
+    ctx.save();ctx.beginPath();ctx.rect(visX,visY,visW,visH);ctx.clip();
+    ctx.drawImage(img,cx+mox-dw/2,cy+moy-dh/2,dw,dh);
     ctx.restore();
   }else{
     const g=ctx.createLinearGradient(0,0,1080,HH);
@@ -1049,15 +1049,13 @@ async function renderVideoCard(c){
         const vw=vid.videoWidth,vh=vid.videoHeight;
         const mct=c.mct||0,mcb=c.mcb||0,mcl=c.mcl||0,mcr=c.mcr||0;
         const mzoom=(c.mzoom||100)/100,mox=c.mox||0,moy=c.moy||0;
-        const scale=Math.max(1080/vw,HH/vh);
-        const fullDw=vw*scale,fullDh=vh*scale;
-        const fullDx=(1080-fullDw)/2,fullDy=(HH-fullDh)/2;
-        const clipX=1080*mcl/100,clipY=HH*mct/100;
-        const clipW=1080-1080*mcl/100-1080*mcr/100,clipH=HH-HH*mct/100-HH*mcb/100;
-        ctx.save();ctx.beginPath();ctx.rect(clipX,clipY,clipW,clipH);ctx.clip();
-        const cx=540,cy=HH/2;
-        ctx.translate(cx+mox,cy+moy);ctx.scale(mzoom,mzoom);ctx.translate(-cx,-cy);
-        ctx.drawImage(vid,fullDx,fullDy,fullDw,fullDh);
+        const visX=1080*mcl/100,visY=HH*mct/100;
+        const visW=1080-1080*mcl/100-1080*mcr/100,visH=HH-HH*mct/100-HH*mcb/100;
+        const base=Math.max(visW/vw,visH/vh);const scale=base*mzoom;
+        const dw=vw*scale,dh=vh*scale;
+        const cx=visX+visW/2,cy=visY+visH/2;
+        ctx.save();ctx.beginPath();ctx.rect(visX,visY,visW,visH);ctx.clip();
+        ctx.drawImage(vid,cx+mox-dw/2,cy+moy-dh/2,dw,dh);
         ctx.restore();
         // Draw gradient
         const gh=HH*c.g.h/100;
