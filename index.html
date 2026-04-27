@@ -711,8 +711,9 @@ function bCard(c){
   const gOv=document.createElement('div');gOv.className='grid-ov'+(S.grid?' on':'');
   [1,2].forEach(n=>{const h=document.createElement('div');h.className='gl glh';h.style.top=(H()/3*n)+'px';gOv.appendChild(h);const v=document.createElement('div');v.className='gl glv';v.style.left=(1080/3*n)+'px';gOv.appendChild(v)});
   // center cross
-  const ch=document.createElement('div');ch.className='gl glh';ch.style.top='675px';ch.style.left='490px';ch.style.right='490px';ch.style.background='rgba(255,255,255,.3)';gOv.appendChild(ch);
-  const cv=document.createElement('div');cv.className='gl glv';cv.style.left='540px';cv.style.top='625px';cv.style.bottom='625px';cv.style.background='rgba(255,255,255,.3)';gOv.appendChild(cv);
+  const _HH=H();
+  const ch=document.createElement('div');ch.className='gl glh';ch.style.top=(_HH/2)+'px';ch.style.left='490px';ch.style.right='490px';ch.style.background='rgba(255,255,255,.3)';gOv.appendChild(ch);
+  const cv=document.createElement('div');cv.className='gl glv';cv.style.left='540px';cv.style.top=(_HH/2-50)+'px';cv.style.bottom=(_HH/2-50)+'px';cv.style.background='rgba(255,255,255,.3)';gOv.appendChild(cv);
   el.appendChild(gOv);
   // Logo
   if(c.logo&&c.logo.src){
