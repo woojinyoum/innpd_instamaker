@@ -250,10 +250,13 @@ input[type=color]{width:32px;height:26px;background:transparent;border:1px solid
         <div class="field"><label>강조 색상 <span style="color:var(--dim);font-size:9px">제목에서 {중괄호}로 감싼 부분</span></label><div class="row" style="align-items:center"><input type="color" id="thc" value="#ffcc00"/><input type="text" id="thx" value="#ffcc00" style="flex:2"/></div></div>
         <div class="field"><label>위치 (하단 px)</label><div class="sr"><input type="range" id="tb" min="0" max="1250" value="200"/><span class="v" id="tbv">200</span></div></div>
         <div id="mediaCropFields" style="display:none">
-          <div class="field"><label>영상/사진 자르기 - 위 (%)</label><div class="sr"><input type="range" id="mct" min="0" max="80" value="0"/><span class="v" id="mctV">0</span></div></div>
+          <div class="field"><label>자르기 - 위 (%)</label><div class="sr"><input type="range" id="mct" min="0" max="80" value="0"/><span class="v" id="mctV">0</span></div></div>
           <div class="field"><label>아래 (%)</label><div class="sr"><input type="range" id="mcb" min="0" max="80" value="0"/><span class="v" id="mcbV">0</span></div></div>
           <div class="field"><label>왼쪽 (%)</label><div class="sr"><input type="range" id="mcl" min="0" max="80" value="0"/><span class="v" id="mclV">0</span></div></div>
           <div class="field"><label>오른쪽 (%)</label><div class="sr"><input type="range" id="mcr" min="0" max="80" value="0"/><span class="v" id="mcrV">0</span></div></div>
+          <div class="field"><label>확대/축소 (%)</label><div class="sr"><input type="range" id="mzoom" min="50" max="300" value="100"/><span class="v" id="mzoomV">100</span></div></div>
+          <div class="field"><label>가로 위치 (px)</label><div class="sr"><input type="range" id="mox" min="-1000" max="1000" value="0"/><span class="v" id="moxV">0</span></div></div>
+          <div class="field"><label>세로 위치 (px)</label><div class="sr"><input type="range" id="moy" min="-1500" max="1500" value="0"/><span class="v" id="moyV">0</span></div></div>
         </div>
         <div class="field"><label>정렬</label><select id="ta"><option value="left">왼쪽</option><option value="center">가운데</option><option value="right">오른쪽</option></select></div>
         <div class="field"><label>두께</label><select id="tw"><option value="900" selected>Black</option><option value="700">Bold</option><option value="500">Medium</option></select></div>
@@ -422,7 +425,7 @@ document.addEventListener('keydown',e=>{
     e.preventDefault();undo();
   }
 });
-const mk=()=>({id:crypto.randomUUID(),img:null,media:null,mediaType:null,mvy:0,mct:0,mcb:0,mcl:0,mcr:0,title:'제목',body:'',g:{c:'#000000',h:60,o:95,s:50},t:{z:80,c:'#ffffff',b:200,a:'left',w:'900',hc:'#ffcc00',lh:120,ls:0,sk:0,skc:'#000000',shb:30,shang:180,shdist:4,shx:0,shy:4,shc:'#000000',sha:80},b:{on:true,z:26,c:'#ffffff',t:60,r:50,w:320},logo:{src:null,size:120,pad:40,pos:'tr',x:0,y:0,useXY:false}});
+const mk=()=>({id:crypto.randomUUID(),img:null,media:null,mediaType:null,mvy:0,mct:0,mcb:0,mcl:0,mcr:0,mzoom:100,mox:0,moy:0,title:'제목',body:'',g:{c:'#000000',h:60,o:95,s:50},t:{z:80,c:'#ffffff',b:200,a:'left',w:'900',hc:'#ffcc00',lh:120,ls:0,sk:0,skc:'#000000',shb:30,shang:180,shdist:4,shx:0,shy:4,shc:'#000000',sha:80},b:{on:true,z:26,c:'#ffffff',t:60,r:50,w:320},logo:{src:null,size:120,pad:40,pos:'tr',x:0,y:0,useXY:false}});
 
 /* Persist */
 const $k=document.getElementById('apiKey');$k.value=localStorage.getItem('ak')||'';$k.onchange=()=>localStorage.setItem('ak',$k.value);
@@ -609,20 +612,23 @@ ${JSON.stringify(pl,null,2)}${userGuide?'\n\nREMEMBER: USER INSTRUCTIONS = "'+us
   pj(res).cards.forEach(c=>{if(S.cards[c.i]){S.cards[c.i].title=c.title;S.cards[c.i].body=c.body}});render();hLoad();toast('번역 완료')}catch(e){hLoad();toast('오류: '+e.message)}
 };
 
-/* Crop = hide top/bottom/left/right portions WITHOUT zooming. Cropped areas show card background. */
-function applyMediaCrop(media,c,nw,nh){
+/* Crop = clip the card viewport to a sub-rect; zoom/move = transform the media inside. */
+function applyMediaCrop(media,c,nw,nh,wrap){
   if(!nw||!nh)return;
   const HH=H();
   const mct=c.mct||0,mcb=c.mcb||0,mcl=c.mcl||0,mcr=c.mcr||0;
-  // Original cover-fit (uncropped) scale and position — NEVER changes when cropping
+  const mzoom=(c.mzoom||100)/100, mox=c.mox||0, moy=c.moy||0;
+  // Apply crop to wrap (clips card viewport)
+  if(wrap){wrap.style.clipPath=`inset(${mct*HH/100}px ${mcr*1080/100}px ${mcb*HH/100}px ${mcl*1080/100}px)`}
+  // Base cover-fit position (NEVER changes with crop) — same scale always
   const scale=Math.max(1080/nw,HH/nh);
   const dispW=nw*scale,dispH=nh*scale;
   const left=(1080-dispW)/2,top=(HH-dispH)/2;
   media.style.position='absolute';media.style.left=left+'px';media.style.top=top+'px';
   media.style.width=dispW+'px';media.style.height=dispH+'px';
   media.style.maxWidth='none';media.style.maxHeight='none';media.style.objectFit='fill';
-  // Clip-path uses % of element box; element box matches source aspect, so % == source %
-  media.style.clipPath=`inset(${mct}% ${mcr}% ${mcb}% ${mcl}%)`;
+  media.style.transformOrigin='center center';
+  media.style.transform=`translate(${mox}px,${moy}px) scale(${mzoom})`;
 }
 
 /* ===== Build card DOM ===== */
@@ -632,12 +638,12 @@ function bCard(c){
     const wrap=document.createElement('div');wrap.style.cssText='position:absolute;inset:0;overflow:hidden;z-index:1';
     if(c.mediaType==='video'){
       const v=document.createElement('video');v.src=c.media;v.autoplay=true;v.loop=true;v.muted=true;v.playsInline=true;
-      const apply=()=>applyMediaCrop(v,c,v.videoWidth,v.videoHeight);
+      const apply=()=>applyMediaCrop(v,c,v.videoWidth,v.videoHeight,wrap);
       v.onloadedmetadata=apply;if(v.videoWidth)apply();
       wrap.appendChild(v);
     }else{
       const i=document.createElement('img');i.src=c.media;i.crossOrigin='anonymous';
-      const apply=()=>applyMediaCrop(i,c,i.naturalWidth,i.naturalHeight);
+      const apply=()=>applyMediaCrop(i,c,i.naturalWidth,i.naturalHeight,wrap);
       i.onload=apply;if(i.complete&&i.naturalWidth)apply();
       wrap.appendChild(i);
     }
@@ -645,7 +651,7 @@ function bCard(c){
   } else if(c.img){
     const wrap=document.createElement('div');wrap.style.cssText='position:absolute;inset:0;overflow:hidden;z-index:1';
     const i=document.createElement('img');i.src=c.img;i.crossOrigin='anonymous';
-    const apply=()=>applyMediaCrop(i,c,i.naturalWidth,i.naturalHeight);
+    const apply=()=>applyMediaCrop(i,c,i.naturalWidth,i.naturalHeight,wrap);
     i.onload=apply;if(i.complete&&i.naturalWidth)apply();
     wrap.appendChild(i);el.appendChild(wrap);
   }
@@ -777,8 +783,8 @@ function rEd(){
   const eT=document.getElementById('eT');eT.style.height='auto';eT.style.height=Math.max(60,eT.scrollHeight)+'px';
   sv('gc',c.g.c);sv('gx',c.g.c);sr('gh','ghv',c.g.h,'%');sr('go','gov',c.g.o,'%');sr('gs','gsv',c.g.s,'%');
   sr('tz','tzv',c.t.z);sv('tc',c.t.c);sv('tx',c.t.c);sv('thc',c.t.hc);sv('thx',c.t.hc);sr('tb','tbv',c.t.b);sv('ta',c.t.a);sv('tw',c.t.w);
-  // Show media crop sliders only when media attached
-  const mcF=document.getElementById('mediaCropFields');if(mcF){mcF.style.display=c.media?'block':'none';sr('mct','mctV',c.mct||0);sr('mcb','mcbV',c.mcb||0);sr('mcl','mclV',c.mcl||0);sr('mcr','mcrV',c.mcr||0)}
+  // Show media crop/zoom/move sliders only when media attached
+  const mcF=document.getElementById('mediaCropFields');if(mcF){mcF.style.display=c.media?'block':'none';sr('mct','mctV',c.mct||0);sr('mcb','mcbV',c.mcb||0);sr('mcl','mclV',c.mcl||0);sr('mcr','mcrV',c.mcr||0);sr('mzoom','mzoomV',c.mzoom||100);sr('mox','moxV',c.mox||0);sr('moy','moyV',c.moy||0)}
   sr('tlh','tlhv',c.t.lh,'%');sr('tls','tlsv',c.t.ls,'px');
   sr('tsk','tskv',c.t.sk);sv('tskc',c.t.skc);sv('tskx',c.t.skc);
   sr('tshb','tshbv',c.t.shb);sr('shang','shangV',c.t.shang||0,'°');sr('shdist','shdistV',c.t.shdist||0,'px');sv('tshc',c.t.shc);sv('tshx',c.t.shc);sr('tsha','tshav',c.t.sha,'%');updateWheel();
@@ -817,7 +823,7 @@ const bC=(cid,xid,path)=>{document.getElementById(cid).oninput=e=>{document.getE
 
 bC('gc','gx','g.c');bR('gh','ghv','g.h','%');bR('go','gov','g.o','%');bR('gs','gsv','g.s','%');
 bR('tz','tzv','t.z');bC('tc','tx','t.c');bC('thc','thx','t.hc');bR('tb','tbv','t.b');
-['mct','mcb','mcl','mcr'].forEach(id=>{document.getElementById(id).oninput=e=>{const v=+e.target.value;document.getElementById(id+'V').textContent=v;up(c=>{c[id]=v})}});
+['mct','mcb','mcl','mcr','mzoom','mox','moy'].forEach(id=>{document.getElementById(id).oninput=e=>{const v=+e.target.value;document.getElementById(id+'V').textContent=v;up(c=>{c[id]=v})}});
 document.getElementById('ta').onchange=e=>up(c=>c.t.a=e.target.value);
 document.getElementById('tw').onchange=e=>up(c=>c.t.w=e.target.value);
 bR('tlh','tlhv','t.lh','%');bR('tls','tlsv','t.ls','px');
@@ -984,12 +990,19 @@ async function renderImageCard(c){
     await new Promise((res,rej)=>{img.onload=res;img.onerror=rej});
     const iw=img.naturalWidth,ih=img.naturalHeight;
     const mct=c.mct||0,mcb=c.mcb||0,mcl=c.mcl||0,mcr=c.mcr||0;
+    const mzoom=(c.mzoom||100)/100,mox=c.mox||0,moy=c.moy||0;
     const scale=Math.max(1080/iw,HH/ih);
     const fullDw=iw*scale,fullDh=ih*scale;
     const fullDx=(1080-fullDw)/2,fullDy=(HH-fullDh)/2;
-    const sx=iw*mcl/100,sy=ih*mct/100;
-    const sw=iw*Math.max(1,100-mcl-mcr)/100,sh=ih*Math.max(1,100-mct-mcb)/100;
-    ctx.drawImage(img,sx,sy,sw,sh,fullDx+sx*scale,fullDy+sy*scale,sw*scale,sh*scale);
+    // Clip to un-cropped region (card viewport minus crop borders)
+    const clipX=1080*mcl/100,clipY=HH*mct/100;
+    const clipW=1080-1080*mcl/100-1080*mcr/100,clipH=HH-HH*mct/100-HH*mcb/100;
+    ctx.save();ctx.beginPath();ctx.rect(clipX,clipY,clipW,clipH);ctx.clip();
+    // Apply zoom + translate around card center
+    const cx=540,cy=HH/2;
+    ctx.translate(cx+mox,cy+moy);ctx.scale(mzoom,mzoom);ctx.translate(-cx,-cy);
+    ctx.drawImage(img,fullDx,fullDy,fullDw,fullDh);
+    ctx.restore();
   }else{
     const g=ctx.createLinearGradient(0,0,1080,HH);
     g.addColorStop(0,'#2a2a4a');g.addColorStop(1,'#1a1a2a');
@@ -1029,12 +1042,17 @@ async function renderVideoCard(c){
         // Draw video frame
         const vw=vid.videoWidth,vh=vid.videoHeight;
         const mct=c.mct||0,mcb=c.mcb||0,mcl=c.mcl||0,mcr=c.mcr||0;
+        const mzoom=(c.mzoom||100)/100,mox=c.mox||0,moy=c.moy||0;
         const scale=Math.max(1080/vw,HH/vh);
         const fullDw=vw*scale,fullDh=vh*scale;
         const fullDx=(1080-fullDw)/2,fullDy=(HH-fullDh)/2;
-        const sx=vw*mcl/100,sy=vh*mct/100;
-        const sw=vw*Math.max(1,100-mcl-mcr)/100,sh=vh*Math.max(1,100-mct-mcb)/100;
-        ctx.drawImage(vid,sx,sy,sw,sh,fullDx+sx*scale,fullDy+sy*scale,sw*scale,sh*scale);
+        const clipX=1080*mcl/100,clipY=HH*mct/100;
+        const clipW=1080-1080*mcl/100-1080*mcr/100,clipH=HH-HH*mct/100-HH*mcb/100;
+        ctx.save();ctx.beginPath();ctx.rect(clipX,clipY,clipW,clipH);ctx.clip();
+        const cx=540,cy=HH/2;
+        ctx.translate(cx+mox,cy+moy);ctx.scale(mzoom,mzoom);ctx.translate(-cx,-cy);
+        ctx.drawImage(vid,fullDx,fullDy,fullDw,fullDh);
+        ctx.restore();
         // Draw gradient
         const gh=HH*c.g.h/100;
         const grd=ctx.createLinearGradient(0,HH-gh,0,HH);
