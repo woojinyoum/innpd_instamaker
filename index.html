@@ -155,7 +155,7 @@ input[type=color]{width:32px;height:26px;background:transparent;border:1px solid
 <div class="app">
   <header class="topbar">
     <h1><span class="logo"></span>Insta Card News Maker</h1>
-    <span class="sub">Anthropic API · 1080x1350 · 다국어</span>
+    <span class="sub">Anthropic API · 게시물/릴스 · 다국어</span>
   </header>
 
   <!-- LEFT -->
@@ -179,7 +179,11 @@ input[type=color]{width:32px;height:26px;background:transparent;border:1px solid
 
   <!-- CENTER -->
   <main class="center">
-    <div class="track-wrap"><div class="track" id="track"></div></div>
+    <div id="modeTabs" style="display:flex;gap:6px;margin-bottom:4px">
+      <button id="tabPost" class="mtab on" style="padding:6px 14px;font-size:12px;border-radius:7px;background:var(--acc);border:1px solid var(--acc);color:#fff;cursor:pointer">게시물 1080×1350</button>
+      <button id="tabReels" class="mtab" style="padding:6px 14px;font-size:12px;border-radius:7px;background:var(--panel2);border:1px solid var(--brd);color:var(--txt);cursor:pointer">릴스 1080×1920</button>
+    </div>
+    <div class="track-wrap" id="trackWrap"><div class="track" id="track"></div></div>
     <div class="nav-bar">
       <button class="arrow" id="pv">&larr;</button>
       <div class="pages" id="pgs"></div>
@@ -371,7 +375,26 @@ document.getElementById('licLogout').onclick=()=>{
 licCheck();
 
 /* ===== State ===== */
-const S={cards:[],idx:0,ko:null,grid:false};
+const S={cards:[],idx:0,ko:null,grid:false,mode:localStorage.getItem('mode')||'post'};
+// Card height per mode
+const H=()=>S.mode==='reels'?1920:1350;
+// Preview slide width = 432, scale = 432/1080 = 0.4
+const PV_W=432;const PV_SCALE=PV_W/1080;
+const PV_H=()=>Math.round(H()*PV_SCALE);
+function applyMode(){
+  const tw=document.getElementById('trackWrap');
+  if(tw){tw.style.height=PV_H()+'px'}
+  document.querySelectorAll('.track .s').forEach(s=>{s.style.height=PV_H()+'px'});
+  document.querySelectorAll('.card').forEach(c=>{c.style.height=H()+'px'});
+  // Update logoY range
+  const ly=document.getElementById('logoY');if(ly){ly.max=H()}
+  // Update tabs
+  const tp=document.getElementById('tabPost'),tr=document.getElementById('tabReels');
+  if(tp&&tr){
+    [tp,tr].forEach(b=>{b.style.background='var(--panel2)';b.style.borderColor='var(--brd)';b.style.color='var(--txt)';b.classList.remove('on')});
+    const act=S.mode==='reels'?tr:tp;act.style.background='var(--acc)';act.style.borderColor='var(--acc)';act.style.color='#fff';act.classList.add('on');
+  }
+}
 
 /* Undo */
 const _hist=[];
@@ -622,7 +645,7 @@ function bCard(c){
   tt.innerHTML=html;el.appendChild(tt);
   // Grid overlay (3x3)
   const gOv=document.createElement('div');gOv.className='grid-ov'+(S.grid?' on':'');
-  [1,2].forEach(n=>{const h=document.createElement('div');h.className='gl glh';h.style.top=(1350/3*n)+'px';gOv.appendChild(h);const v=document.createElement('div');v.className='gl glv';v.style.left=(1080/3*n)+'px';gOv.appendChild(v)});
+  [1,2].forEach(n=>{const h=document.createElement('div');h.className='gl glh';h.style.top=(H()/3*n)+'px';gOv.appendChild(h);const v=document.createElement('div');v.className='gl glv';v.style.left=(1080/3*n)+'px';gOv.appendChild(v)});
   // center cross
   const ch=document.createElement('div');ch.className='gl glh';ch.style.top='675px';ch.style.left='490px';ch.style.right='490px';ch.style.background='rgba(255,255,255,.3)';gOv.appendChild(ch);
   const cv=document.createElement('div');cv.className='gl glv';cv.style.left='540px';cv.style.top='625px';cv.style.bottom='625px';cv.style.background='rgba(255,255,255,.3)';gOv.appendChild(cv);
@@ -663,6 +686,7 @@ function render(){
     btns.appendChild(gb);
     d.appendChild(btns);
     $track.appendChild(d)});
+  applyMode();
   slideTO();
   // Pages
   const pg=document.getElementById('pgs');pg.innerHTML='';
@@ -673,7 +697,7 @@ function render(){
 function slideTO(){$track.style.transform=`translateX(${-S.idx*432}px)`}
 function updateUI(){
   const n=S.cards.length;
-  document.getElementById('meta').textContent=n?`카드 ${S.idx+1} / ${n} · 1080x1350`:'';
+  document.getElementById('meta').textContent=n?`카드 ${S.idx+1} / ${n} · 1080x${H()}`:'';
   document.getElementById('rmBtn').style.display=n>1?'':'none';
   document.querySelectorAll('#pgs .p').forEach((b,i)=>{b.classList.toggle('on',i===S.idx)});
 }
@@ -840,13 +864,14 @@ document.getElementById('dlBtn').onclick=async()=>{
 /* Render video card to MP4 blob */
 /* Shared overlay drawing (gradient + title + logo) */
 function drawOverlay(ctx,c,logoImg){
+  const HH=H();
   // Gradient
-  const gh=1350*c.g.h/100;
-  const grd=ctx.createLinearGradient(0,1350-gh,0,1350);
+  const gh=HH*c.g.h/100;
+  const grd=ctx.createLinearGradient(0,HH-gh,0,HH);
   grd.addColorStop(0,rgba(c.g.c,0));
   grd.addColorStop(0.5,rgba(c.g.c,c.g.o*(c.g.s/100)/100));
   grd.addColorStop(1,rgba(c.g.c,c.g.o/100));
-  ctx.fillStyle=grd;ctx.fillRect(0,1350-gh,1080,gh);
+  ctx.fillStyle=grd;ctx.fillRect(0,HH-gh,1080,gh);
   // Title
   const _font=`${c.t.w} ${c.t.z}px 'Noto Sans KR',sans-serif`;
   ctx.font=_font;
@@ -861,7 +886,7 @@ function drawOverlay(ctx,c,logoImg){
   ctx.textAlign=c.t.a;
   let _hlState=false;
   lines.forEach((line,li)=>{
-    const yy=1350-c.t.b+(li-(lines.length-1))*lh;
+    const yy=HH-c.t.b+(li-(lines.length-1))*lh;
     const _sp=splitHL(line,_hlState);_hlState=_sp.hlEnd;
     const parts=_sp.parts.length?_sp.parts:[{t:line,h:false}];
     if(c.t.a==='center'||c.t.a==='right'){
@@ -893,7 +918,7 @@ function drawOverlay(ctx,c,logoImg){
     if(L.useXY){lx=L.x;ly=L.y}
     else{
       if(p==='tl'){lx=pd;ly=pd}else if(p==='tc'){lx=(1080-sz)/2;ly=pd}else if(p==='tr'){lx=1080-sz-pd;ly=pd}
-      else if(p==='bl'){lx=pd;ly=1350-sz-pd}else if(p==='bc'){lx=(1080-sz)/2;ly=1350-sz-pd}else{lx=1080-sz-pd;ly=1350-sz-pd}
+      else if(p==='bl'){lx=pd;ly=HH-sz-pd}else if(p==='bc'){lx=(1080-sz)/2;ly=HH-sz-pd}else{lx=1080-sz-pd;ly=HH-sz-pd}
     }
     // object-fit:contain
     const iw=logoImg.naturalWidth||sz, ih=logoImg.naturalHeight||sz;
@@ -906,7 +931,8 @@ function drawOverlay(ctx,c,logoImg){
 async function ensureFont(c){try{const w=c.t.w||'900',z=c.t.z||80;await document.fonts.load(`${w} ${z}px 'Noto Sans KR'`);await document.fonts.ready}catch(e){}}
 async function renderImageCard(c){
   await ensureFont(c);
-  const canvas=document.createElement('canvas');canvas.width=1080;canvas.height=1350;
+  const HH=H();
+  const canvas=document.createElement('canvas');canvas.width=1080;canvas.height=HH;
   const ctx=canvas.getContext('2d');
   // Background: image, or fallback gradient
   const src=(c.media&&c.mediaType!=='video')?c.media:c.img;
@@ -914,13 +940,13 @@ async function renderImageCard(c){
     const img=new Image();img.crossOrigin='anonymous';img.src=src;
     await new Promise((res,rej)=>{img.onload=res;img.onerror=rej});
     const iw=img.naturalWidth,ih=img.naturalHeight;
-    const scale=Math.max(1080/iw,1350/ih);
+    const scale=Math.max(1080/iw,HH/ih);
     const dw=iw*scale,dh=ih*scale;
-    ctx.drawImage(img,(1080-dw)/2,(1350-dh)/2,dw,dh);
+    ctx.drawImage(img,(1080-dw)/2,(HH-dh)/2,dw,dh);
   }else{
-    const g=ctx.createLinearGradient(0,0,1080,1350);
+    const g=ctx.createLinearGradient(0,0,1080,HH);
     g.addColorStop(0,'#2a2a4a');g.addColorStop(1,'#1a1a2a');
-    ctx.fillStyle=g;ctx.fillRect(0,0,1080,1350);
+    ctx.fillStyle=g;ctx.fillRect(0,0,1080,HH);
   }
   // Load logo if any
   let logoImg=null;
@@ -934,8 +960,9 @@ async function renderImageCard(c){
 
 async function renderVideoCard(c){
   await ensureFont(c);
+  const HH=H();
   return new Promise((resolve,reject)=>{
-    const canvas=document.createElement('canvas');canvas.width=1080;canvas.height=1350;
+    const canvas=document.createElement('canvas');canvas.width=1080;canvas.height=HH;
     const ctx=canvas.getContext('2d');
     const vid=document.createElement('video');vid.src=c.media;vid.muted=true;vid.playsInline=true;
     vid.onloadeddata=()=>{
@@ -954,16 +981,16 @@ async function renderVideoCard(c){
         if(vid.ended||vid.currentTime*1000>=duration){rec.stop();return}
         // Draw video frame
         const vw=vid.videoWidth,vh=vid.videoHeight;
-        const scale=Math.max(1080/vw,1350/vh);
+        const scale=Math.max(1080/vw,HH/vh);
         const dw=vw*scale,dh=vh*scale;
-        ctx.drawImage(vid,(1080-dw)/2,(1350-dh)/2,dw,dh);
+        ctx.drawImage(vid,(1080-dw)/2,(HH-dh)/2,dw,dh);
         // Draw gradient
-        const gh=1350*c.g.h/100;
-        const grd=ctx.createLinearGradient(0,1350-gh,0,1350);
+        const gh=HH*c.g.h/100;
+        const grd=ctx.createLinearGradient(0,HH-gh,0,HH);
         grd.addColorStop(0,rgba(c.g.c,0));
         grd.addColorStop(0.5,rgba(c.g.c,c.g.o*(c.g.s/100)/100));
         grd.addColorStop(1,rgba(c.g.c,c.g.o/100));
-        ctx.fillStyle=grd;ctx.fillRect(0,1350-gh,1080,gh);
+        ctx.fillStyle=grd;ctx.fillRect(0,HH-gh,1080,gh);
         // Draw title with {highlight} support
         const _font=`${c.t.w} ${c.t.z}px 'Noto Sans KR',sans-serif`;
         ctx.font=_font;
@@ -975,7 +1002,7 @@ async function renderVideoCard(c){
         ctx.textAlign=c.t.a;
         let _hlV=false;
         lines.forEach((line,li)=>{
-          const yy=1350-c.t.b+(li-(lines.length-1))*lh;
+          const yy=HH-c.t.b+(li-(lines.length-1))*lh;
           const _s=splitHL(line,_hlV);_hlV=_s.hlEnd;
           const parts=_s.parts.length?_s.parts:[{t:line,h:false}];
           if(c.t.a==='center'||c.t.a==='right'){
@@ -1008,7 +1035,7 @@ async function renderVideoCard(c){
           if(L.useXY){lx=L.x;ly=L.y}
           else{
             if(p==='tl'){lx=pd;ly=pd}else if(p==='tc'){lx=(1080-sz)/2;ly=pd}else if(p==='tr'){lx=1080-sz-pd;ly=pd}
-            else if(p==='bl'){lx=pd;ly=1350-sz-pd}else if(p==='bc'){lx=(1080-sz)/2;ly=1350-sz-pd}else{lx=1080-sz-pd;ly=1350-sz-pd}
+            else if(p==='bl'){lx=pd;ly=HH-sz-pd}else if(p==='bc'){lx=(1080-sz)/2;ly=HH-sz-pd}else{lx=1080-sz-pd;ly=HH-sz-pd}
           }
           ctx.drawImage(logoImg,lx,ly,sz,sz);
         }
@@ -1027,6 +1054,11 @@ async function renderVideoCard(c){
 }
 
 const dL=(u,n)=>{const a=document.createElement('a');a.href=u;a.download=n;document.body.appendChild(a);a.click();document.body.removeChild(a)};
+
+/* Mode tabs */
+function setMode(m){S.mode=m;localStorage.setItem('mode',m);applyMode();render()}
+document.getElementById('tabPost').onclick=()=>setMode('post');
+document.getElementById('tabReels').onclick=()=>setMode('reels');
 
 /* Init */
 S.cards=[mk()];S.idx=0;render();
