@@ -79,7 +79,9 @@ button.w100{width:100%}
 input[type=range]{width:100%;-webkit-appearance:none;height:4px;border-radius:2px;background:var(--brd);outline:none}
 input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:var(--acc);cursor:pointer}
 .sr{display:flex;align-items:center;gap:6px}
-.sr .v{font-size:10px;color:var(--dim);width:36px;text-align:right;font-variant-numeric:tabular-nums}
+.sr .v{font-size:10px;color:var(--dim);width:42px;text-align:right;font-variant-numeric:tabular-nums;cursor:text;outline:none;border-radius:4px;padding:1px 3px}
+.sr .v:hover{background:rgba(124,92,255,.08);color:var(--txt)}
+.sr .v:focus{background:rgba(124,92,255,.15);color:var(--txt);box-shadow:0 0 0 1px var(--acc)}
 input[type=color]{width:32px;height:26px;background:transparent;border:1px solid var(--brd);border-radius:5px;cursor:pointer;padding:1px}
 .sh-row{display:flex;gap:10px;align-items:center}
 .sh-wheel{width:72px;height:72px;border-radius:50%;border:2px solid var(--brd);background:var(--panel2);position:relative;cursor:grab;flex-shrink:0;user-select:none;touch-action:none}
@@ -803,7 +805,7 @@ function rEd(){
   if(c.logo&&c.logo.src){lc.style.display='block';sr('logoSize','logoSizeV',c.logo.size);sr('logoPad','logoPadV',c.logo.pad);sr('logoX','logoXV',c.logo.x||0);sr('logoY','logoYV',c.logo.y||0)}else{lc.style.display='none'}
 }
 const sv=(id,v)=>{const e=document.getElementById(id);if(document.activeElement!==e)e.value=v};
-const sr=(id,vid,v,s='')=>{const e=document.getElementById(id);if(document.activeElement!==e)e.value=v;document.getElementById(vid).textContent=v+s};
+const sr=(id,vid,v,s='')=>{const e=document.getElementById(id);if(document.activeElement!==e)e.value=v;const sp=document.getElementById(vid);if(document.activeElement!==sp)sp.textContent=v+s};
 const cur=()=>S.cards[S.idx];
 const up=fn=>{const c=cur();if(!c)return;saveSnap();fn(c);refreshCard()};
 const upLogo=fn=>{if(!S.cards.length)return;saveSnap();S.cards.forEach(c=>fn(c));refreshCard()};
@@ -1128,13 +1130,31 @@ async function renderVideoCard(c){
 
 const dL=(u,n)=>{const a=document.createElement('a');a.href=u;a.download=n;document.body.appendChild(a);a.click();document.body.removeChild(a)};
 
+/* Make all slider .v values clickable / keyboard-editable */
+function enableEditableV(){
+  document.querySelectorAll('.sr .v').forEach(sp=>{
+    if(sp.dataset.edit)return;sp.dataset.edit='1';
+    sp.contentEditable='true';sp.spellcheck=false;
+    sp.addEventListener('focus',()=>{const r=document.createRange();r.selectNodeContents(sp);const s=window.getSelection();s.removeAllRanges();s.addRange(r)});
+    sp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();sp.blur()}else if(e.key==='Escape'){e.preventDefault();sp.blur()}});
+    sp.addEventListener('blur',()=>{
+      const sr=sp.closest('.sr');if(!sr)return;
+      const rg=sr.querySelector('input[type=range]');if(!rg)return;
+      const m=sp.textContent.match(/-?\d+(\.\d+)?/);
+      if(!m){sp.textContent=rg.value;return}
+      let v=parseFloat(m[0]);v=Math.max(+rg.min,Math.min(+rg.max,v));
+      rg.value=v;rg.dispatchEvent(new Event('input',{bubbles:true}));
+    });
+  });
+}
+
 /* Mode tabs */
 function setMode(m){S.mode=m;localStorage.setItem('mode',m);applyMode();render()}
 document.getElementById('tabPost').onclick=()=>setMode('post');
 document.getElementById('tabReels').onclick=()=>setMode('reels');
 
 /* Init */
-S.cards=[mk()];S.idx=0;render();
+S.cards=[mk()];S.idx=0;render();enableEditableV();
 </script>
 </body>
 </html>
