@@ -952,11 +952,12 @@ function drawOverlay(ctx,c,logoImg){
   // Use DOM-based wrapping so canvas matches preview exactly
   const lines=getWrappedLines(preprocessHL(normBraces(c.title)),{fontSize:c.t.z,fontWeight:c.t.w,letterSpacing:(c.t.ls||0),maxWidth:1080-120});
   const lh=c.t.z*((c.t.lh||120)/100);
+  const halfLead=(lh-c.t.z)/2;
   const xBase=c.t.a==='center'?540:c.t.a==='right'?1020:60;
-  ctx.textAlign=c.t.a;
+  ctx.textAlign=c.t.a;ctx.textBaseline='bottom';
   let _hlState=false;
   lines.forEach((line,li)=>{
-    const yy=HH-c.t.b+(li-(lines.length-1))*lh;
+    const yy=HH-c.t.b-(lines.length-1-li)*lh-halfLead;
     const _sp=splitHL(line,_hlState);_hlState=_sp.hlEnd;
     const parts=_sp.parts.length?_sp.parts:[{t:line,h:false}];
     if(c.t.a==='center'||c.t.a==='right'){
@@ -1094,11 +1095,12 @@ async function renderVideoCard(c){
         if(c.t.sk>0){ctx.strokeStyle=c.t.skc;ctx.lineWidth=c.t.sk*2;ctx.lineJoin='round'}
         const lines=getWrappedLines(preprocessHL(normBraces(c.title)),{fontSize:c.t.z,fontWeight:c.t.w,letterSpacing:(c.t.ls||0),maxWidth:1080-120});
         const lh=c.t.z*(c.t.lh/100);
+        const halfLead=(lh-c.t.z)/2;
         const xBase=c.t.a==='center'?540:c.t.a==='right'?1020:60;
-        ctx.textAlign=c.t.a;
+        ctx.textAlign=c.t.a;ctx.textBaseline='bottom';
         let _hlV=false;
         lines.forEach((line,li)=>{
-          const yy=HH-c.t.b+(li-(lines.length-1))*lh;
+          const yy=HH-c.t.b-(lines.length-1-li)*lh-halfLead;
           const _s=splitHL(line,_hlV);_hlV=_s.hlEnd;
           const parts=_s.parts.length?_s.parts:[{t:line,h:false}];
           if(c.t.a==='center'||c.t.a==='right'){
