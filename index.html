@@ -182,9 +182,9 @@ input[type=color]{width:32px;height:26px;background:transparent;border:1px solid
 
   <!-- CENTER -->
   <main class="center">
-    <div id="modeTabs" style="display:flex;gap:6px;margin-bottom:4px">
-      <button id="tabPost" class="mtab on" style="padding:6px 14px;font-size:12px;border-radius:7px;background:var(--acc);border:1px solid var(--acc);color:#fff;cursor:pointer">게시물 1080×1350</button>
-      <button id="tabReels" class="mtab" style="padding:6px 14px;font-size:12px;border-radius:7px;background:var(--panel2);border:1px solid var(--brd);color:var(--txt);cursor:pointer">릴스 1080×1920</button>
+    <div id="modeTabs" style="display:flex;gap:8px;margin-bottom:8px;background:var(--panel);padding:6px;border-radius:12px;border:1px solid var(--brd);box-shadow:0 4px 16px rgba(0,0,0,.3)">
+      <button id="tabPost" class="mtab on" style="padding:10px 22px;font-size:14px;font-weight:700;border-radius:8px;background:var(--acc);border:none;color:#fff;cursor:pointer;display:flex;align-items:center;gap:8px;transition:all .15s"><span style="font-size:18px">📰</span><span>게시물</span><span style="font-size:11px;opacity:.85;font-weight:500">1080×1350</span></button>
+      <button id="tabReels" class="mtab" style="padding:10px 22px;font-size:14px;font-weight:700;border-radius:8px;background:transparent;border:none;color:var(--dim);cursor:pointer;display:flex;align-items:center;gap:8px;transition:all .15s"><span style="font-size:18px">🎬</span><span>릴스</span><span style="font-size:11px;opacity:.85;font-weight:500">1080×1920</span></button>
     </div>
     <div class="track-wrap" id="trackWrap"><div class="track" id="track"></div></div>
     <div class="nav-bar">
@@ -410,11 +410,11 @@ function applyMode(){
   // Update logoY and title bottom slider ranges based on mode
   const ly=document.getElementById('logoY');if(ly){ly.max=H()}
   const tb=document.getElementById('tb');if(tb){tb.max=H()-100}
-  // Update tabs
+  // Update tabs (segmented-control look)
   const tp=document.getElementById('tabPost'),tr=document.getElementById('tabReels');
   if(tp&&tr){
-    [tp,tr].forEach(b=>{b.style.background='var(--panel2)';b.style.borderColor='var(--brd)';b.style.color='var(--txt)';b.classList.remove('on')});
-    const act=S.mode==='reels'?tr:tp;act.style.background='var(--acc)';act.style.borderColor='var(--acc)';act.style.color='#fff';act.classList.add('on');
+    [tp,tr].forEach(b=>{b.style.background='transparent';b.style.color='var(--dim)';b.classList.remove('on')});
+    const act=S.mode==='reels'?tr:tp;act.style.background='var(--acc)';act.style.color='#fff';act.classList.add('on');
   }
 }
 
