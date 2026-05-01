@@ -4,7 +4,13 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>Insta Card News Maker</title>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Black+Han+Sans&family=Gowun+Dodum&family=Do+Hyeon&family=Nanum+Myeongjo:wght@400;700;800&family=Inter:wght@400;600;800;900&family=Bebas+Neue&family=Anton&family=Oswald:wght@400;700&family=Montserrat:wght@400;700;900&family=Playfair+Display:wght@400;700;900&family=Noto+Sans+JP:wght@400;700;900&family=M+PLUS+Rounded+1c:wght@400;700;900&family=Noto+Sans+SC:wght@400;700;900&family=ZCOOL+KuaiLe&family=Be+Vietnam+Pro:wght@400;700;900&family=Sarabun:wght@400;700;800&family=Prompt:wght@400;700;900&family=Kanit:wght@400;700;900&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" rel="stylesheet">
+<style>
+@font-face{font-family:'Yeogi_Jalnan';src:url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2105_2@1.0/Jalnan.woff') format('woff');font-display:swap}
+</style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
@@ -273,6 +279,41 @@ input[type=color]{width:32px;height:26px;background:transparent;border:1px solid
         </div>
         <div class="field"><label>정렬</label><select id="ta"><option value="left">왼쪽</option><option value="center">가운데</option><option value="right">오른쪽</option></select></div>
         <div class="field"><label>두께</label><select id="tw"><option value="900" selected>Black</option><option value="700">Bold</option><option value="500">Medium</option></select></div>
+        <div class="field"><label>폰트</label><select id="tf">
+          <optgroup label="🇰🇷 한국어">
+            <option value="Pretendard" selected>Pretendard</option>
+            <option value="Yeogi_Jalnan">여기어때 잘난체</option>
+            <option value="Noto Sans KR">Noto Sans KR</option>
+            <option value="Black Han Sans">Black Han Sans (검은 고딕)</option>
+            <option value="Do Hyeon">Do Hyeon (도현체)</option>
+            <option value="Gowun Dodum">Gowun Dodum (고운 도듬)</option>
+            <option value="Nanum Myeongjo">Nanum Myeongjo (나눔 명조)</option>
+          </optgroup>
+          <optgroup label="🇺🇸 English">
+            <option value="Inter">Inter</option>
+            <option value="Montserrat">Montserrat</option>
+            <option value="Bebas Neue">Bebas Neue</option>
+            <option value="Anton">Anton</option>
+            <option value="Oswald">Oswald</option>
+            <option value="Playfair Display">Playfair Display</option>
+          </optgroup>
+          <optgroup label="🇯🇵 日本語">
+            <option value="Noto Sans JP">Noto Sans JP</option>
+            <option value="M PLUS Rounded 1c">M PLUS Rounded 1c</option>
+          </optgroup>
+          <optgroup label="🇨🇳 简体中文">
+            <option value="Noto Sans SC">Noto Sans SC</option>
+            <option value="ZCOOL KuaiLe">ZCOOL KuaiLe</option>
+          </optgroup>
+          <optgroup label="🇻🇳 Tiếng Việt">
+            <option value="Be Vietnam Pro">Be Vietnam Pro</option>
+          </optgroup>
+          <optgroup label="🇹🇭 ไทย">
+            <option value="Sarabun">Sarabun</option>
+            <option value="Prompt">Prompt</option>
+            <option value="Kanit">Kanit</option>
+          </optgroup>
+        </select></div>
         <div class="field"><label>행간 (line-height)</label><div class="sr"><input type="range" id="tlh" min="80" max="200" value="120"/><span class="v" id="tlhv">120%</span></div></div>
         <div class="field"><label>자간 (letter-spacing)</label><div class="sr"><input type="range" id="tls" min="-10" max="30" value="0"/><span class="v" id="tlsv">0px</span></div></div>
         <div class="sep"></div>
@@ -437,7 +478,7 @@ document.addEventListener('keydown',e=>{
     e.preventDefault();undo();
   }
 });
-const mk=()=>({id:crypto.randomUUID(),img:null,media:null,mediaType:null,mvy:0,mct:0,mcb:0,mcl:0,mcr:0,mzoom:100,mox:0,moy:0,mvol:100,title:'제목',body:'',g:{c:'#000000',h:60,o:95,s:50},t:{z:80,c:'#ffffff',b:200,a:'left',w:'900',hc:'#ffcc00',lh:120,ls:0,sk:0,skc:'#000000',shb:30,shang:180,shdist:4,shx:0,shy:4,shc:'#000000',sha:80},b:{on:true,z:26,c:'#ffffff',t:60,r:50,w:320},logo:{src:null,size:120,pad:40,pos:'tr',x:0,y:0,useXY:false}});
+const mk=()=>({id:crypto.randomUUID(),img:null,media:null,mediaType:null,mvy:0,mct:0,mcb:0,mcl:0,mcr:0,mzoom:100,mox:0,moy:0,mvol:100,title:'제목',body:'',g:{c:'#000000',h:60,o:95,s:50},t:{z:80,c:'#ffffff',b:200,a:'left',w:'900',f:'Pretendard',hc:'#ffcc00',lh:120,ls:0,sk:0,skc:'#000000',shb:30,shang:180,shdist:4,shx:0,shy:4,shc:'#000000',sha:80},b:{on:true,z:26,c:'#ffffff',t:60,r:50,w:320},logo:{src:null,size:120,pad:40,pos:'tr',x:0,y:0,useXY:false}});
 
 /* Persist */
 const $k=document.getElementById('apiKey');$k.value=localStorage.getItem('ak')||'';$k.onchange=()=>localStorage.setItem('ak',$k.value);
@@ -688,6 +729,7 @@ function bCard(c){
   tt.style.bottom=(c.t.b)+'px';
   tt.style.setProperty('text-align',c.t.a,'important');
   tt.style.fontWeight=c.t.w;
+  if(c.t.f)tt.style.fontFamily=`'${c.t.f}','Pretendard','Noto Sans KR',sans-serif`;
   tt.style.lineHeight=(c.t.lh||120)+'%';
   tt.style.letterSpacing=(c.t.ls||0)+'px';
   tt.style.textShadow=shX+'px '+shY+'px '+shB+'px '+shCol;
@@ -801,7 +843,7 @@ function rEd(){
   sv('eT',c.title);sv('eB',c.body);
   const eT=document.getElementById('eT');eT.style.height='auto';eT.style.height=Math.max(60,eT.scrollHeight)+'px';
   sv('gc',c.g.c);sv('gx',c.g.c);sr('gh','ghv',c.g.h,'%');sr('go','gov',c.g.o,'%');sr('gs','gsv',c.g.s,'%');
-  sr('tz','tzv',c.t.z);sv('tc',c.t.c);sv('tx',c.t.c);sv('thc',c.t.hc);sv('thx',c.t.hc);sr('tb','tbv',c.t.b);sv('ta',c.t.a);sv('tw',c.t.w);
+  sr('tz','tzv',c.t.z);sv('tc',c.t.c);sv('tx',c.t.c);sv('thc',c.t.hc);sv('thx',c.t.hc);sr('tb','tbv',c.t.b);sv('ta',c.t.a);sv('tw',c.t.w);sv('tf',c.t.f||'Pretendard');
   // Show media crop/zoom/move sliders only when media attached
   const mcF=document.getElementById('mediaCropFields');if(mcF){mcF.style.display=c.media?'block':'none';sr('mct','mctV',c.mct||0);sr('mcb','mcbV',c.mcb||0);sr('mcl','mclV',c.mcl||0);sr('mcr','mcrV',c.mcr||0);sr('mzoom','mzoomV',c.mzoom||100);sr('mox','moxV',c.mox||0);sr('moy','moyV',c.moy||0);sr('mvol','mvolV',c.mvol==null?100:c.mvol)}
   // Show volume slider only for video
@@ -847,6 +889,7 @@ bR('tz','tzv','t.z');bC('tc','tx','t.c');bC('thc','thx','t.hc');bR('tb','tbv','t
 ['mct','mcb','mcl','mcr','mzoom','mox','moy','mvol'].forEach(id=>{document.getElementById(id).oninput=e=>{const v=+e.target.value;document.getElementById(id+'V').textContent=v;up(c=>{c[id]=v})}});
 document.getElementById('ta').onchange=e=>up(c=>c.t.a=e.target.value);
 document.getElementById('tw').onchange=e=>up(c=>c.t.w=e.target.value);
+document.getElementById('tf').onchange=e=>up(c=>c.t.f=e.target.value);
 bR('tlh','tlhv','t.lh','%');bR('tls','tlsv','t.ls','px');
 bR('tsk','tskv','t.sk');bC('tskc','tskx','t.skc');
 bR('tshb','tshbv','t.shb');bC('tshc','tshx','t.shc');bR('tsha','tshav','t.sha','%');
@@ -943,14 +986,15 @@ function drawOverlay(ctx,c,logoImg){
   grd.addColorStop(1,rgba(c.g.c,c.g.o/100));
   ctx.fillStyle=grd;ctx.fillRect(0,HH-gh,1080,gh);
   // Title
-  const _font=`${c.t.w} ${c.t.z}px 'Noto Sans KR',sans-serif`;
+  const _ff=c.t.f?`'${c.t.f}','Pretendard','Noto Sans KR',sans-serif`:`'Pretendard','Noto Sans KR',sans-serif`;
+  const _font=`${c.t.w} ${c.t.z}px ${_ff}`;
   ctx.font=_font;
   const shA2=(c.t.sha||0)/100;
   ctx.shadowColor=rgba(c.t.shc||'#000',shA2);ctx.shadowBlur=c.t.shb||0;
   ctx.shadowOffsetX=c.t.shx||0;ctx.shadowOffsetY=c.t.shy||0;
   if((c.t.sk||0)>0){ctx.strokeStyle=c.t.skc;ctx.lineWidth=c.t.sk*2;ctx.lineJoin='round'}
   // Use DOM-based wrapping so canvas matches preview exactly
-  const lines=getWrappedLines(preprocessHL(normBraces(c.title)),{fontSize:c.t.z,fontWeight:c.t.w,letterSpacing:(c.t.ls||0),maxWidth:1080-120});
+  const lines=getWrappedLines(preprocessHL(normBraces(c.title)),{fontSize:c.t.z,fontWeight:c.t.w,fontFamily:c.t.f?`'${c.t.f}','Pretendard','Noto Sans KR',sans-serif`:`'Pretendard','Noto Sans KR',sans-serif`,letterSpacing:(c.t.ls||0),maxWidth:1080-120});
   const lh=c.t.z*((c.t.lh||120)/100);
   const halfLead=(lh-c.t.z)/2;
   const xBase=c.t.a==='center'?540:c.t.a==='right'?1020:60;
@@ -999,7 +1043,7 @@ function drawOverlay(ctx,c,logoImg){
 }
 
 /* Render image card to PNG blob */
-async function ensureFont(c){try{const w=c.t.w||'900',z=c.t.z||80;await document.fonts.load(`${w} ${z}px 'Noto Sans KR'`);await document.fonts.ready}catch(e){}}
+async function ensureFont(c){try{const w=c.t.w||'900',z=c.t.z||80,f=c.t.f||'Pretendard';await document.fonts.load(`${w} ${z}px '${f}'`);await document.fonts.load(`${w} ${z}px 'Noto Sans KR'`);await document.fonts.ready}catch(e){}}
 async function renderImageCard(c){
   await ensureFont(c);
   const HH=H();
@@ -1093,7 +1137,7 @@ async function renderVideoCard(c){
         ctx.font=_font;
         const shA2=c.t.sha/100;ctx.shadowColor=rgba(c.t.shc,shA2);ctx.shadowBlur=c.t.shb;ctx.shadowOffsetX=c.t.shx||0;ctx.shadowOffsetY=c.t.shy||0;
         if(c.t.sk>0){ctx.strokeStyle=c.t.skc;ctx.lineWidth=c.t.sk*2;ctx.lineJoin='round'}
-        const lines=getWrappedLines(preprocessHL(normBraces(c.title)),{fontSize:c.t.z,fontWeight:c.t.w,letterSpacing:(c.t.ls||0),maxWidth:1080-120});
+        const lines=getWrappedLines(preprocessHL(normBraces(c.title)),{fontSize:c.t.z,fontWeight:c.t.w,fontFamily:c.t.f?`'${c.t.f}','Pretendard','Noto Sans KR',sans-serif`:`'Pretendard','Noto Sans KR',sans-serif`,letterSpacing:(c.t.ls||0),maxWidth:1080-120});
         const lh=c.t.z*(c.t.lh/100);
         const halfLead=(lh-c.t.z)/2;
         const xBase=c.t.a==='center'?540:c.t.a==='right'?1020:60;
