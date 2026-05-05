@@ -1088,24 +1088,37 @@ async function renderVideoCard(c){
     const ctx=canvas.getContext('2d');
     const vid=document.createElement('video');vid.src=c.media;vid.muted=false;vid.playsInline=true;vid.crossOrigin='anonymous';
     const vol=(c.mvol==null?100:c.mvol)/100;
-    vid.onloadeddata=()=>{
+    vid.onloadeddata=async()=>{
       const duration=Math.min(vid.duration,30)*1000; // max 30s
-      const mimeType=MediaRecorder.isTypeSupported('video/mp4;codecs=avc1')?'video/mp4;codecs=avc1':
-                      MediaRecorder.isTypeSupported('video/webm;codecs=vp9')?'video/webm;codecs=vp9':'video/webm';
+      // Pick mimeType that supports BOTH video + audio codec
+      const mimes=[
+        'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
+        'video/mp4;codecs=avc1,mp4a',
+        'video/mp4',
+        'video/webm;codecs=vp9,opus',
+        'video/webm;codecs=vp8,opus',
+        'video/webm'
+      ];
+      const mimeType=mimes.find(m=>MediaRecorder.isTypeSupported(m))||'video/webm';
       const ext=mimeType.startsWith('video/mp4')?'mp4':'webm';
-      const stream=canvas.captureStream(30);
-      // Audio pipeline: source -> gain (volume) -> destination -> add to canvas stream
+      // Build combined stream: canvas video + audio (with gain control)
+      const vStream=canvas.captureStream(30);
+      const tracks=[...vStream.getVideoTracks()];
+      let aCtx=null;
       try{
         const ACtx=window.AudioContext||window.webkitAudioContext;
-        const aCtx=new ACtx();
+        aCtx=new ACtx();
+        if(aCtx.state==='suspended')await aCtx.resume();
         const aSrc=aCtx.createMediaElementSource(vid);
         const gain=aCtx.createGain();gain.gain.value=vol;
         const aDst=aCtx.createMediaStreamDestination();
         aSrc.connect(gain);gain.connect(aDst);
-        // Don't connect to aCtx.destination — user shouldn't hear it during recording
-        aDst.stream.getAudioTracks().forEach(t=>stream.addTrack(t));
+        // Also connect to silent destination to keep audio graph alive
+        // (Not connecting to aCtx.destination keeps it inaudible to user)
+        aDst.stream.getAudioTracks().forEach(t=>tracks.push(t));
       }catch(e){console.warn('audio pipeline failed:',e)}
-      const rec=new MediaRecorder(stream,{mimeType,videoBitsPerSecond:8000000});
+      const stream=new MediaStream(tracks);
+      const rec=new MediaRecorder(stream,{mimeType,videoBitsPerSecond:8000000,audioBitsPerSecond:128000});
       const chunks=[];
       rec.ondataavailable=e=>{if(e.data.size>0)chunks.push(e.data)};
       rec.onstop=()=>{const blob=new Blob(chunks,{type:mimeType});resolve(blob)};
