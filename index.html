@@ -1124,8 +1124,12 @@ async function renderVideoCard(c){
       rec.onstop=()=>{const blob=new Blob(chunks,{type:mimeType});resolve(blob)};
       rec.onerror=e=>reject(e.error);
       vid.play();rec.start();
-      function draw(){
+      // Throttle draw to 30fps for consistent output framerate
+      const FRAME_MS=1000/30;let _lastDrawT=0;
+      function draw(_t){
         if(vid.ended||vid.currentTime*1000>=duration){rec.stop();return}
+        if(_t&&_t-_lastDrawT<FRAME_MS){requestAnimationFrame(draw);return}
+        _lastDrawT=_t||performance.now();
         // Draw video frame
         const vw=vid.videoWidth,vh=vid.videoHeight;
         const mct=c.mct||0,mcb=c.mcb||0,mcl=c.mcl||0,mcr=c.mcr||0;
