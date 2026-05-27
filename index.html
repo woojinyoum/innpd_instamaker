@@ -1102,7 +1102,7 @@ async function renderVideoCard(c){
       const mimeType=mimes.find(m=>MediaRecorder.isTypeSupported(m))||'video/webm';
       const ext=mimeType.startsWith('video/mp4')?'mp4':'webm';
       // Build combined stream: canvas video + audio (with gain control)
-      const vStream=canvas.captureStream(30);
+      const vStream=canvas.captureStream(60);
       const tracks=[...vStream.getVideoTracks()];
       let aCtx=null;
       try{
@@ -1118,7 +1118,7 @@ async function renderVideoCard(c){
         aDst.stream.getAudioTracks().forEach(t=>tracks.push(t));
       }catch(e){console.warn('audio pipeline failed:',e)}
       const stream=new MediaStream(tracks);
-      const rec=new MediaRecorder(stream,{mimeType,videoBitsPerSecond:8000000,audioBitsPerSecond:128000});
+      const rec=new MediaRecorder(stream,{mimeType,videoBitsPerSecond:12000000,audioBitsPerSecond:192000});
       const chunks=[];
       rec.ondataavailable=e=>{if(e.data.size>0)chunks.push(e.data)};
       rec.onstop=()=>{const blob=new Blob(chunks,{type:mimeType});resolve(blob)};
@@ -1153,11 +1153,9 @@ async function renderVideoCard(c){
       }
       vid.play();rec.start();
       // Throttle draw to ~30fps
-      const FRAME_MS=1000/30;let _lastDrawT=0;
-      function draw(_t){
+      // 60fps target — no throttle, let RAF drive at full monitor rate (captureStream caps at 60)
+      function draw(){
         if(vid.ended||vid.currentTime*1000>=duration){rec.stop();return}
-        if(_t&&_t-_lastDrawT<FRAME_MS){requestAnimationFrame(draw);return}
-        _lastDrawT=_t||performance.now();
         // Draw video frame
         const vw=vid.videoWidth,vh=vid.videoHeight;
         const base=Math.max(visW/vw,visH/vh);const scale=base*mzoom;
