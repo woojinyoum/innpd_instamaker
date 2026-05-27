@@ -1123,8 +1123,36 @@ async function renderVideoCard(c){
       rec.ondataavailable=e=>{if(e.data.size>0)chunks.push(e.data)};
       rec.onstop=()=>{const blob=new Blob(chunks,{type:mimeType});resolve(blob)};
       rec.onerror=e=>reject(e.error);
+      // ===== PRECOMPUTE EXPENSIVE STUFF ONCE (avoid stutter) =====
+      const mct=c.mct||0,mcb=c.mcb||0,mcl=c.mcl||0,mcr=c.mcr||0;
+      const mzoom=(c.mzoom||100)/100,mox=c.mox||0,moy=c.moy||0;
+      const visX=1080*mcl/100,visY=HH*mct/100;
+      const visW=1080-1080*mcl/100-1080*mcr/100,visH=HH-HH*mct/100-HH*mcb/100;
+      const cxC=visX+visW/2,cyC=visY+visH/2;
+      const gh=HH*c.g.h/100;
+      const grd=ctx.createLinearGradient(0,HH-gh,0,HH);
+      grd.addColorStop(0,rgba(c.g.c,0));
+      grd.addColorStop(0.5,rgba(c.g.c,c.g.o*(c.g.s/100)/100));
+      grd.addColorStop(1,rgba(c.g.c,c.g.o/100));
+      const _ff=c.t.f?`'${c.t.f}','Pretendard','Noto Sans KR',sans-serif`:`'Pretendard','Noto Sans KR',sans-serif`;
+      const _font=`${c.t.w} ${c.t.z}px ${_ff}`;
+      const lines=getWrappedLines(preprocessHL(normBraces(c.title)),{fontSize:c.t.z,fontWeight:c.t.w,fontFamily:_ff,letterSpacing:(c.t.ls||0),maxWidth:1080-120});
+      const lh=c.t.z*(c.t.lh/100);
+      const halfLead=(lh-c.t.z)/2;
+      const xBaseC=c.t.a==='center'?540:c.t.a==='right'?1020:60;
+      // Pre-split lines into highlight parts (carrying state)
+      const linesParts=[];let _hlPre=false;
+      lines.forEach(line=>{const sp=splitHL(line,_hlPre);_hlPre=sp.hlEnd;linesParts.push(sp.parts.length?sp.parts:[{t:line,h:false}])});
+      // Logo position (precomputed)
+      let _lx=0,_ly=0;
+      if(c.logo&&c.logo.src){
+        const sz=c.logo.size,pd=c.logo.pad,p=c.logo.pos,L=c.logo;
+        if(L.useXY){_lx=L.x;_ly=L.y}
+        else if(p==='tl'){_lx=pd;_ly=pd}else if(p==='tc'){_lx=(1080-sz)/2;_ly=pd}else if(p==='tr'){_lx=1080-sz-pd;_ly=pd}
+        else if(p==='bl'){_lx=pd;_ly=HH-sz-pd}else if(p==='bc'){_lx=(1080-sz)/2;_ly=HH-sz-pd}else{_lx=1080-sz-pd;_ly=HH-sz-pd}
+      }
       vid.play();rec.start();
-      // Throttle draw to 30fps for consistent output framerate
+      // Throttle draw to ~30fps
       const FRAME_MS=1000/30;let _lastDrawT=0;
       function draw(_t){
         if(vid.ended||vid.currentTime*1000>=duration){rec.stop();return}
@@ -1132,40 +1160,21 @@ async function renderVideoCard(c){
         _lastDrawT=_t||performance.now();
         // Draw video frame
         const vw=vid.videoWidth,vh=vid.videoHeight;
-        const mct=c.mct||0,mcb=c.mcb||0,mcl=c.mcl||0,mcr=c.mcr||0;
-        const mzoom=(c.mzoom||100)/100,mox=c.mox||0,moy=c.moy||0;
-        const visX=1080*mcl/100,visY=HH*mct/100;
-        const visW=1080-1080*mcl/100-1080*mcr/100,visH=HH-HH*mct/100-HH*mcb/100;
         const base=Math.max(visW/vw,visH/vh);const scale=base*mzoom;
         const dw=vw*scale,dh=vh*scale;
-        const cx=visX+visW/2,cy=visY+visH/2;
         ctx.save();ctx.beginPath();ctx.rect(visX,visY,visW,visH);ctx.clip();
-        ctx.drawImage(vid,cx+mox-dw/2,cy+moy-dh/2,dw,dh);
+        ctx.drawImage(vid,cxC+mox-dw/2,cyC+moy-dh/2,dw,dh);
         ctx.restore();
-        // Draw gradient
-        const gh=HH*c.g.h/100;
-        const grd=ctx.createLinearGradient(0,HH-gh,0,HH);
-        grd.addColorStop(0,rgba(c.g.c,0));
-        grd.addColorStop(0.5,rgba(c.g.c,c.g.o*(c.g.s/100)/100));
-        grd.addColorStop(1,rgba(c.g.c,c.g.o/100));
+        // Draw cached gradient
         ctx.fillStyle=grd;ctx.fillRect(0,HH-gh,1080,gh);
-        // Draw title with {highlight} support
-        const _font=`${c.t.w} ${c.t.z}px 'Noto Sans KR',sans-serif`;
+        // Draw title
         ctx.font=_font;
         const shA2=c.t.sha/100;ctx.shadowColor=rgba(c.t.shc,shA2);ctx.shadowBlur=c.t.shb;ctx.shadowOffsetX=c.t.shx||0;ctx.shadowOffsetY=c.t.shy||0;
         if(c.t.sk>0){ctx.strokeStyle=c.t.skc;ctx.lineWidth=c.t.sk*2;ctx.lineJoin='round'}
-        const lines=getWrappedLines(preprocessHL(normBraces(c.title)),{fontSize:c.t.z,fontWeight:c.t.w,fontFamily:c.t.f?`'${c.t.f}','Pretendard','Noto Sans KR',sans-serif`:`'Pretendard','Noto Sans KR',sans-serif`,letterSpacing:(c.t.ls||0),maxWidth:1080-120});
-        const lh=c.t.z*(c.t.lh/100);
-        const halfLead=(lh-c.t.z)/2;
-        const xBase=c.t.a==='center'?540:c.t.a==='right'?1020:60;
         ctx.textAlign=c.t.a;ctx.textBaseline='bottom';
-        let _hlV=false;
-        lines.forEach((line,li)=>{
+        linesParts.forEach((parts,li)=>{
           const yy=HH-c.t.b-(lines.length-1-li)*lh-halfLead;
-          const _s=splitHL(line,_hlV);_hlV=_s.hlEnd;
-          const parts=_s.parts.length?_s.parts:[{t:line,h:false}];
           if(c.t.a==='center'||c.t.a==='right'){
-            // Measure total width to manually position
             ctx.textAlign='left';
             let tw=0;parts.forEach(p=>{tw+=ctx.measureText(p.t).width});
             let sx=c.t.a==='center'?(1080-tw)/2:1080-tw-60;
@@ -1177,7 +1186,7 @@ async function renderVideoCard(c){
             });
             ctx.textAlign=c.t.a;
           }else{
-            let sx=xBase;ctx.textAlign='left';
+            let sx=xBaseC;ctx.textAlign='left';
             parts.forEach(p=>{
               ctx.fillStyle=p.h?c.t.hc:c.t.c;
               if(c.t.sk>0)ctx.strokeText(p.t,sx,yy);
@@ -1187,17 +1196,8 @@ async function renderVideoCard(c){
           }
         });
         ctx.shadowBlur=0;ctx.shadowOffsetX=0;ctx.shadowOffsetY=0;ctx.lineWidth=1;
-        // Draw logo
-        if(logoImg){
-          const sz=c.logo.size,pd=c.logo.pad,p=c.logo.pos,L=c.logo;
-          let lx,ly;
-          if(L.useXY){lx=L.x;ly=L.y}
-          else{
-            if(p==='tl'){lx=pd;ly=pd}else if(p==='tc'){lx=(1080-sz)/2;ly=pd}else if(p==='tr'){lx=1080-sz-pd;ly=pd}
-            else if(p==='bl'){lx=pd;ly=HH-sz-pd}else if(p==='bc'){lx=(1080-sz)/2;ly=HH-sz-pd}else{lx=1080-sz-pd;ly=HH-sz-pd}
-          }
-          ctx.drawImage(logoImg,lx,ly,sz,sz);
-        }
+        // Draw logo (precomputed position)
+        if(logoImg){ctx.drawImage(logoImg,_lx,_ly,c.logo.size,c.logo.size)}
         requestAnimationFrame(draw);
       }
       // Preload logo
