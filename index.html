@@ -619,7 +619,12 @@ ${userGuide}
 /* Translate */
 document.getElementById('trBtn').onclick=async()=>{
   if(!S.cards.length){toast('카드 없음');return}const l=document.getElementById('lang').value;
-  if(l==='ko'){if(S.ko){S.cards[0].title=S.ko.title;S.cards[0].body=S.ko.body;(S.ko.scenes||[]).forEach((s,i)=>{if(S.cards[i+1]){S.cards[i+1].title=s.title;S.cards[i+1].body=s.body}});render();toast('복원')}return}
+  // Save snapshot before translate so user can undo if anything goes wrong
+  saveSnap();
+  // Backup media/img/logo/style fields for explicit restoration after translate
+  const mediaBackup=S.cards.map(c=>({media:c.media,mediaType:c.mediaType,img:c.img,mvy:c.mvy,mct:c.mct,mcb:c.mcb,mcl:c.mcl,mcr:c.mcr,mzoom:c.mzoom,mox:c.mox,moy:c.moy,mvol:c.mvol,logo:c.logo?{...c.logo}:null}));
+  const restoreMedia=()=>{S.cards.forEach((c,i)=>{const b=mediaBackup[i];if(!b)return;c.media=b.media;c.mediaType=b.mediaType;c.img=b.img;c.mvy=b.mvy;c.mct=b.mct;c.mcb=b.mcb;c.mcl=b.mcl;c.mcr=b.mcr;c.mzoom=b.mzoom;c.mox=b.mox;c.moy=b.moy;c.mvol=b.mvol;if(b.logo)c.logo=b.logo})};
+  if(l==='ko'){if(S.ko){S.cards[0].title=S.ko.title;S.cards[0].body=S.ko.body;(S.ko.scenes||[]).forEach((s,i)=>{if(S.cards[i+1]){S.cards[i+1].title=s.title;S.cards[i+1].body=s.body}});restoreMedia();render();toast('복원')}return}
   const lm={en:'English',ja:'Japanese',zh:'Simplified Chinese',es:'Spanish',vi:'Vietnamese',id:'Indonesian',th:'Thai',fr:'French',de:'German'};
   sLoad(lm[l]+' 번역 중...','');
   const tpEl=document.getElementById('trPrompt');
@@ -668,7 +673,7 @@ Return ONLY valid JSON (no markdown, no commentary):
 
 Input:
 ${JSON.stringify(pl,null,2)}${userGuide?'\n\nREMEMBER: USER INSTRUCTIONS = "'+userGuide+'" — apply to every title and body.':''}`}],max:3000});
-  pj(res).cards.forEach(c=>{if(S.cards[c.i]){S.cards[c.i].title=c.title;S.cards[c.i].body=c.body}});render();hLoad();toast('번역 완료')}catch(e){hLoad();toast('오류: '+e.message)}
+  pj(res).cards.forEach(c=>{if(S.cards[c.i]){S.cards[c.i].title=c.title;S.cards[c.i].body=c.body}});restoreMedia();render();hLoad();toast('번역 완료')}catch(e){hLoad();toast('오류: '+e.message)}
 };
 
 /* Crop = clip card viewport to sub-rect; zoom = scale to cover the cropped (visible) area; move = pan. */
