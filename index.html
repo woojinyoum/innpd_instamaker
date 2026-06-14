@@ -210,6 +210,12 @@ input[type=color]{width:32px;height:26px;background:transparent;border:1px solid
     <h3 id="rTitle">편집</h3>
     <div id="noSel" class="tip">분석하면 카드가 생성됩니다.</div>
     <div id="ed" style="display:none">
+      <fieldset style="border:1px solid var(--brd);border-radius:8px;padding:8px 10px;margin-bottom:10px;background:rgba(124,92,255,.05)">
+        <legend style="font-size:11px;color:var(--acc);padding:0 6px;font-weight:600">⭐ 프리셋</legend>
+        <div class="row" style="margin-bottom:6px"><select id="psSel" style="flex:1"><option value="">— 프리셋 선택 —</option></select><button id="psLoad" style="padding:5px 10px;font-size:11px">불러오기</button></div>
+        <div class="row" style="margin-bottom:6px"><input type="text" id="psName" placeholder="프리셋 이름" style="flex:1"/><button id="psSave" class="gh" style="padding:5px 10px;font-size:11px">저장</button></div>
+        <div class="row"><label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--dim);cursor:pointer"><input type="checkbox" id="psAll" style="width:auto;margin:0"/>모든 카드에 적용</label><button id="psDel" style="padding:5px 10px;font-size:11px;background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.4);color:#f87171">삭제</button></div>
+      </fieldset>
       <div class="tabs">
         <button class="on" data-t="logo">로고</button>
         <button data-t="tstyle">제목 스타일</button>
@@ -1234,6 +1240,47 @@ function enableEditableV(){
 function setMode(m){S.mode=m;localStorage.setItem('mode',m);applyMode();render()}
 document.getElementById('tabPost').onclick=()=>setMode('post');
 document.getElementById('tabReels').onclick=()=>setMode('reels');
+
+/* ===== Presets ===== */
+const PS_KEY='icnm_presets';
+function loadPresets(){try{return JSON.parse(localStorage.getItem(PS_KEY)||'{}')}catch{return{}}}
+function savePresets(p){localStorage.setItem(PS_KEY,JSON.stringify(p))}
+function refreshPSDropdown(){
+  const sel=document.getElementById('psSel');const cur=sel.value;
+  const ps=loadPresets();const names=Object.keys(ps).sort();
+  sel.innerHTML='<option value="">— 프리셋 선택 —</option>'+names.map(n=>`<option value="${n.replace(/"/g,'&quot;')}">${n}</option>`).join('');
+  if(cur&&ps[cur])sel.value=cur;
+}
+function extractStyle(c){return{t:JSON.parse(JSON.stringify(c.t)),logo:{size:c.logo.size,pad:c.logo.pad,pos:c.logo.pos,x:c.logo.x,y:c.logo.y,useXY:c.logo.useXY},g:JSON.parse(JSON.stringify(c.g))}}
+function applyStyle(c,style){
+  if(style.t)Object.assign(c.t,style.t);
+  if(style.logo){const ks=['size','pad','pos','x','y','useXY'];ks.forEach(k=>{if(style.logo[k]!=null)c.logo[k]=style.logo[k]})}
+  if(style.g)Object.assign(c.g,style.g);
+}
+document.getElementById('psSave').onclick=()=>{
+  const cardNow=cur();if(!cardNow){toast('카드 없음');return}
+  const name=document.getElementById('psName').value.trim();
+  if(!name){toast('이름 입력');return}
+  const ps=loadPresets();ps[name]=extractStyle(cardNow);savePresets(ps);
+  refreshPSDropdown();document.getElementById('psSel').value=name;
+  document.getElementById('psName').value='';toast('프리셋 저장: '+name);
+};
+document.getElementById('psLoad').onclick=()=>{
+  const name=document.getElementById('psSel').value;if(!name){toast('프리셋 선택');return}
+  const ps=loadPresets();if(!ps[name]){toast('프리셋 없음');return}
+  const all=document.getElementById('psAll').checked;
+  saveSnap();
+  if(all){S.cards.forEach(c=>applyStyle(c,ps[name]))}
+  else{const c=cur();if(c)applyStyle(c,ps[name])}
+  render();toast(all?'전체 카드에 적용':'현재 카드에 적용');
+};
+document.getElementById('psDel').onclick=()=>{
+  const name=document.getElementById('psSel').value;if(!name){toast('삭제할 프리셋 선택');return}
+  if(!confirm(`"${name}" 프리셋 삭제?`))return;
+  const ps=loadPresets();delete ps[name];savePresets(ps);
+  refreshPSDropdown();toast('삭제됨');
+};
+refreshPSDropdown();
 
 /* Init */
 applyMode();
