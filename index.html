@@ -219,6 +219,7 @@ input[type=color]{width:32px;height:26px;background:transparent;border:1px solid
       <div class="tabs">
         <button class="on" data-t="logo">로고</button>
         <button data-t="tstyle">제목 스타일</button>
+        <button data-t="overlay">오버레이</button>
         <button data-t="grad">그라데이션</button>
       </div>
 
@@ -244,6 +245,21 @@ input[type=color]{width:32px;height:26px;background:transparent;border:1px solid
           <label style="margin-top:4px">Y 미세조정 (px)</label>
           <div class="sr"><input type="range" id="logoY" min="0" max="1350" value="0"/><span class="v" id="logoYV">0</span></div>
           <button class="dn" id="logoRm" style="width:100%;margin-top:8px;font-size:10px;padding:6px">로고 제거</button>
+        </div>
+      </div>
+
+      <!-- Overlay -->
+      <div class="tp" data-p="overlay">
+        <div class="tip" style="font-size:11px;color:var(--dim);margin-bottom:8px">카드 위에 사진을 올린 뒤 <b>마우스로 드래그</b>하여 이동, <b>오른쪽 아래 모서리</b>를 드래그하여 크기 조절.</div>
+        <button id="ovAdd" class="w100" style="margin-bottom:8px">+ 오버레이 사진 추가</button>
+        <input type="file" id="ovF" accept="image/*" style="display:none" multiple/>
+        <div id="ovList" style="display:flex;flex-direction:column;gap:6px"></div>
+        <div id="ovEdit" style="display:none;margin-top:10px;border-top:1px solid var(--brd);padding-top:10px">
+          <div class="field"><label>크기 (px)</label><div class="sr"><input type="range" id="ovW" min="40" max="1080" value="300"/><span class="v" id="ovWV">300</span></div></div>
+          <div class="field"><label>X 위치 (px)</label><div class="sr"><input type="range" id="ovX" min="-200" max="1080" value="100"/><span class="v" id="ovXV">100</span></div></div>
+          <div class="field"><label>Y 위치 (px)</label><div class="sr"><input type="range" id="ovY" min="-200" max="2000" value="100"/><span class="v" id="ovYV">100</span></div></div>
+          <div class="field"><label>회전 (°)</label><div class="sr"><input type="range" id="ovR" min="-180" max="180" value="0"/><span class="v" id="ovRV">0</span></div></div>
+          <div class="field"><label>투명도 (%)</label><div class="sr"><input type="range" id="ovA" min="0" max="100" value="100"/><span class="v" id="ovAV">100</span></div></div>
         </div>
       </div>
 
@@ -444,7 +460,7 @@ document.getElementById('licLogout').onclick=()=>{
 licCheck();
 
 /* ===== State ===== */
-const S={cards:[],idx:0,ko:null,grid:false,mode:localStorage.getItem('mode')||'post'};
+const S={cards:[],idx:0,ko:null,grid:false,mode:localStorage.getItem('mode')||'post',selOv:null};
 // Card height per mode
 const H=()=>S.mode==='reels'?1920:1350;
 // Preview slide width = 432, scale = 432/1080 = 0.4
@@ -484,7 +500,7 @@ document.addEventListener('keydown',e=>{
     e.preventDefault();undo();
   }
 });
-const mk=()=>({id:crypto.randomUUID(),img:null,media:null,mediaType:null,mvy:0,mct:0,mcb:0,mcl:0,mcr:0,mzoom:100,mox:0,moy:0,mvol:100,title:'제목',body:'',g:{c:'#000000',h:60,o:95,s:50},t:{z:80,c:'#ffffff',b:200,a:'left',w:'900',f:'Pretendard',hc:'#ffcc00',lh:120,ls:0,sk:0,skc:'#000000',shb:30,shang:180,shdist:4,shx:0,shy:4,shc:'#000000',sha:80},b:{on:true,z:26,c:'#ffffff',t:60,r:50,w:320},logo:{src:null,size:120,pad:40,pos:'tr',x:0,y:0,useXY:false}});
+const mk=()=>({id:crypto.randomUUID(),img:null,media:null,mediaType:null,mvy:0,mct:0,mcb:0,mcl:0,mcr:0,mzoom:100,mox:0,moy:0,mvol:100,ovs:[],title:'제목',body:'',g:{c:'#000000',h:60,o:95,s:50},t:{z:80,c:'#ffffff',b:200,a:'left',w:'900',f:'Pretendard',hc:'#ffcc00',lh:120,ls:0,sk:0,skc:'#000000',shb:30,shang:180,shdist:4,shx:0,shy:4,shc:'#000000',sha:80},b:{on:true,z:26,c:'#ffffff',t:60,r:50,w:320},logo:{src:null,size:120,pad:40,pos:'tr',x:0,y:0,useXY:false}});
 
 /* Persist */
 const $k=document.getElementById('apiKey');$k.value=localStorage.getItem('ak')||'';$k.onchange=()=>localStorage.setItem('ak',$k.value);
@@ -760,6 +776,40 @@ function bCard(c){
   }
   if(buf)html+=inHL?`<span style="color:${c.t.hc};-webkit-text-stroke:inherit">${esc(buf)}</span>`:esc(buf);
   tt.innerHTML=html;el.appendChild(tt);
+  // Overlays (draggable + resizable)
+  (c.ovs||[]).forEach(ov=>{
+    const w=ov.w||300, h=ov.h||(w*(ov.ar||1));
+    const oc=document.createElement('div');
+    oc.style.cssText=`position:absolute;left:${ov.x||0}px;top:${ov.y||0}px;width:${w}px;height:${h}px;z-index:6;cursor:grab;user-select:none;transform:rotate(${ov.r||0}deg);opacity:${(ov.a==null?100:ov.a)/100}`;
+    if(S.selOv===ov.id){oc.style.outline='3px dashed #7c5cff';oc.style.outlineOffset='-3px'}
+    const oi=document.createElement('img');oi.src=ov.src;oi.draggable=false;
+    oi.style.cssText='width:100%;height:100%;display:block;pointer-events:none;object-fit:fill';
+    oc.appendChild(oi);
+    if(S.selOv===ov.id){
+      const handle=document.createElement('div');
+      handle.dataset.act='resize';
+      handle.style.cssText='position:absolute;right:-12px;bottom:-12px;width:24px;height:24px;background:#7c5cff;border:3px solid #fff;border-radius:50%;cursor:nwse-resize;box-shadow:0 2px 6px rgba(0,0,0,.4)';
+      oc.appendChild(handle);
+    }
+    oc.addEventListener('mousedown',e=>{
+      e.stopPropagation();e.preventDefault();
+      S.selOv=ov.id;
+      const isResize=e.target.dataset&&e.target.dataset.act==='resize';
+      const sX=e.clientX,sY=e.clientY;
+      const oX=ov.x||0,oY=ov.y||0,oW=ov.w||300;
+      const SCALE=0.4;
+      const onMove=me=>{
+        const dx=(me.clientX-sX)/SCALE,dy=(me.clientY-sY)/SCALE;
+        if(isResize){ov.w=Math.max(40,Math.round(oW+dx));ov.h=Math.round(ov.w*(ov.ar||1))}
+        else{ov.x=Math.round(oX+dx);ov.y=Math.round(oY+dy)}
+        refreshCard();
+      };
+      const onUp=()=>{document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp);saveSnap()};
+      document.addEventListener('mousemove',onMove);document.addEventListener('mouseup',onUp);
+      refreshCard();
+    });
+    el.appendChild(oc);
+  });
   // Grid overlay (3x3)
   const gOv=document.createElement('div');gOv.className='grid-ov'+(S.grid?' on':'');
   [1,2].forEach(n=>{const h=document.createElement('div');h.className='gl glh';h.style.top=(H()/3*n)+'px';gOv.appendChild(h);const v=document.createElement('div');v.className='gl glv';v.style.left=(1080/3*n)+'px';gOv.appendChild(v)});
@@ -865,6 +915,8 @@ function rEd(){
   // Logo
   const lc=document.getElementById('logoControls');
   if(c.logo&&c.logo.src){lc.style.display='block';sr('logoSize','logoSizeV',c.logo.size);sr('logoPad','logoPadV',c.logo.pad);sr('logoX','logoXV',c.logo.x||0);sr('logoY','logoYV',c.logo.y||0)}else{lc.style.display='none'}
+  // Overlays
+  if(typeof renderOvList==='function')renderOvList();
 }
 const sv=(id,v)=>{const e=document.getElementById(id);if(document.activeElement!==e)e.value=v};
 const sr=(id,vid,v,s='')=>{const e=document.getElementById(id);if(document.activeElement!==e)e.value=v;const sp=document.getElementById(vid);if(document.activeElement!==sp)sp.textContent=v+s};
@@ -889,6 +941,66 @@ document.querySelectorAll('[data-lp]').forEach(b=>{b.onclick=()=>upLogo(c=>{c.lo
 document.getElementById('logoX').oninput=e=>{const v=+e.target.value;document.getElementById('logoXV').textContent=v;upLogo(c=>{c.logo.x=v;c.logo.useXY=true})};
 document.getElementById('logoY').oninput=e=>{const v=+e.target.value;document.getElementById('logoYV').textContent=v;upLogo(c=>{c.logo.y=v;c.logo.useXY=true})};
 document.getElementById('logoRm').onclick=()=>{upLogo(c=>{c.logo.src=null;c.logo.useXY=false});document.getElementById('logoControls').style.display='none'};
+
+/* ===== Overlays ===== */
+function curSelOv(){const c=cur();if(!c||!c.ovs)return null;return c.ovs.find(o=>o.id===S.selOv)||null}
+function renderOvList(){
+  const c=cur();const list=document.getElementById('ovList');list.innerHTML='';
+  if(!c||!c.ovs||!c.ovs.length){list.innerHTML='<div class="tip" style="font-size:11px;color:var(--dim)">아직 오버레이가 없습니다.</div>';document.getElementById('ovEdit').style.display='none';return}
+  c.ovs.forEach((ov,idx)=>{
+    const row=document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;gap:6px;padding:4px;border-radius:6px;background:'+(S.selOv===ov.id?'rgba(124,92,255,.15)':'var(--panel2)')+';border:1px solid '+(S.selOv===ov.id?'var(--acc)':'var(--brd)')+';cursor:pointer';
+    row.onclick=()=>{S.selOv=ov.id;renderOvList();refreshCard()};
+    const th=document.createElement('img');th.src=ov.src;th.style.cssText='width:36px;height:36px;object-fit:cover;border-radius:4px;background:#000';row.appendChild(th);
+    const label=document.createElement('div');label.textContent=`#${idx+1}`;label.style.cssText='flex:1;font-size:11px;color:var(--txt)';row.appendChild(label);
+    const del=document.createElement('button');del.textContent='삭제';del.style.cssText='padding:4px 8px;font-size:10px;background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.4);color:#f87171';
+    del.onclick=e=>{e.stopPropagation();saveSnap();up(cc=>{cc.ovs=cc.ovs.filter(o=>o.id!==ov.id)});if(S.selOv===ov.id)S.selOv=null;renderOvList()};
+    row.appendChild(del);
+    list.appendChild(row);
+  });
+  const sel=curSelOv();
+  if(sel){
+    document.getElementById('ovEdit').style.display='block';
+    sr('ovW','ovWV',sel.w||300);sr('ovX','ovXV',sel.x||0);sr('ovY','ovYV',sel.y||0);sr('ovR','ovRV',sel.r||0);sr('ovA','ovAV',sel.a==null?100:sel.a);
+  }else{document.getElementById('ovEdit').style.display='none'}
+}
+document.getElementById('ovAdd').onclick=()=>document.getElementById('ovF').click();
+document.getElementById('ovF').onchange=e=>{
+  const files=[...e.target.files];if(!files.length)return;
+  const c=cur();if(!c)return;saveSnap();
+  let pending=files.length;
+  files.forEach(f=>{
+    const r=new FileReader;
+    r.onload=ev=>{
+      const src=ev.target.result;
+      const probe=new Image();
+      probe.onload=()=>{
+        const ar=probe.naturalHeight/probe.naturalWidth;
+        const ov={id:'ov-'+crypto.randomUUID().slice(0,8),src,x:200,y:200,w:400,h:Math.round(400*ar),ar,r:0,a:100};
+        c.ovs=c.ovs||[];c.ovs.push(ov);S.selOv=ov.id;
+        if(--pending===0){renderOvList();refreshCard();toast('오버레이 추가됨')}
+      };
+      probe.src=src;
+    };
+    r.readAsDataURL(f);
+  });
+  e.target.value='';
+};
+['ovW','ovX','ovY','ovR','ovA'].forEach(id=>{
+  const key={ovW:'w',ovX:'x',ovY:'y',ovR:'r',ovA:'a'}[id];
+  document.getElementById(id).oninput=e=>{
+    const v=+e.target.value;document.getElementById(id+'V').textContent=v;
+    const sel=curSelOv();if(!sel)return;
+    up(()=>{sel[key]=v;if(key==='w')sel.h=Math.round(v*(sel.ar||1))});
+  };
+});
+// Click empty card to deselect overlay
+document.addEventListener('click',e=>{
+  if(e.target.closest('.tp[data-p="overlay"]'))return;
+  if(e.target.closest('.card')){
+    if(!e.target.closest('[data-act]')&&e.target.tagName!=='IMG'){/* keep selection if click outside overlay */}
+  }
+});
 
 /* Helpers */
 const sp=(o,p,v)=>{const ps=p.split('.');let x=o;for(let i=0;i<ps.length-1;i++)x=x[ps[i]];x[ps[ps.length-1]]=v};
@@ -987,7 +1099,20 @@ document.getElementById('dlBtn').onclick=async()=>{
 
 /* Render video card to MP4 blob */
 /* Shared overlay drawing (gradient + title + logo) */
-function drawOverlay(ctx,c,logoImg){
+function drawOverlayImages(ctx,c,ovImgs){
+  (c.ovs||[]).forEach(ov=>{
+    const img=ovImgs[ov.id];if(!img)return;
+    const w=ov.w||300,h=ov.h||(w*(ov.ar||1));
+    const r=((ov.r||0)*Math.PI)/180;
+    const a=(ov.a==null?100:ov.a)/100;
+    ctx.save();ctx.globalAlpha=a;
+    ctx.translate((ov.x||0)+w/2,(ov.y||0)+h/2);
+    if(r)ctx.rotate(r);
+    ctx.drawImage(img,-w/2,-h/2,w,h);
+    ctx.restore();
+  });
+}
+function drawOverlay(ctx,c,logoImg,ovImgs){
   const HH=H();
   // Gradient
   const gh=HH*c.g.h/100;
@@ -1051,6 +1176,7 @@ function drawOverlay(ctx,c,logoImg){
     const s=Math.min(sz/iw,sz/ih);const dw=iw*s,dh=ih*s;
     ctx.drawImage(logoImg,lx+(sz-dw)/2,ly+(sz-dh)/2,dw,dh);
   }
+  if(ovImgs)drawOverlayImages(ctx,c,ovImgs);
 }
 
 /* Render image card to PNG blob */
@@ -1087,7 +1213,10 @@ async function renderImageCard(c){
     logoImg=new Image();logoImg.crossOrigin='anonymous';logoImg.src=c.logo.src;
     await new Promise(r=>{logoImg.onload=r;logoImg.onerror=r});
   }
-  drawOverlay(ctx,c,logoImg);
+  // Preload overlay images
+  const ovImgs={};
+  await Promise.all((c.ovs||[]).map(ov=>new Promise(res=>{const im=new Image();im.crossOrigin='anonymous';im.onload=()=>{ovImgs[ov.id]=im;res()};im.onerror=res;im.src=ov.src})));
+  drawOverlay(ctx,c,logoImg,ovImgs);
   return new Promise(res=>canvas.toBlob(b=>res(b),'image/png'));
 }
 
@@ -1207,14 +1336,17 @@ async function renderVideoCard(c){
         ctx.shadowBlur=0;ctx.shadowOffsetX=0;ctx.shadowOffsetY=0;ctx.lineWidth=1;
         // Draw logo (precomputed position)
         if(logoImg){ctx.drawImage(logoImg,_lx,_ly,c.logo.size,c.logo.size)}
+        // Draw overlays
+        drawOverlayImages(ctx,c,ovImgs);
         requestAnimationFrame(draw);
       }
-      // Preload logo
+      // Preload logo + overlays
       let logoImg=null;
-      if(c.logo&&c.logo.src){
-        logoImg=new Image();logoImg.src=c.logo.src;
-        logoImg.onload=()=>draw();logoImg.onerror=()=>draw();
-      }else{draw()}
+      const ovImgs={};
+      const preloads=[];
+      if(c.logo&&c.logo.src){preloads.push(new Promise(r=>{logoImg=new Image();logoImg.onload=r;logoImg.onerror=r;logoImg.src=c.logo.src}))}
+      (c.ovs||[]).forEach(ov=>preloads.push(new Promise(r=>{const im=new Image();im.onload=()=>{ovImgs[ov.id]=im;r()};im.onerror=r;im.src=ov.src})));
+      Promise.all(preloads).then(()=>draw());
       setTimeout(()=>{if(rec.state==='recording')rec.stop()},duration+500);
     };
     vid.onerror=()=>reject(Error('동영상 로드 실패'));
