@@ -231,6 +231,8 @@ input[type=color]{width:32px;height:26px;background:transparent;border:1px solid
           <div class="sr"><input type="range" id="logoSize" min="40" max="300" value="120"/><span class="v" id="logoSizeV">120</span></div>
           <label style="margin-top:8px">여백 (px)</label>
           <div class="sr"><input type="range" id="logoPad" min="20" max="120" value="40"/><span class="v" id="logoPadV">40</span></div>
+          <label style="margin-top:8px">불투명도 (%)</label>
+          <div class="sr"><input type="range" id="logoOp" min="0" max="100" value="100"/><span class="v" id="logoOpV">100</span></div>
           <label style="margin-top:8px">위치</label>
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-top:4px">
             <button class="gh" data-lp="tl" style="font-size:10px;padding:8px">&#8598; 좌상</button>
@@ -507,7 +509,7 @@ document.addEventListener('keydown',e=>{
     e.preventDefault();undo();
   }
 });
-const mk=()=>({id:crypto.randomUUID(),img:null,media:null,mediaType:null,mvy:0,mct:0,mcb:0,mcl:0,mcr:0,mzoom:100,mox:0,moy:0,mvol:100,ovs:[],title:'제목',body:'',g:{c:'#000000',h:60,o:95,s:50},t:{z:80,c:'#ffffff',b:200,a:'left',w:'900',f:'Pretendard',hc:'#ffcc00',lh:120,ls:0,sk:0,skc:'#000000',shb:30,shang:180,shdist:4,shx:0,shy:4,shc:'#000000',sha:80,tbg:false,tbgc:'#000000',tbga:70,tbgpx:20,tbgpy:8,tbgr:8},b:{on:true,z:26,c:'#ffffff',t:60,r:50,w:320},logo:{src:null,size:120,pad:40,pos:'tr',x:0,y:0,useXY:false}});
+const mk=()=>({id:crypto.randomUUID(),img:null,media:null,mediaType:null,mvy:0,mct:0,mcb:0,mcl:0,mcr:0,mzoom:100,mox:0,moy:0,mvol:100,ovs:[],title:'제목',body:'',g:{c:'#000000',h:60,o:95,s:50},t:{z:80,c:'#ffffff',b:200,a:'left',w:'900',f:'Pretendard',hc:'#ffcc00',lh:120,ls:0,sk:0,skc:'#000000',shb:30,shang:180,shdist:4,shx:0,shy:4,shc:'#000000',sha:80,tbg:false,tbgc:'#000000',tbga:70,tbgpx:20,tbgpy:8,tbgr:8},b:{on:true,z:26,c:'#ffffff',t:60,r:50,w:320},logo:{src:null,size:120,pad:40,pos:'tr',x:0,y:0,useXY:false,op:100}});
 
 /* Persist */
 const $k=document.getElementById('apiKey');$k.value=localStorage.getItem('ak')||'';$k.onchange=()=>localStorage.setItem('ak',$k.value);
@@ -976,7 +978,7 @@ function bCard(c){
   if(c.logo&&c.logo.src){
     const lg=document.createElement('img');lg.src=c.logo.src;lg.crossOrigin='anonymous';
     const sz=c.logo.size,pd=c.logo.pad,p=c.logo.pos,L=c.logo;
-    let css=`position:absolute;width:${sz}px;height:${sz}px;object-fit:contain;z-index:3;`;
+    let css=`position:absolute;width:${sz}px;height:${sz}px;object-fit:contain;z-index:3;opacity:${(c.logo.op==null?100:c.logo.op)/100};`;
     if(L.useXY){css+=`left:${L.x}px;top:${L.y}px;`}
     else if(p==='tl')css+=`top:${pd}px;left:${pd}px;`;
     else if(p==='tc')css+=`top:${pd}px;left:50%;transform:translateX(-50%);`;
@@ -1070,7 +1072,7 @@ function rEd(){
   const tbgEl=document.getElementById('tbg');if(tbgEl){tbgEl.checked=!!c.t.tbg;sv('tbgc',c.t.tbgc||'#000000');sv('tbgx',c.t.tbgc||'#000000');sr('tbga','tbgaV',c.t.tbga==null?70:c.t.tbga);sr('tbgpx','tbgpxV',c.t.tbgpx==null?20:c.t.tbgpx);sr('tbgpy','tbgpyV',c.t.tbgpy==null?8:c.t.tbgpy);sr('tbgr','tbgrV',c.t.tbgr==null?8:c.t.tbgr)}
   // Logo
   const lc=document.getElementById('logoControls');
-  if(c.logo&&c.logo.src){lc.style.display='block';sr('logoSize','logoSizeV',c.logo.size);sr('logoPad','logoPadV',c.logo.pad);sr('logoX','logoXV',c.logo.x||0);sr('logoY','logoYV',c.logo.y||0)}else{lc.style.display='none'}
+  if(c.logo&&c.logo.src){lc.style.display='block';sr('logoSize','logoSizeV',c.logo.size);sr('logoPad','logoPadV',c.logo.pad);sr('logoX','logoXV',c.logo.x||0);sr('logoY','logoYV',c.logo.y||0);sr('logoOp','logoOpV',c.logo.op==null?100:c.logo.op)}else{lc.style.display='none'}
   // Overlays
   if(typeof renderOvList==='function')renderOvList();
 }
@@ -1098,6 +1100,7 @@ document.getElementById('logoF').onchange=e=>{const f=e.target.files[0];if(!f)re
 };r.readAsDataURL(f)};
 document.getElementById('logoSize').oninput=e=>{const v=+e.target.value;document.getElementById('logoSizeV').textContent=v;upLogo(c=>c.logo.size=v)};
 document.getElementById('logoPad').oninput=e=>{const v=+e.target.value;document.getElementById('logoPadV').textContent=v;upLogo(c=>c.logo.pad=v)};
+document.getElementById('logoOp').oninput=e=>{const v=+e.target.value;document.getElementById('logoOpV').textContent=v;upLogo(c=>c.logo.op=v)};
 document.querySelectorAll('[data-lp]').forEach(b=>{b.onclick=()=>upLogo(c=>{c.logo.pos=b.dataset.lp;c.logo.useXY=false})});
 document.getElementById('logoX').oninput=e=>{const v=+e.target.value;document.getElementById('logoXV').textContent=v;upLogo(c=>{c.logo.x=v;c.logo.useXY=true})};
 document.getElementById('logoY').oninput=e=>{const v=+e.target.value;document.getElementById('logoYV').textContent=v;upLogo(c=>{c.logo.y=v;c.logo.useXY=true})};
@@ -1366,7 +1369,9 @@ function drawOverlay(ctx,c,logoImg,ovImgs){
     // object-fit:contain
     const iw=logoImg.naturalWidth||sz, ih=logoImg.naturalHeight||sz;
     const s=Math.min(sz/iw,sz/ih);const dw=iw*s,dh=ih*s;
+    const prevA=ctx.globalAlpha;ctx.globalAlpha=(c.logo.op==null?100:c.logo.op)/100;
     ctx.drawImage(logoImg,lx+(sz-dw)/2,ly+(sz-dh)/2,dw,dh);
+    ctx.globalAlpha=prevA;
   }
   if(ovImgs)drawOverlayImages(ctx,c,ovImgs);
 }
@@ -1516,7 +1521,7 @@ async function renderVideoCard(c){
         });
         ctx.shadowBlur=0;ctx.shadowOffsetX=0;ctx.shadowOffsetY=0;ctx.lineWidth=1;
         // Draw logo (precomputed position)
-        if(logoImg){ctx.drawImage(logoImg,_lx,_ly,c.logo.size,c.logo.size)}
+        if(logoImg){const pa=ctx.globalAlpha;ctx.globalAlpha=(c.logo.op==null?100:c.logo.op)/100;ctx.drawImage(logoImg,_lx,_ly,c.logo.size,c.logo.size);ctx.globalAlpha=pa}
         // Draw overlays
         drawOverlayImages(ctx,c,ovImgs);
         requestAnimationFrame(draw);
