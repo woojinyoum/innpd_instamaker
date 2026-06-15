@@ -284,16 +284,18 @@ input[type=color]{width:32px;height:26px;background:transparent;border:1px solid
         <div class="field"><label>강조 색상 <span style="color:var(--dim);font-size:9px">제목에서 {중괄호}로 감싼 부분</span></label><div class="row" style="align-items:center"><input type="color" id="thc" value="#ffcc00"/><input type="text" id="thx" value="#ffcc00" style="flex:2"/></div></div>
         <div class="field"><label>위치 (하단 px)</label><div class="sr"><input type="range" id="tb" min="0" max="1250" value="200"/><span class="v" id="tbv">200</span></div></div>
         <div id="mediaCropFields" style="display:none">
+          <div class="tip" style="font-size:11px;color:var(--dim);margin-bottom:6px;line-height:1.5">🖱️ <b>크롭 끄기</b>: 카드에서 사진을 <b>드래그하여 이동</b>, 모서리 핸들로 <b>크기 조절</b>.<br>✂️ <b>크롭 켜기</b>: 테두리 핸들을 드래그해 상하좌우 자유롭게 자르기.</div>
+          <button id="cropToggle" class="w100" style="margin-bottom:8px;background:var(--panel2)">✂️ 크롭 모드: 꺼짐</button>
           <fieldset style="border:1px solid var(--brd);border-radius:8px;padding:10px 12px 6px;margin:8px 0;background:rgba(255,255,255,.02)">
-            <legend style="font-size:11px;color:var(--acc);padding:0 6px;font-weight:600;letter-spacing:.3px">📐 크기 조절 (자르기)</legend>
-            <div class="field"><label>위 (%)</label><div class="sr"><input type="range" id="mct" min="0" max="80" value="0"/><span class="v" id="mctV">0</span></div></div>
-            <div class="field"><label>아래 (%)</label><div class="sr"><input type="range" id="mcb" min="0" max="80" value="0"/><span class="v" id="mcbV">0</span></div></div>
-            <div class="field"><label>왼쪽 (%)</label><div class="sr"><input type="range" id="mcl" min="0" max="80" value="0"/><span class="v" id="mclV">0</span></div></div>
-            <div class="field" style="margin-bottom:0"><label>오른쪽 (%)</label><div class="sr"><input type="range" id="mcr" min="0" max="80" value="0"/><span class="v" id="mcrV">0</span></div></div>
+            <legend style="font-size:11px;color:var(--acc);padding:0 6px;font-weight:600;letter-spacing:.3px">✂️ 자르기 (%)</legend>
+            <div class="field"><label>위 (%)</label><div class="sr"><input type="range" id="mct" min="0" max="95" value="0"/><span class="v" id="mctV">0</span></div></div>
+            <div class="field"><label>아래 (%)</label><div class="sr"><input type="range" id="mcb" min="0" max="95" value="0"/><span class="v" id="mcbV">0</span></div></div>
+            <div class="field"><label>왼쪽 (%)</label><div class="sr"><input type="range" id="mcl" min="0" max="95" value="0"/><span class="v" id="mclV">0</span></div></div>
+            <div class="field" style="margin-bottom:0"><label>오른쪽 (%)</label><div class="sr"><input type="range" id="mcr" min="0" max="95" value="0"/><span class="v" id="mcrV">0</span></div></div>
           </fieldset>
           <fieldset style="border:1px solid var(--brd);border-radius:8px;padding:10px 12px 6px;margin:8px 0;background:rgba(255,255,255,.02)">
             <legend style="font-size:11px;color:var(--acc);padding:0 6px;font-weight:600;letter-spacing:.3px">🔍 확대 & 위치 이동</legend>
-            <div class="field"><label>확대/축소 (%)</label><div class="sr"><input type="range" id="mzoom" min="50" max="300" value="100"/><span class="v" id="mzoomV">100</span></div></div>
+            <div class="field"><label>확대/축소 (%)</label><div class="sr"><input type="range" id="mzoom" min="10" max="600" value="100"/><span class="v" id="mzoomV">100</span></div></div>
             <div class="field"><label>가로 위치 (px)</label><div class="sr"><input type="range" id="mox" min="-1000" max="1000" value="0"/><span class="v" id="moxV">0</span></div></div>
             <div class="field" style="margin-bottom:0"><label>세로 위치 (px)</label><div class="sr"><input type="range" id="moy" min="-1500" max="1500" value="0"/><span class="v" id="moyV">0</span></div></div>
           </fieldset>
@@ -472,7 +474,7 @@ document.getElementById('licLogout').onclick=()=>{
 licCheck();
 
 /* ===== State ===== */
-const S={cards:[],idx:0,ko:null,grid:false,mode:localStorage.getItem('mode')||'post',selOv:null};
+const S={cards:[],idx:0,ko:null,grid:false,mode:localStorage.getItem('mode')||'post',selOv:null,cropMode:false};
 // Card height per mode
 const H=()=>S.mode==='reels'?1920:1350;
 // Preview slide width = 432, scale = 432/1080 = 0.4
@@ -704,54 +706,168 @@ ${JSON.stringify(pl,null,2)}${userGuide?'\n\nREMEMBER: USER INSTRUCTIONS = "'+us
   pj(res).cards.forEach(c=>{if(S.cards[c.i]){S.cards[c.i].title=c.title;S.cards[c.i].body=c.body}});restoreMedia();render();hLoad();toast('번역 완료')}catch(e){hLoad();toast('오류: '+e.message)}
 };
 
-/* Crop = clip card viewport to sub-rect; zoom = scale to cover the cropped (visible) area; move = pan. */
-function applyMediaCrop(media,c,nw,nh,wrap){
-  if(!nw||!nh)return;
+/* Crop is SOURCE-based: mct/mcb/mcl/mcr = % cropped off each side of the source image.
+   The cropped sub-image is contain-fit into the card, then × zoom, then panned by mox/moy. */
+function mediaDisplayRect(c,nw,nh){
   const HH=H();
   const mct=c.mct||0,mcb=c.mcb||0,mcl=c.mcl||0,mcr=c.mcr||0;
   const mzoom=(c.mzoom||100)/100, mox=c.mox||0, moy=c.moy||0;
-  // Visible (un-cropped) viewport in card coords
-  const visX=1080*mcl/100, visY=HH*mct/100;
-  const visW=1080-1080*mcl/100-1080*mcr/100, visH=HH-HH*mct/100-HH*mcb/100;
-  // Apply crop to wrap (clips card viewport to visible area)
-  if(wrap){wrap.style.clipPath=`inset(${mct*HH/100}px ${mcr*1080/100}px ${mcb*HH/100}px ${mcl*1080/100}px)`}
-  // Base scale = fit ENTIRE image within cropped area (contain-fit, preserves original aspect, no auto-stretch)
-  const base=Math.min(visW/nw,visH/nh);
+  const cropX=nw*mcl/100, cropY=nh*mct/100;
+  const sw=Math.max(1,nw*(100-mcl-mcr)/100), sh=Math.max(1,nh*(100-mct-mcb)/100);
+  const base=Math.min(1080/sw,HH/sh);
   const scale=base*mzoom;
-  const dispW=nw*scale,dispH=nh*scale;
-  const cx=visX+visW/2, cy=visY+visH/2;
-  const left=cx+mox-dispW/2, top=cy+moy-dispH/2;
-  media.style.position='absolute';media.style.left=left+'px';media.style.top=top+'px';
-  media.style.width=dispW+'px';media.style.height=dispH+'px';
-  media.style.maxWidth='none';media.style.maxHeight='none';media.style.objectFit='fill';
-  media.style.transform='none';
+  const dispW=sw*scale, dispH=sh*scale;
+  const left=1080/2+mox-dispW/2, top=HH/2+moy-dispH/2;
+  return {cropX,cropY,sw,sh,scale,dispW,dispH,left,top,mct,mcb,mcl,mcr};
+}
+function applyMediaCrop(media,c,nw,nh,wrap){
+  if(!nw||!nh)return;
+  const r=mediaDisplayRect(c,nw,nh);
+  if(wrap)wrap.style.clipPath='none';
+  // Image shown at full size × scale, positioned so crop region lands at (left,top), clipped to crop region
+  media.style.position='absolute';
+  media.style.width=(nw*r.scale)+'px';media.style.height=(nh*r.scale)+'px';
+  media.style.left=(r.left-r.cropX*r.scale)+'px';media.style.top=(r.top-r.cropY*r.scale)+'px';
+  media.style.maxWidth='none';media.style.maxHeight='none';media.style.objectFit='fill';media.style.transform='none';
+  const insTop=r.cropY*r.scale, insRight=(nw*r.mcr/100)*r.scale, insBottom=(nh*r.mcb/100)*r.scale, insLeft=r.cropX*r.scale;
+  media.style.clipPath=`inset(${insTop}px ${insRight}px ${insBottom}px ${insLeft}px)`;
+}
+function cardScaleOf(cardEl){const r=cardEl.getBoundingClientRect();return r.width/1080||0.4}
+
+/* Normal mode: drag media to move (mox/moy), drag corner handle to resize (mzoom). Updates element directly for smoothness. */
+function setupMoveResize(el,mediaEl,c,nw,nh){
+  el.querySelectorAll('.media-handle,.media-hint').forEach(n=>n.remove());
+  const handle=document.createElement('div');handle.className='media-handle';
+  handle.style.cssText='position:absolute;width:44px;height:44px;background:#7c5cff;border:4px solid #fff;border-radius:50%;cursor:nwse-resize;z-index:8;box-shadow:0 3px 10px rgba(0,0,0,.5)';
+  el.appendChild(handle);
+  const placeHandle=()=>{const r=mediaDisplayRect(c,nw,nh);handle.style.left=(r.left+r.dispW-22)+'px';handle.style.top=(r.top+r.dispH-22)+'px'};
+  placeHandle();
+  const SCALE=()=>cardScaleOf(el);
+  mediaEl.style.cursor='grab';
+  mediaEl.addEventListener('mousedown',e=>{
+    if(e.target===handle)return;e.preventDefault();e.stopPropagation();
+    const sc=SCALE();const sX=e.clientX,sY=e.clientY;const oX=c.mox||0,oY=c.moy||0;
+    const onMove=me=>{c.mox=Math.round(oX+(me.clientX-sX)/sc);c.moy=Math.round(oY+(me.clientY-sY)/sc);applyMediaCrop(mediaEl,c,nw,nh);placeHandle()};
+    const onUp=()=>{document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp);saveSnap();rEd()};
+    document.addEventListener('mousemove',onMove);document.addEventListener('mouseup',onUp);
+  });
+  handle.addEventListener('mousedown',e=>{
+    e.preventDefault();e.stopPropagation();
+    const sc=SCALE();const sX=e.clientX;const oZ=c.mzoom||100;const startW=mediaDisplayRect(c,nw,nh).dispW;
+    const onMove=me=>{const dx=(me.clientX-sX)/sc;const ratio=(startW+dx)/startW;c.mzoom=Math.max(10,Math.min(600,Math.round(oZ*ratio)));applyMediaCrop(mediaEl,c,nw,nh);placeHandle()};
+    const onUp=()=>{document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp);saveSnap();rEd()};
+    document.addEventListener('mousemove',onMove);document.addEventListener('mouseup',onUp);
+  });
+}
+
+/* Crop mode: show whole image dimmed, draggable crop rectangle (8 handles) → mct/mcb/mcl/mcr (source %). */
+function setupCropUI(el,c,nw,nh){
+  el.querySelectorAll('.media-handle,.crop-ui,.media-hint').forEach(n=>n.remove());
+  const HH=H();
+  const fitScale=Math.min(1080/nw,HH/nh);
+  const fw=nw*fitScale,fh=nh*fitScale,fx=(1080-fw)/2,fy=(HH-fh)/2;
+  const layer=document.createElement('div');layer.className='crop-ui';
+  layer.style.cssText='position:absolute;inset:0;z-index:9';
+  // Dim full card
+  const dim=document.createElement('div');dim.style.cssText='position:absolute;inset:0;background:rgba(0,0,0,.55)';layer.appendChild(dim);
+  // Crop rect (clear window) implemented with a transparent box + outline
+  const rect=document.createElement('div');rect.className='crop-rect';
+  rect.style.cssText='position:absolute;border:3px solid #7c5cff;box-shadow:0 0 0 9999px rgba(0,0,0,.55);box-sizing:border-box;cursor:move';
+  layer.appendChild(rect);
+  // remove the dim div (we use box-shadow spill instead for a cutout look)
+  dim.remove();
+  function place(){
+    const mct=c.mct||0,mcb=c.mcb||0,mcl=c.mcl||0,mcr=c.mcr||0;
+    const rx=fx+nw*mcl/100*fitScale, ry=fy+nh*mct/100*fitScale;
+    const rw=nw*(100-mcl-mcr)/100*fitScale, rh=nh*(100-mct-mcb)/100*fitScale;
+    rect.style.left=rx+'px';rect.style.top=ry+'px';rect.style.width=rw+'px';rect.style.height=rh+'px';
+  }
+  place();
+  const SCALE=()=>cardScaleOf(el);
+  // Edge/corner handles
+  const defs=[['n','50%','0','ns-resize'],['s','50%','100%','ns-resize'],['w','0','50%','ew-resize'],['e','100%','50%','ew-resize'],['nw','0','0','nwse-resize'],['ne','100%','0','nesw-resize'],['sw','0','100%','nesw-resize'],['se','100%','100%','nwse-resize']];
+  defs.forEach(([dir,lx,ly,cur])=>{
+    const h=document.createElement('div');
+    h.style.cssText=`position:absolute;left:${lx};top:${ly};width:34px;height:34px;margin:-17px 0 0 -17px;background:#7c5cff;border:3px solid #fff;border-radius:50%;cursor:${cur};box-shadow:0 2px 6px rgba(0,0,0,.5)`;
+    rect.appendChild(h);
+    h.addEventListener('mousedown',e=>{
+      e.preventDefault();e.stopPropagation();
+      const sc=SCALE();const sX=e.clientX,sY=e.clientY;
+      const o={mct:c.mct||0,mcb:c.mcb||0,mcl:c.mcl||0,mcr:c.mcr||0};
+      const onMove=me=>{
+        const dxPct=((me.clientX-sX)/sc/fitScale)/nw*100;
+        const dyPct=((me.clientY-sY)/sc/fitScale)/nh*100;
+        let {mct,mcb,mcl,mcr}=o;
+        if(dir.includes('w'))mcl=Math.max(0,Math.min(95-mcr,o.mcl+dxPct));
+        if(dir.includes('e'))mcr=Math.max(0,Math.min(95-mcl,o.mcr-dxPct));
+        if(dir.includes('n'))mct=Math.max(0,Math.min(95-mcb,o.mct+dyPct));
+        if(dir.includes('s'))mcb=Math.max(0,Math.min(95-mct,o.mcb-dyPct));
+        c.mct=Math.round(mct);c.mcb=Math.round(mcb);c.mcl=Math.round(mcl);c.mcr=Math.round(mcr);
+        place();syncCropSliders(c);
+      };
+      const onUp=()=>{document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp);saveSnap();refreshCard()};
+      document.addEventListener('mousemove',onMove);document.addEventListener('mouseup',onUp);
+    });
+  });
+  // Drag whole rect to move crop window (shifts crop offsets keeping size)
+  rect.addEventListener('mousedown',e=>{
+    if(e.target!==rect)return;e.preventDefault();e.stopPropagation();
+    const sc=SCALE();const sX=e.clientX,sY=e.clientY;
+    const o={mct:c.mct||0,mcb:c.mcb||0,mcl:c.mcl||0,mcr:c.mcr||0};
+    const onMove=me=>{
+      let dxPct=((me.clientX-sX)/sc/fitScale)/nw*100;
+      let dyPct=((me.clientY-sY)/sc/fitScale)/nh*100;
+      dxPct=Math.max(-o.mcl,Math.min(o.mcr,dxPct));
+      dyPct=Math.max(-o.mct,Math.min(o.mcb,dyPct));
+      c.mcl=Math.round(o.mcl+dxPct);c.mcr=Math.round(o.mcr-dxPct);
+      c.mct=Math.round(o.mct+dyPct);c.mcb=Math.round(o.mcb-dyPct);
+      place();syncCropSliders(c);
+    };
+    const onUp=()=>{document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp);saveSnap();refreshCard()};
+    document.addEventListener('mousemove',onMove);document.addEventListener('mouseup',onUp);
+  });
+  el.appendChild(layer);
+}
+function syncCropSliders(c){
+  if(typeof sr!=='function')return;
+  sr('mct','mctV',c.mct||0);sr('mcb','mcbV',c.mcb||0);sr('mcl','mclV',c.mcl||0);sr('mcr','mcrV',c.mcr||0);
 }
 
 /* ===== Build card DOM ===== */
 function bCard(c){
   const el=document.createElement('div');el.className='card';
-  if(c.media){
+  const isCurrent=S.cards[S.idx]===c;
+  const mediaSrc=c.media||c.img;
+  if(mediaSrc){
+    const isVideo=c.media&&c.mediaType==='video';
     const wrap=document.createElement('div');wrap.style.cssText='position:absolute;inset:0;overflow:hidden;z-index:1';
-    if(c.mediaType==='video'){
+    let mediaEl;
+    if(isVideo){
       const vol=(c.mvol==null?100:c.mvol)/100;
-      const v=document.createElement('video');v.src=c.media;v.autoplay=true;v.loop=true;v.playsInline=true;
-      v.muted=vol===0;v.volume=vol;
-      const apply=()=>applyMediaCrop(v,c,v.videoWidth,v.videoHeight,wrap);
-      v.onloadedmetadata=apply;if(v.videoWidth)apply();
-      wrap.appendChild(v);
+      mediaEl=document.createElement('video');mediaEl.src=c.media;mediaEl.autoplay=true;mediaEl.loop=true;mediaEl.playsInline=true;
+      mediaEl.muted=vol===0;mediaEl.volume=vol;
     }else{
-      const i=document.createElement('img');i.src=c.media;i.crossOrigin='anonymous';
-      const apply=()=>applyMediaCrop(i,c,i.naturalWidth,i.naturalHeight,wrap);
-      i.onload=apply;if(i.complete&&i.naturalWidth)apply();
-      wrap.appendChild(i);
+      mediaEl=document.createElement('img');mediaEl.src=mediaSrc;mediaEl.crossOrigin='anonymous';mediaEl.draggable=false;
     }
-    el.appendChild(wrap);
-  } else if(c.img){
-    const wrap=document.createElement('div');wrap.style.cssText='position:absolute;inset:0;overflow:hidden;z-index:1';
-    const i=document.createElement('img');i.src=c.img;i.crossOrigin='anonymous';
-    const apply=()=>applyMediaCrop(i,c,i.naturalWidth,i.naturalHeight,wrap);
-    i.onload=apply;if(i.complete&&i.naturalWidth)apply();
-    wrap.appendChild(i);el.appendChild(wrap);
+    const nwOf=()=>isVideo?mediaEl.videoWidth:mediaEl.naturalWidth;
+    const nhOf=()=>isVideo?mediaEl.videoHeight:mediaEl.naturalHeight;
+    const apply=()=>{
+      const nw=nwOf(),nh=nhOf();if(!nw||!nh)return;
+      if(isCurrent&&S.cropMode){
+        // Crop mode: show FULL image (contain-fit) as reference, overlay crop rectangle
+        const HH=H();const fit=Math.min(1080/nw,HH/nh);const fw=nw*fit,fh=nh*fit;
+        mediaEl.style.position='absolute';mediaEl.style.left=((1080-fw)/2)+'px';mediaEl.style.top=((HH-fh)/2)+'px';
+        mediaEl.style.width=fw+'px';mediaEl.style.height=fh+'px';mediaEl.style.maxWidth='none';mediaEl.style.maxHeight='none';mediaEl.style.clipPath='none';mediaEl.style.objectFit='fill';mediaEl.style.transform='none';
+        if(wrap)wrap.style.clipPath='none';
+        setupCropUI(el,c,nw,nh);
+      }else{
+        applyMediaCrop(mediaEl,c,nw,nh,wrap);
+        if(isCurrent)setupMoveResize(el,mediaEl,c,nw,nh);
+      }
+    };
+    if(isVideo){mediaEl.onloadedmetadata=apply;if(mediaEl.videoWidth)apply()}
+    else{mediaEl.onload=apply;if(mediaEl.complete&&mediaEl.naturalWidth)apply()}
+    wrap.appendChild(mediaEl);el.appendChild(wrap);
   }
   else el.style.background='linear-gradient(135deg,#2a2a4a,#1a1a2a)'
   const gr=document.createElement('div');gr.className='gr';gr.style.height=c.g.h+'%';
@@ -861,7 +977,7 @@ function render(){
     const btns=document.createElement('div');btns.style.cssText='position:absolute;top:12px;right:12px;display:flex;gap:6px;z-index:30';
     const mkBtn=(label,accept,type)=>{const b=document.createElement('button');b.textContent=label;b.style.cssText='padding:6px 12px;font-size:11px;border-radius:6px;background:rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.2);color:#fff;cursor:pointer;backdrop-filter:blur(4px)';
       b.onmouseenter=()=>b.style.background='rgba(124,92,255,.7)';b.onmouseleave=()=>b.style.background='rgba(0,0,0,.6)';
-      b.onclick=e=>{e.stopPropagation();const f=document.createElement('input');f.type='file';f.accept=accept;f.onchange=ev=>{const file=ev.target.files[0];if(!file)return;const r=new FileReader;r.onload=x=>{c.media=x.target.result;c.mediaType=type;c.img=null;refreshCard()};r.readAsDataURL(file)};f.click()};return b};
+      b.onclick=e=>{e.stopPropagation();const f=document.createElement('input');f.type='file';f.accept=accept;f.onchange=ev=>{const file=ev.target.files[0];if(!file)return;const r=new FileReader;r.onload=x=>{saveSnap();c.media=x.target.result;c.mediaType=type;c.img=null;c.mct=0;c.mcb=0;c.mcl=0;c.mcr=0;c.mzoom=100;c.mox=0;c.moy=0;refreshCard()};r.readAsDataURL(file)};f.click()};return b};
     btns.appendChild(mkBtn('이미지','image/*','image'));
     btns.appendChild(mkBtn('동영상','video/*','video'));
     // Grid toggle
@@ -1035,6 +1151,10 @@ const bC=(cid,xid,path)=>{document.getElementById(cid).oninput=e=>{document.getE
 bC('gc','gx','g.c');bR('gh','ghv','g.h','%');bR('go','gov','g.o','%');bR('gs','gsv','g.s','%');
 bR('tz','tzv','t.z');bC('tc','tx','t.c');bC('thc','thx','t.hc');bR('tb','tbv','t.b');
 ['mct','mcb','mcl','mcr','mzoom','mox','moy','mvol'].forEach(id=>{document.getElementById(id).oninput=e=>{const v=+e.target.value;document.getElementById(id+'V').textContent=v;up(c=>{c[id]=v})}});
+// Crop mode toggle
+function updCropToggleBtn(){const b=document.getElementById('cropToggle');if(!b)return;b.textContent=(S.cropMode?'✂️ 크롭 모드: 켜짐 (테두리 드래그)':'✂️ 크롭 모드: 꺼짐 (사진 드래그/크기)');b.style.background=S.cropMode?'var(--acc)':'var(--panel2)';b.style.color=S.cropMode?'#fff':'var(--txt)'}
+document.getElementById('cropToggle').onclick=()=>{S.cropMode=!S.cropMode;updCropToggleBtn();render()};
+updCropToggleBtn();
 document.getElementById('ta').onchange=e=>up(c=>c.t.a=e.target.value);
 document.getElementById('tw').onchange=e=>up(c=>c.t.w=e.target.value);
 document.getElementById('tf').onchange=e=>up(c=>c.t.f=e.target.value);
@@ -1240,18 +1360,13 @@ async function renderImageCard(c){
   // Background: image, or fallback gradient
   const src=(c.media&&c.mediaType!=='video')?c.media:c.img;
   if(src){
+    // Fill dark background first (in case contain-fit leaves letterbox)
+    ctx.fillStyle='#1a1a1a';ctx.fillRect(0,0,1080,HH);
     const img=new Image();img.crossOrigin='anonymous';img.src=src;
     await new Promise((res,rej)=>{img.onload=res;img.onerror=rej});
-    const iw=img.naturalWidth,ih=img.naturalHeight;
-    const mct=c.mct||0,mcb=c.mcb||0,mcl=c.mcl||0,mcr=c.mcr||0;
-    const mzoom=(c.mzoom||100)/100,mox=c.mox||0,moy=c.moy||0;
-    const visX=1080*mcl/100,visY=HH*mct/100;
-    const visW=1080-1080*mcl/100-1080*mcr/100,visH=HH-HH*mct/100-HH*mcb/100;
-    const base=Math.min(visW/iw,visH/ih);const scale=base*mzoom;
-    const dw=iw*scale,dh=ih*scale;
-    const cx=visX+visW/2,cy=visY+visH/2;
-    ctx.save();ctx.beginPath();ctx.rect(visX,visY,visW,visH);ctx.clip();
-    ctx.drawImage(img,cx+mox-dw/2,cy+moy-dh/2,dw,dh);
+    const r=mediaDisplayRect(c,img.naturalWidth,img.naturalHeight);
+    ctx.save();ctx.beginPath();ctx.rect(0,0,1080,HH);ctx.clip();
+    ctx.drawImage(img,r.cropX,r.cropY,r.sw,r.sh,r.left,r.top,r.dispW,r.dispH);
     ctx.restore();
   }else{
     const g=ctx.createLinearGradient(0,0,1080,HH);
@@ -1315,11 +1430,6 @@ async function renderVideoCard(c){
       rec.onstop=()=>{const blob=new Blob(chunks,{type:mimeType});resolve(blob)};
       rec.onerror=e=>reject(e.error);
       // ===== PRECOMPUTE EXPENSIVE STUFF ONCE (avoid stutter) =====
-      const mct=c.mct||0,mcb=c.mcb||0,mcl=c.mcl||0,mcr=c.mcr||0;
-      const mzoom=(c.mzoom||100)/100,mox=c.mox||0,moy=c.moy||0;
-      const visX=1080*mcl/100,visY=HH*mct/100;
-      const visW=1080-1080*mcl/100-1080*mcr/100,visH=HH-HH*mct/100-HH*mcb/100;
-      const cxC=visX+visW/2,cyC=visY+visH/2;
       const gh=HH*c.g.h/100;
       const grd=ctx.createLinearGradient(0,HH-gh,0,HH);
       grd.addColorStop(0,rgba(c.g.c,0));
@@ -1347,12 +1457,11 @@ async function renderVideoCard(c){
       // 60fps target — no throttle, let RAF drive at full monitor rate (captureStream caps at 60)
       function draw(){
         if(vid.ended||vid.currentTime*1000>=duration){rec.stop();return}
-        // Draw video frame
-        const vw=vid.videoWidth,vh=vid.videoHeight;
-        const base=Math.min(visW/vw,visH/vh);const scale=base*mzoom;
-        const dw=vw*scale,dh=vh*scale;
-        ctx.save();ctx.beginPath();ctx.rect(visX,visY,visW,visH);ctx.clip();
-        ctx.drawImage(vid,cxC+mox-dw/2,cyC+moy-dh/2,dw,dh);
+        // Draw video frame (source-based crop + zoom + pan)
+        ctx.fillStyle='#1a1a1a';ctx.fillRect(0,0,1080,HH);
+        const r=mediaDisplayRect(c,vid.videoWidth,vid.videoHeight);
+        ctx.save();ctx.beginPath();ctx.rect(0,0,1080,HH);ctx.clip();
+        ctx.drawImage(vid,r.cropX,r.cropY,r.sw,r.sh,r.left,r.top,r.dispW,r.dispH);
         ctx.restore();
         // Draw cached gradient
         ctx.fillStyle=grd;ctx.fillRect(0,HH-gh,1080,gh);
