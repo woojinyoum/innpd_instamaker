@@ -354,6 +354,15 @@ input[type=color]{width:32px;height:26px;background:transparent;border:1px solid
         </div>
         <div class="field"><label>그림자 색상</label><div class="row" style="align-items:center"><input type="color" id="tshc" value="#000000"/><input type="text" id="tshx" value="#000000" style="flex:2"/></div></div>
         <div class="field"><label>그림자 투명도</label><div class="sr"><input type="range" id="tsha" min="0" max="100" value="80"/><span class="v" id="tshav">80%</span></div></div>
+        <fieldset style="border:1px solid var(--brd);border-radius:8px;padding:10px 12px 6px;margin:8px 0;background:rgba(255,255,255,.02)">
+          <legend style="font-size:11px;color:var(--acc);padding:0 6px;font-weight:600">📝 제목 배경 박스</legend>
+          <div class="field" style="margin-bottom:6px"><label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="tbg" style="width:auto;margin:0"/>배경 박스 사용</label></div>
+          <div class="field"><label>색상</label><div class="row" style="align-items:center"><input type="color" id="tbgc" value="#000000"/><input type="text" id="tbgx" value="#000000" style="flex:2"/></div></div>
+          <div class="field"><label>배경 투명도</label><div class="sr"><input type="range" id="tbga" min="0" max="100" value="70"/><span class="v" id="tbgaV">70</span></div></div>
+          <div class="field"><label>좌우 여백 (px)</label><div class="sr"><input type="range" id="tbgpx" min="0" max="80" value="20"/><span class="v" id="tbgpxV">20</span></div></div>
+          <div class="field"><label>상하 여백 (px)</label><div class="sr"><input type="range" id="tbgpy" min="0" max="60" value="8"/><span class="v" id="tbgpyV">8</span></div></div>
+          <div class="field" style="margin-bottom:0"><label>모서리 둥글기 (px)</label><div class="sr"><input type="range" id="tbgr" min="0" max="40" value="8"/><span class="v" id="tbgrV">8</span></div></div>
+        </fieldset>
       </div>
 
     </div>
@@ -500,7 +509,7 @@ document.addEventListener('keydown',e=>{
     e.preventDefault();undo();
   }
 });
-const mk=()=>({id:crypto.randomUUID(),img:null,media:null,mediaType:null,mvy:0,mct:0,mcb:0,mcl:0,mcr:0,mzoom:100,mox:0,moy:0,mvol:100,ovs:[],title:'제목',body:'',g:{c:'#000000',h:60,o:95,s:50},t:{z:80,c:'#ffffff',b:200,a:'left',w:'900',f:'Pretendard',hc:'#ffcc00',lh:120,ls:0,sk:0,skc:'#000000',shb:30,shang:180,shdist:4,shx:0,shy:4,shc:'#000000',sha:80},b:{on:true,z:26,c:'#ffffff',t:60,r:50,w:320},logo:{src:null,size:120,pad:40,pos:'tr',x:0,y:0,useXY:false}});
+const mk=()=>({id:crypto.randomUUID(),img:null,media:null,mediaType:null,mvy:0,mct:0,mcb:0,mcl:0,mcr:0,mzoom:100,mox:0,moy:0,mvol:100,ovs:[],title:'제목',body:'',g:{c:'#000000',h:60,o:95,s:50},t:{z:80,c:'#ffffff',b:200,a:'left',w:'900',f:'Pretendard',hc:'#ffcc00',lh:120,ls:0,sk:0,skc:'#000000',shb:30,shang:180,shdist:4,shx:0,shy:4,shc:'#000000',sha:80,tbg:false,tbgc:'#000000',tbga:70,tbgpx:20,tbgpy:8,tbgr:8},b:{on:true,z:26,c:'#ffffff',t:60,r:50,w:320},logo:{src:null,size:120,pad:40,pos:'tr',x:0,y:0,useXY:false}});
 
 /* Persist */
 const $k=document.getElementById('apiKey');$k.value=localStorage.getItem('ak')||'';$k.onchange=()=>localStorage.setItem('ak',$k.value);
@@ -703,8 +712,8 @@ function applyMediaCrop(media,c,nw,nh,wrap){
   const visW=1080-1080*mcl/100-1080*mcr/100, visH=HH-HH*mct/100-HH*mcb/100;
   // Apply crop to wrap (clips card viewport to visible area)
   if(wrap){wrap.style.clipPath=`inset(${mct*HH/100}px ${mcr*1080/100}px ${mcb*HH/100}px ${mcl*1080/100}px)`}
-  // Base scale to COVER the cropped area, then multiply by user zoom
-  const base=Math.max(visW/nw,visH/nh);
+  // Base scale = fit ENTIRE image within cropped area (contain-fit, preserves original aspect, no auto-stretch)
+  const base=Math.min(visW/nw,visH/nh);
   const scale=base*mzoom;
   const dispW=nw*scale,dispH=nh*scale;
   const cx=visX+visW/2, cy=visY+visH/2;
@@ -775,6 +784,11 @@ function bCard(c){
     else buf+=ch;
   }
   if(buf)html+=inHL?`<span style="color:${c.t.hc};-webkit-text-stroke:inherit">${esc(buf)}</span>`:esc(buf);
+  if(c.t.tbg){
+    const bgCol=rgba(c.t.tbgc||'#000000',(c.t.tbga==null?70:c.t.tbga)/100);
+    const px=c.t.tbgpx==null?20:c.t.tbgpx, py=c.t.tbgpy==null?8:c.t.tbgpy, br=c.t.tbgr==null?8:c.t.tbgr;
+    html=`<span style="background:${bgCol};padding:${py}px ${px}px;border-radius:${br}px;-webkit-box-decoration-break:clone;box-decoration-break:clone">${html}</span>`;
+  }
   tt.innerHTML=html;el.appendChild(tt);
   // Overlays (draggable + resizable)
   (c.ovs||[]).forEach(ov=>{
@@ -912,6 +926,8 @@ function rEd(){
   sr('tlh','tlhv',c.t.lh,'%');sr('tls','tlsv',c.t.ls,'px');
   sr('tsk','tskv',c.t.sk);sv('tskc',c.t.skc);sv('tskx',c.t.skc);
   sr('tshb','tshbv',c.t.shb);sr('shang','shangV',c.t.shang||0,'°');sr('shdist','shdistV',c.t.shdist||0,'px');sv('tshc',c.t.shc);sv('tshx',c.t.shc);sr('tsha','tshav',c.t.sha,'%');updateWheel();
+  // Title background
+  const tbgEl=document.getElementById('tbg');if(tbgEl){tbgEl.checked=!!c.t.tbg;sv('tbgc',c.t.tbgc||'#000000');sv('tbgx',c.t.tbgc||'#000000');sr('tbga','tbgaV',c.t.tbga==null?70:c.t.tbga);sr('tbgpx','tbgpxV',c.t.tbgpx==null?20:c.t.tbgpx);sr('tbgpy','tbgpyV',c.t.tbgpy==null?8:c.t.tbgpy);sr('tbgr','tbgrV',c.t.tbgr==null?8:c.t.tbgr)}
   // Logo
   const lc=document.getElementById('logoControls');
   if(c.logo&&c.logo.src){lc.style.display='block';sr('logoSize','logoSizeV',c.logo.size);sr('logoPad','logoPadV',c.logo.pad);sr('logoX','logoXV',c.logo.x||0);sr('logoY','logoYV',c.logo.y||0)}else{lc.style.display='none'}
@@ -1016,6 +1032,9 @@ document.getElementById('tf').onchange=e=>up(c=>c.t.f=e.target.value);
 bR('tlh','tlhv','t.lh','%');bR('tls','tlsv','t.ls','px');
 bR('tsk','tskv','t.sk');bC('tskc','tskx','t.skc');
 bR('tshb','tshbv','t.shb');bC('tshc','tshx','t.shc');bR('tsha','tshav','t.sha','%');
+// Title background
+document.getElementById('tbg').onchange=e=>up(c=>c.t.tbg=e.target.checked);
+bC('tbgc','tbgx','t.tbgc');bR('tbga','tbgaV','t.tbga');bR('tbgpx','tbgpxV','t.tbgpx');bR('tbgpy','tbgpyV','t.tbgpy');bR('tbgr','tbgrV','t.tbgr');
 
 /* Shadow angle wheel */
 function applyShadowFromAng(c){
@@ -1135,14 +1154,37 @@ function drawOverlay(ctx,c,logoImg,ovImgs){
   const halfLead=(lh-c.t.z)/2;
   const xBase=c.t.a==='center'?540:c.t.a==='right'?1020:60;
   ctx.textAlign=c.t.a;ctx.textBaseline='bottom';
+  // Pre-compute parts per line + measure widths for background boxes
   let _hlState=false;
-  lines.forEach((line,li)=>{
+  const linesData=[];
+  lines.forEach(line=>{const _sp=splitHL(line,_hlState);_hlState=_sp.hlEnd;const parts=_sp.parts.length?_sp.parts:[{t:line,h:false}];let tw=0;parts.forEach(p=>{tw+=ctx.measureText(p.t).width});linesData.push({parts,tw})});
+  // Draw title backgrounds first (if enabled)
+  if(c.t.tbg){
+    const bgCol=rgba(c.t.tbgc||'#000000',(c.t.tbga==null?70:c.t.tbga)/100);
+    const px=c.t.tbgpx==null?20:c.t.tbgpx, py=c.t.tbgpy==null?8:c.t.tbgpy, br=c.t.tbgr==null?8:c.t.tbgr;
+    ctx.save();ctx.shadowBlur=0;ctx.shadowOffsetX=0;ctx.shadowOffsetY=0;ctx.fillStyle=bgCol;
+    linesData.forEach((ld,li)=>{
+      const yy=HH-c.t.b-(lines.length-1-li)*lh-halfLead;
+      let sx=c.t.a==='center'?(1080-ld.tw)/2:c.t.a==='right'?1020-ld.tw:60;
+      const rx=sx-px, ry=yy-c.t.z-py+halfLead*0, rw=ld.tw+px*2, rh=c.t.z+py*2;
+      // Rounded rect
+      const R=Math.min(br,rh/2,rw/2);
+      ctx.beginPath();
+      ctx.moveTo(rx+R,ry);
+      ctx.lineTo(rx+rw-R,ry);ctx.quadraticCurveTo(rx+rw,ry,rx+rw,ry+R);
+      ctx.lineTo(rx+rw,ry+rh-R);ctx.quadraticCurveTo(rx+rw,ry+rh,rx+rw-R,ry+rh);
+      ctx.lineTo(rx+R,ry+rh);ctx.quadraticCurveTo(rx,ry+rh,rx,ry+rh-R);
+      ctx.lineTo(rx,ry+R);ctx.quadraticCurveTo(rx,ry,rx+R,ry);
+      ctx.closePath();ctx.fill();
+    });
+    ctx.restore();
+  }
+  // Draw text
+  linesData.forEach((ld,li)=>{
     const yy=HH-c.t.b-(lines.length-1-li)*lh-halfLead;
-    const _sp=splitHL(line,_hlState);_hlState=_sp.hlEnd;
-    const parts=_sp.parts.length?_sp.parts:[{t:line,h:false}];
+    const parts=ld.parts, tw=ld.tw;
     if(c.t.a==='center'||c.t.a==='right'){
       ctx.textAlign='left';
-      let tw=0;parts.forEach(p=>{tw+=ctx.measureText(p.t).width});
       let sx=c.t.a==='center'?(1080-tw)/2:1080-tw-60;
       parts.forEach(p=>{
         ctx.fillStyle=p.h?c.t.hc:c.t.c;
@@ -1196,7 +1238,7 @@ async function renderImageCard(c){
     const mzoom=(c.mzoom||100)/100,mox=c.mox||0,moy=c.moy||0;
     const visX=1080*mcl/100,visY=HH*mct/100;
     const visW=1080-1080*mcl/100-1080*mcr/100,visH=HH-HH*mct/100-HH*mcb/100;
-    const base=Math.max(visW/iw,visH/ih);const scale=base*mzoom;
+    const base=Math.min(visW/iw,visH/ih);const scale=base*mzoom;
     const dw=iw*scale,dh=ih*scale;
     const cx=visX+visW/2,cy=visY+visH/2;
     ctx.save();ctx.beginPath();ctx.rect(visX,visY,visW,visH);ctx.clip();
@@ -1298,7 +1340,7 @@ async function renderVideoCard(c){
         if(vid.ended||vid.currentTime*1000>=duration){rec.stop();return}
         // Draw video frame
         const vw=vid.videoWidth,vh=vid.videoHeight;
-        const base=Math.max(visW/vw,visH/vh);const scale=base*mzoom;
+        const base=Math.min(visW/vw,visH/vh);const scale=base*mzoom;
         const dw=vw*scale,dh=vh*scale;
         ctx.save();ctx.beginPath();ctx.rect(visX,visY,visW,visH);ctx.clip();
         ctx.drawImage(vid,cxC+mox-dw/2,cyC+moy-dh/2,dw,dh);
