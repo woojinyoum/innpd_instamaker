@@ -244,7 +244,10 @@ input[type=color]{width:32px;height:26px;background:transparent;border:1px solid
           <div class="sr"><input type="range" id="logoX" min="0" max="1080" value="0"/><span class="v" id="logoXV">0</span></div>
           <label style="margin-top:4px">Y 미세조정 (px)</label>
           <div class="sr"><input type="range" id="logoY" min="0" max="1350" value="0"/><span class="v" id="logoYV">0</span></div>
-          <button class="dn" id="logoRm" style="width:100%;margin-top:8px;font-size:10px;padding:6px">로고 제거</button>
+          <div class="row" style="margin-top:8px;gap:6px">
+            <button class="dn" id="logoRm" style="flex:1;font-size:10px;padding:6px">이 카드에서만 제거</button>
+            <button class="dn" id="logoRmAll" style="flex:1;font-size:10px;padding:6px">모든 카드에서 제거</button>
+          </div>
         </div>
       </div>
 
@@ -950,13 +953,19 @@ document.getElementById('eB').oninput=e=>up(c=>c.body=e.target.value);
 
 /* Logo */
 document.getElementById('logoUp').onclick=()=>document.getElementById('logoF').click();
-document.getElementById('logoF').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader;r.onload=ev=>{upLogo(c=>{c.logo.src=ev.target.result});document.getElementById('logoControls').style.display='block'};r.readAsDataURL(f)};
+document.getElementById('logoF').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader;r.onload=ev=>{
+  // Upload propagates to ALL cards (use upLogo)
+  upLogo(c=>{c.logo.src=ev.target.result});
+  document.getElementById('logoControls').style.display='block';
+  toast('모든 카드에 로고 적용');
+};r.readAsDataURL(f)};
 document.getElementById('logoSize').oninput=e=>{const v=+e.target.value;document.getElementById('logoSizeV').textContent=v;upLogo(c=>c.logo.size=v)};
 document.getElementById('logoPad').oninput=e=>{const v=+e.target.value;document.getElementById('logoPadV').textContent=v;upLogo(c=>c.logo.pad=v)};
 document.querySelectorAll('[data-lp]').forEach(b=>{b.onclick=()=>upLogo(c=>{c.logo.pos=b.dataset.lp;c.logo.useXY=false})});
 document.getElementById('logoX').oninput=e=>{const v=+e.target.value;document.getElementById('logoXV').textContent=v;upLogo(c=>{c.logo.x=v;c.logo.useXY=true})};
 document.getElementById('logoY').oninput=e=>{const v=+e.target.value;document.getElementById('logoYV').textContent=v;upLogo(c=>{c.logo.y=v;c.logo.useXY=true})};
-document.getElementById('logoRm').onclick=()=>{upLogo(c=>{c.logo.src=null;c.logo.useXY=false});document.getElementById('logoControls').style.display='none'};
+document.getElementById('logoRm').onclick=()=>{up(c=>{c.logo.src=null;c.logo.useXY=false});toast('이 카드에서만 제거됨');rEd()};
+document.getElementById('logoRmAll').onclick=()=>{upLogo(c=>{c.logo.src=null;c.logo.useXY=false});document.getElementById('logoControls').style.display='none';toast('모든 카드에서 제거됨')};
 
 /* ===== Overlays ===== */
 function curSelOv(){const c=cur();if(!c||!c.ovs)return null;return c.ovs.find(o=>o.id===S.selOv)||null}
