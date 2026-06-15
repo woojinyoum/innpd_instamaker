@@ -287,13 +287,6 @@ input[type=color]{width:32px;height:26px;background:transparent;border:1px solid
           <div class="tip" style="font-size:11px;color:var(--dim);margin-bottom:6px;line-height:1.5">🖱️ <b>크롭 끄기</b>: 카드에서 사진을 <b>드래그하여 이동</b>, 모서리 핸들로 <b>크기 조절</b>.<br>✂️ <b>크롭 켜기</b>: 테두리 핸들을 드래그해 상하좌우 자유롭게 자르기.</div>
           <button id="cropToggle" class="w100" style="margin-bottom:8px;background:var(--panel2)">✂️ 크롭 모드: 꺼짐</button>
           <fieldset style="border:1px solid var(--brd);border-radius:8px;padding:10px 12px 6px;margin:8px 0;background:rgba(255,255,255,.02)">
-            <legend style="font-size:11px;color:var(--acc);padding:0 6px;font-weight:600;letter-spacing:.3px">✂️ 자르기 (%)</legend>
-            <div class="field"><label>위 (%)</label><div class="sr"><input type="range" id="mct" min="0" max="95" value="0"/><span class="v" id="mctV">0</span></div></div>
-            <div class="field"><label>아래 (%)</label><div class="sr"><input type="range" id="mcb" min="0" max="95" value="0"/><span class="v" id="mcbV">0</span></div></div>
-            <div class="field"><label>왼쪽 (%)</label><div class="sr"><input type="range" id="mcl" min="0" max="95" value="0"/><span class="v" id="mclV">0</span></div></div>
-            <div class="field" style="margin-bottom:0"><label>오른쪽 (%)</label><div class="sr"><input type="range" id="mcr" min="0" max="95" value="0"/><span class="v" id="mcrV">0</span></div></div>
-          </fieldset>
-          <fieldset style="border:1px solid var(--brd);border-radius:8px;padding:10px 12px 6px;margin:8px 0;background:rgba(255,255,255,.02)">
             <legend style="font-size:11px;color:var(--acc);padding:0 6px;font-weight:600;letter-spacing:.3px">🔍 확대 & 위치 이동</legend>
             <div class="field"><label>확대/축소 (%)</label><div class="sr"><input type="range" id="mzoom" min="10" max="600" value="100"/><span class="v" id="mzoomV">100</span></div></div>
             <div class="field"><label>가로 위치 (px)</label><div class="sr"><input type="range" id="mox" min="-1000" max="1000" value="0"/><span class="v" id="moxV">0</span></div></div>
@@ -849,10 +842,7 @@ function setupCropUI(el,c,nw,nh){
   });
   el.appendChild(layer);
 }
-function syncCropSliders(c){
-  if(typeof sr!=='function')return;
-  sr('mct','mctV',c.mct||0);sr('mcb','mcbV',c.mcb||0);sr('mcl','mclV',c.mcl||0);sr('mcr','mcrV',c.mcr||0);
-}
+function syncCropSliders(c){/* crop sliders removed — interactive crop only (no-op) */}
 
 /* ===== Build card DOM ===== */
 function bCard(c){
@@ -1060,7 +1050,7 @@ function rEd(){
   sv('gc',c.g.c);sv('gx',c.g.c);sr('gh','ghv',c.g.h,'%');sr('go','gov',c.g.o,'%');sr('gs','gsv',c.g.s,'%');
   sr('tz','tzv',c.t.z);sv('tc',c.t.c);sv('tx',c.t.c);sv('thc',c.t.hc);sv('thx',c.t.hc);sr('tb','tbv',c.t.b);sv('ta',c.t.a);sv('tw',c.t.w);sv('tf',c.t.f||'Pretendard');
   // Show media crop/zoom/move sliders only when media attached
-  const mcF=document.getElementById('mediaCropFields');if(mcF){mcF.style.display=c.media?'block':'none';sr('mct','mctV',c.mct||0);sr('mcb','mcbV',c.mcb||0);sr('mcl','mclV',c.mcl||0);sr('mcr','mcrV',c.mcr||0);sr('mzoom','mzoomV',c.mzoom||100);sr('mox','moxV',c.mox||0);sr('moy','moyV',c.moy||0);sr('mvol','mvolV',c.mvol==null?100:c.mvol)}
+  const mcF=document.getElementById('mediaCropFields');if(mcF){mcF.style.display=c.media?'block':'none';sr('mzoom','mzoomV',c.mzoom||100);sr('mox','moxV',c.mox||0);sr('moy','moyV',c.moy||0);sr('mvol','mvolV',c.mvol==null?100:c.mvol)}
   // Show volume slider only for video
   const mvF=document.getElementById('mvolField');if(mvF){mvF.style.display=(c.media&&c.mediaType==='video')?'block':'none'}
   sr('tlh','tlhv',c.t.lh,'%');sr('tls','tlsv',c.t.ls,'px');
@@ -1171,7 +1161,7 @@ const bC=(cid,xid,path)=>{document.getElementById(cid).oninput=e=>{document.getE
 
 bC('gc','gx','g.c');bR('gh','ghv','g.h','%');bR('go','gov','g.o','%');bR('gs','gsv','g.s','%');
 bR('tz','tzv','t.z');bC('tc','tx','t.c');bC('thc','thx','t.hc');bR('tb','tbv','t.b');
-['mct','mcb','mcl','mcr','mzoom','mox','moy','mvol'].forEach(id=>{document.getElementById(id).oninput=e=>{const v=+e.target.value;document.getElementById(id+'V').textContent=v;up(c=>{c[id]=v})}});
+['mzoom','mox','moy','mvol'].forEach(id=>{const el=document.getElementById(id);if(el)el.oninput=e=>{const v=+e.target.value;document.getElementById(id+'V').textContent=v;up(c=>{c[id]=v})}});
 // Crop mode toggle
 function updCropToggleBtn(){const b=document.getElementById('cropToggle');if(!b)return;b.textContent=(S.cropMode?'✂️ 크롭 모드: 켜짐 (테두리 드래그)':'✂️ 크롭 모드: 꺼짐 (사진 드래그/크기)');b.style.background=S.cropMode?'var(--acc)':'var(--panel2)';b.style.color=S.cropMode?'#fff':'var(--txt)'}
 document.getElementById('cropToggle').onclick=()=>{S.cropMode=!S.cropMode;updCropToggleBtn();render()};
