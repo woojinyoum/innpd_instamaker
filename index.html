@@ -734,7 +734,15 @@ function applyMediaCrop(media,c,nw,nh,wrap){
 }
 function cardScaleOf(cardEl){const r=cardEl.getBoundingClientRect();return r.width/1080||0.4}
 
-/* Normal mode: drag media to move (mox/moy), drag corner handle to resize (mzoom). Updates element directly for smoothness. */
+/* Center guide crosshair (magnetic snap helper) */
+function getGuides(el){
+  const HH=H();
+  let gv=el.querySelector('.snap-v'),gh=el.querySelector('.snap-h');
+  if(!gv){gv=document.createElement('div');gv.className='snap-v';gv.style.cssText=`position:absolute;left:539px;top:0;width:3px;height:${HH}px;background:#00e0ff;z-index:12;display:none;box-shadow:0 0 8px #00e0ff;pointer-events:none`;el.appendChild(gv)}
+  if(!gh){gh=document.createElement('div');gh.className='snap-h';gh.style.cssText=`position:absolute;top:${HH/2-1}px;left:0;height:3px;width:1080px;background:#00e0ff;z-index:12;display:none;box-shadow:0 0 8px #00e0ff;pointer-events:none`;el.appendChild(gh)}
+  return {gv,gh};
+}
+/* Normal mode: drag media to move (mox/moy), drag corner handle to resize (mzoom). Magnetic center snap with crosshair. */
 function setupMoveResize(el,mediaEl,c,nw,nh){
   el.querySelectorAll('.media-handle,.media-hint').forEach(n=>n.remove());
   const handle=document.createElement('div');handle.className='media-handle';
@@ -743,12 +751,20 @@ function setupMoveResize(el,mediaEl,c,nw,nh){
   const placeHandle=()=>{const r=mediaDisplayRect(c,nw,nh);handle.style.left=(r.left+r.dispW-22)+'px';handle.style.top=(r.top+r.dispH-22)+'px'};
   placeHandle();
   const SCALE=()=>cardScaleOf(el);
+  const SNAP=18; // snap threshold in card px
   mediaEl.style.cursor='grab';
   mediaEl.addEventListener('mousedown',e=>{
     if(e.target===handle)return;e.preventDefault();e.stopPropagation();
     const sc=SCALE();const sX=e.clientX,sY=e.clientY;const oX=c.mox||0,oY=c.moy||0;
-    const onMove=me=>{c.mox=Math.round(oX+(me.clientX-sX)/sc);c.moy=Math.round(oY+(me.clientY-sY)/sc);applyMediaCrop(mediaEl,c,nw,nh);placeHandle()};
-    const onUp=()=>{document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp);saveSnap();rEd()};
+    const {gv,gh}=getGuides(el);
+    const onMove=me=>{
+      let nx=Math.round(oX+(me.clientX-sX)/sc), ny=Math.round(oY+(me.clientY-sY)/sc);
+      // Magnetic snap to center (mox=0 / moy=0)
+      if(Math.abs(nx)<=SNAP){nx=0;gv.style.display='block'}else{gv.style.display='none'}
+      if(Math.abs(ny)<=SNAP){ny=0;gh.style.display='block'}else{gh.style.display='none'}
+      c.mox=nx;c.moy=ny;applyMediaCrop(mediaEl,c,nw,nh);placeHandle();
+    };
+    const onUp=()=>{document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp);gv.style.display='none';gh.style.display='none';saveSnap();rEd()};
     document.addEventListener('mousemove',onMove);document.addEventListener('mouseup',onUp);
   });
   handle.addEventListener('mousedown',e=>{
@@ -809,21 +825,26 @@ function setupCropUI(el,c,nw,nh){
       document.addEventListener('mousemove',onMove);document.addEventListener('mouseup',onUp);
     });
   });
-  // Drag whole rect to move crop window (shifts crop offsets keeping size)
+  // Drag whole rect to move crop window (shifts crop offsets keeping size). Magnetic center snap.
   rect.addEventListener('mousedown',e=>{
     if(e.target!==rect)return;e.preventDefault();e.stopPropagation();
     const sc=SCALE();const sX=e.clientX,sY=e.clientY;
     const o={mct:c.mct||0,mcb:c.mcb||0,mcl:c.mcl||0,mcr:c.mcr||0};
+    const {gv,gh}=getGuides(el);
+    const SNAPpct=2; // snap when crop window center within 2% of image center
     const onMove=me=>{
       let dxPct=((me.clientX-sX)/sc/fitScale)/nw*100;
       let dyPct=((me.clientY-sY)/sc/fitScale)/nh*100;
       dxPct=Math.max(-o.mcl,Math.min(o.mcr,dxPct));
       dyPct=Math.max(-o.mct,Math.min(o.mcb,dyPct));
-      c.mcl=Math.round(o.mcl+dxPct);c.mcr=Math.round(o.mcr-dxPct);
-      c.mct=Math.round(o.mct+dyPct);c.mcb=Math.round(o.mcb-dyPct);
+      let mcl=o.mcl+dxPct,mcr=o.mcr-dxPct,mct=o.mct+dyPct,mcb=o.mcb-dyPct;
+      // Snap when crop window is horizontally/vertically centered in source (mcl==mcr / mct==mcb)
+      if(Math.abs(mcl-mcr)<=SNAPpct){const avg=(mcl+mcr)/2;mcl=avg;mcr=avg;gv.style.display='block'}else{gv.style.display='none'}
+      if(Math.abs(mct-mcb)<=SNAPpct){const avg=(mct+mcb)/2;mct=avg;mcb=avg;gh.style.display='block'}else{gh.style.display='none'}
+      c.mcl=Math.round(mcl);c.mcr=Math.round(mcr);c.mct=Math.round(mct);c.mcb=Math.round(mcb);
       place();syncCropSliders(c);
     };
-    const onUp=()=>{document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp);saveSnap();refreshCard()};
+    const onUp=()=>{document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp);gv.style.display='none';gh.style.display='none';saveSnap();refreshCard()};
     document.addEventListener('mousemove',onMove);document.addEventListener('mouseup',onUp);
   });
   el.appendChild(layer);
