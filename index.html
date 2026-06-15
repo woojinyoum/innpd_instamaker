@@ -739,9 +739,19 @@ function getGuides(el){
 function setupMoveResize(el,mediaEl,c,nw,nh){
   el.querySelectorAll('.media-handle,.media-hint').forEach(n=>n.remove());
   const handle=document.createElement('div');handle.className='media-handle';
-  handle.style.cssText='position:absolute;width:44px;height:44px;background:#7c5cff;border:4px solid #fff;border-radius:50%;cursor:nwse-resize;z-index:8;box-shadow:0 3px 10px rgba(0,0,0,.5)';
+  handle.style.cssText='position:absolute;width:52px;height:52px;background:#7c5cff;border:5px solid #fff;border-radius:50%;cursor:nwse-resize;z-index:13;box-shadow:0 3px 14px rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center';
+  handle.innerHTML='<span style="color:#fff;font-size:22px;line-height:1;transform:rotate(45deg)">⤢</span>';
   el.appendChild(handle);
-  const placeHandle=()=>{const r=mediaDisplayRect(c,nw,nh);handle.style.left=(r.left+r.dispW-22)+'px';handle.style.top=(r.top+r.dispH-22)+'px'};
+  const HW=52;
+  const placeHandle=()=>{
+    const r=mediaDisplayRect(c,nw,nh);const HH=H();
+    // Bottom-right corner of visible media, inset INSIDE so it sits on the image
+    let hx=r.left+r.dispW-HW-6, hy=r.top+r.dispH-HW-6;
+    // Keep fully within the card so it's always visible
+    hx=Math.max(6,Math.min(1080-HW-6,hx));
+    hy=Math.max(6,Math.min(HH-HW-6,hy));
+    handle.style.left=hx+'px';handle.style.top=hy+'px';
+  };
   placeHandle();
   const SCALE=()=>cardScaleOf(el);
   const SNAP=18; // snap threshold in card px
