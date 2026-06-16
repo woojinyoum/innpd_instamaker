@@ -938,13 +938,16 @@ function bCard(c){
   tt.innerHTML=html;el.appendChild(tt);
   // Overlays (draggable + resizable)
   (c.ovs||[]).forEach(ov=>{
-    const w=ov.w||300, h=ov.h||(w*(ov.ar||1));
     const shape=ov.shape||'rect', bw=ov.bw||0, bc=ov.bc||'#ffffff', brad=ov.br==null?24:ov.br;
+    // Circle = perfect circle (square box), others keep aspect
+    const w=ov.w||300, h=shape==='circle'?w:(ov.h||(w*(ov.ar||1)));
     const radius=shape==='circle'?'50%':shape==='round'?brad+'px':'0';
     const fit=(shape==='circle'||shape==='round')?'cover':'fill';
     const oc=document.createElement('div');
-    oc.style.cssText=`position:absolute;left:${ov.x||0}px;top:${ov.y||0}px;width:${w}px;height:${h}px;z-index:6;cursor:grab;user-select:none;transform:rotate(${ov.r||0}deg);opacity:${(ov.a==null?100:ov.a)/100};border-radius:${radius};overflow:hidden;box-sizing:border-box;${bw>0?`border:${bw}px solid ${bc};`:''}`;
-    if(S.selOv===ov.id){oc.style.outline='3px dashed #7c5cff';oc.style.outlineOffset='2px'}
+    // Border drawn OUTWARD via box-shadow ring (does not shrink image)
+    const ring=bw>0?`box-shadow:0 0 0 ${bw}px ${bc};`:'';
+    oc.style.cssText=`position:absolute;left:${ov.x||0}px;top:${ov.y||0}px;width:${w}px;height:${h}px;z-index:6;cursor:grab;user-select:none;transform:rotate(${ov.r||0}deg);opacity:${(ov.a==null?100:ov.a)/100};border-radius:${radius};overflow:hidden;box-sizing:border-box;${ring}`;
+    if(S.selOv===ov.id){oc.style.outline='3px dashed #7c5cff';oc.style.outlineOffset=(bw+3)+'px'}
     const oi=document.createElement('img');oi.src=ov.src;oi.draggable=false;
     oi.style.cssText=`width:100%;height:100%;display:block;pointer-events:none;object-fit:${fit}`;
     oc.appendChild(oi);
@@ -1300,34 +1303,34 @@ function roundRectPath(ctx,x,y,w,h,rad){
 function drawOverlayImages(ctx,c,ovImgs){
   (c.ovs||[]).forEach(ov=>{
     const img=ovImgs[ov.id];if(!img)return;
-    const w=ov.w||300,h=ov.h||(w*(ov.ar||1));
+    const shape=ov.shape||'rect', bw=ov.bw||0, bc=ov.bc||'#ffffff', brad=ov.br==null?24:ov.br;
+    const w=ov.w||300, h=shape==='circle'?w:(ov.h||(w*(ov.ar||1)));
     const r=((ov.r||0)*Math.PI)/180;
     const a=(ov.a==null?100:ov.a)/100;
-    const shape=ov.shape||'rect', bw=ov.bw||0, bc=ov.bc||'#ffffff', brad=ov.br==null?24:ov.br;
     const cover=(shape==='circle'||shape==='round');
     ctx.save();ctx.globalAlpha=a;
     ctx.translate((ov.x||0)+w/2,(ov.y||0)+h/2);
     if(r)ctx.rotate(r);
-    // Build clip path for shape
+    // Clip to FULL shape (image keeps full size, border goes outward — no shrink)
     ctx.save();
-    if(shape==='circle'){ctx.beginPath();ctx.ellipse(0,0,w/2-bw/2,h/2-bw/2,0,0,Math.PI*2);ctx.closePath();ctx.clip()}
-    else if(shape==='round'){roundRectPath(ctx,-w/2+bw/2,-h/2+bw/2,w-bw,h-bw,brad);ctx.clip()}
-    // Draw image (cover-fit for circle/round, fill for rect)
+    if(shape==='circle'){ctx.beginPath();ctx.ellipse(0,0,w/2,h/2,0,0,Math.PI*2);ctx.closePath();ctx.clip()}
+    else if(shape==='round'){roundRectPath(ctx,-w/2,-h/2,w,h,brad);ctx.clip()}
+    // Draw image: cover-fit (aspect preserved, no distortion) for circle/round, fill for rect
     if(cover){
       const iw=img.naturalWidth||w, ih=img.naturalHeight||h;
-      const innerW=w-bw, innerH=h-bw;
-      const s=Math.max(innerW/iw,innerH/ih);const dw=iw*s,dh=ih*s;
+      const s=Math.max(w/iw,h/ih);const dw=iw*s,dh=ih*s;
       ctx.drawImage(img,-dw/2,-dh/2,dw,dh);
     }else{
       ctx.drawImage(img,-w/2,-h/2,w,h);
     }
     ctx.restore();
-    // Draw border
+    // Border drawn OUTWARD (centered at edge+bw/2 so it sits fully outside the image)
     if(bw>0){
       ctx.lineWidth=bw;ctx.strokeStyle=bc;
-      if(shape==='circle'){ctx.beginPath();ctx.ellipse(0,0,w/2-bw/2,h/2-bw/2,0,0,Math.PI*2);ctx.stroke()}
-      else if(shape==='round'){roundRectPath(ctx,-w/2+bw/2,-h/2+bw/2,w-bw,h-bw,brad);ctx.stroke()}
-      else{ctx.strokeRect(-w/2+bw/2,-h/2+bw/2,w-bw,h-bw)}
+      const o=bw/2;
+      if(shape==='circle'){ctx.beginPath();ctx.ellipse(0,0,w/2+o,h/2+o,0,0,Math.PI*2);ctx.stroke()}
+      else if(shape==='round'){roundRectPath(ctx,-w/2-o,-h/2-o,w+bw,h+bw,brad+o);ctx.stroke()}
+      else{ctx.strokeRect(-w/2-o,-h/2-o,w+bw,h+bw)}
     }
     ctx.restore();
   });
