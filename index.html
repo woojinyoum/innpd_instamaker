@@ -474,6 +474,7 @@ licCheck();
 
 /* ===== State ===== */
 const S={cards:[],idx:0,ko:null,grid:false,mode:localStorage.getItem('mode')||'post',selOv:null,cropMode:false,ovAdjust:null};
+let _ovLastClick={id:null,t:0};
 // Card height per mode
 const H=()=>S.mode==='reels'?1920:1350;
 // Preview slide width = 432, scale = 432/1080 = 0.4
@@ -969,11 +970,14 @@ function bCard(c){
       hint.style.cssText='position:absolute;left:0;bottom:0;width:100%;text-align:center;font-size:10px;color:#fff;background:rgba(0,224,255,.75);padding:3px 0;pointer-events:none;z-index:3';
       oc.appendChild(hint);
     }
-    // Double-click: toggle inner-image adjust mode (pan photo within frame)
-    oc.addEventListener('dblclick',e=>{e.stopPropagation();e.preventDefault();S.selOv=ov.id;S.ovAdjust=adjusting?null:ov.id;renderOvList&&renderOvList();refreshCard()});
     oc.addEventListener('mousedown',e=>{
       e.stopPropagation();e.preventDefault();
-      if(S.selOv!==ov.id||S.ovAdjust&&S.ovAdjust!==ov.id){S.ovAdjust=null}
+      // Manual double-click detection (survives re-renders) → toggle inner-photo adjust mode
+      const now=Date.now();
+      const isDbl=(_ovLastClick.id===ov.id && now-_ovLastClick.t<400);
+      _ovLastClick={id:ov.id,t:now};
+      if(isDbl){S.selOv=ov.id;S.ovAdjust=(S.ovAdjust===ov.id)?null:ov.id;renderOvList&&renderOvList();refreshCard();return}
+      if(S.selOv!==ov.id){S.ovAdjust=null}
       S.selOv=ov.id;
       const sc=cardScaleOf(el);const sX=e.clientX,sY=e.clientY;
       if(adjusting){
