@@ -1006,9 +1006,16 @@ function bCard(c){
       }
       const isResize=e.target.dataset&&e.target.dataset.act==='resize';
       const oX=ov.x||0,oY=ov.y||0,oW=ov.w||300;
+      const oOfx=ov.ofx||0,oOfy=ov.ofy||0;
       const onMove=me=>{
         const dx=(me.clientX-sX)/sc,dy=(me.clientY-sY)/sc;
-        if(isResize){ov.w=Math.max(40,Math.round(oW+dx));ov.h=Math.round(ov.w*(ov.ar||1))}
+        if(isResize){
+          const newW=Math.max(40,Math.round(oW+dx));
+          const ratio=newW/oW;
+          ov.w=newW;ov.h=Math.round(ov.w*(ov.ar||1));
+          // Scale inner-photo offset proportionally so framing stays consistent
+          ov.ofx=Math.round(oOfx*ratio);ov.ofy=Math.round(oOfy*ratio);
+        }
         else{ov.x=Math.round(oX+dx);ov.y=Math.round(oY+dy)}
         refreshCard();
       };
@@ -1213,7 +1220,10 @@ document.getElementById('ovF').onchange=e=>{
   document.getElementById(id).oninput=e=>{
     const v=+e.target.value;document.getElementById(id+'V').textContent=v;
     const sel=curSelOv();if(!sel)return;
-    up(()=>{sel[key]=v;if(key==='w')sel.h=Math.round(v*(sel.ar||1))});
+    up(()=>{
+      if(key==='w'){const oldW=sel.w||300;const ratio=v/oldW;sel.w=v;sel.h=Math.round(v*(sel.ar||1));sel.ofx=Math.round((sel.ofx||0)*ratio);sel.ofy=Math.round((sel.ofy||0)*ratio)}
+      else sel[key]=v;
+    });
   };
 });
 // Overlay shape
