@@ -995,11 +995,10 @@ function bCard(c){
       S.selOv=ov.id;
       const sc=cardScaleOf(el);const sX=e.clientX,sY=e.clientY;
       if(adjusting){
-        // Pan inner photo (ofx/ofy)
+        // Pan inner photo (ofx/ofy) — use SAME formula as posCover (includes ofz) so exit keeps look
         const oFx=ov.ofx||0,oFy=ov.ofy||0;
         const onMove=me=>{ov.ofx=Math.round(oFx+(me.clientX-sX)/sc);ov.ofy=Math.round(oFy+(me.clientY-sY)/sc);
-          // update only this img position for smoothness
-          const iw=oi.naturalWidth,ih=oi.naturalHeight;if(iw&&ih){const s=Math.max(w/iw,h/ih);const dw=iw*s,dh=ih*s;oi.style.left=((w-dw)/2+ov.ofx)+'px';oi.style.top=((h-dh)/2+ov.ofy)+'px'}
+          const iw=oi.naturalWidth,ih=oi.naturalHeight;if(iw&&ih){const zz=(ov.ofz==null?100:ov.ofz)/100;const s=Math.max(w/iw,h/ih)*zz;const dw=iw*s,dh=ih*s;oi.style.width=dw+'px';oi.style.height=dh+'px';oi.style.left=((w-dw)/2+ov.ofx)+'px';oi.style.top=((h-dh)/2+ov.ofy)+'px'}
         };
         const onUp=()=>{document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp);saveSnap()};
         document.addEventListener('mousemove',onMove);document.addEventListener('mouseup',onUp);
