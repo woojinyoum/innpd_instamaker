@@ -176,8 +176,8 @@ input[type=color]{width:32px;height:26px;background:transparent;border:1px solid
     <div class="sep"></div>
 
     <h3>인스타그램 원본</h3>
-    <div class="field"><label>게시물 이미지</label><div class="drop" id="d1"><span id="d1t">이미지 업로드</span><img id="d1p" style="display:none"/></div><input type="file" id="f1" accept="image/*" style="display:none"/></div>
-    <div class="field"><label>본문 캡쳐</label><div class="drop" id="d2"><span id="d2t">본문 스크린샷 업로드</span><img id="d2p" style="display:none"/></div><input type="file" id="f2" accept="image/*" style="display:none"/></div>
+    <div class="field"><label>게시물 이미지</label><div class="drop" id="d1"><span id="d1t">이미지 업로드</span><img id="d1p" style="display:none"/></div><input type="file" id="f1" accept="image/png,image/jpeg,image/webp,image/gif,image/*" style="display:none"/></div>
+    <div class="field"><label>본문 캡쳐</label><div class="drop" id="d2"><span id="d2t">본문 스크린샷 업로드</span><img id="d2p" style="display:none"/></div><input type="file" id="f2" accept="image/png,image/jpeg,image/webp,image/gif,image/*" style="display:none"/></div>
     <button class="w100" id="goBtn">분석하고 카드 생성</button>
     <div class="sep"></div>
 
@@ -225,7 +225,7 @@ input[type=color]{width:32px;height:26px;background:transparent;border:1px solid
 
       <!-- Logo -->
       <div class="tp show" data-p="logo">
-        <div class="field"><label>로고 이미지</label><div class="img-up" id="logoUp">로고 업로드</div><input type="file" id="logoF" accept="image/*" style="display:none"/></div>
+        <div class="field"><label>로고 이미지</label><div class="img-up" id="logoUp">로고 업로드</div><input type="file" id="logoF" accept="image/png,image/jpeg,image/webp,image/gif,image/*" style="display:none"/></div>
         <div class="field" id="logoControls" style="display:none">
           <label>크기 (px)</label>
           <div class="sr"><input type="range" id="logoSize" min="40" max="300" value="120"/><span class="v" id="logoSizeV">120</span></div>
@@ -257,7 +257,7 @@ input[type=color]{width:32px;height:26px;background:transparent;border:1px solid
       <div class="tp" data-p="overlay">
         <div class="tip" style="font-size:11px;color:var(--dim);margin-bottom:8px">카드 위에 사진을 올린 뒤 <b>마우스로 드래그</b>하여 이동, <b>오른쪽 아래 모서리</b>를 드래그하여 크기 조절.</div>
         <button id="ovAdd" class="w100" style="margin-bottom:8px">+ 오버레이 사진 추가</button>
-        <input type="file" id="ovF" accept="image/*" style="display:none" multiple/>
+        <input type="file" id="ovF" accept="image/png,image/jpeg,image/webp,image/gif,image/*" style="display:none" multiple/>
         <div id="ovList" style="display:flex;flex-direction:column;gap:6px"></div>
         <div id="ovEdit" style="display:none;margin-top:10px;border-top:1px solid var(--brd);padding-top:10px">
           <div class="field"><label>크기 (px)</label><div class="sr"><input type="range" id="ovW" min="40" max="1080" value="300"/><span class="v" id="ovWV">300</span></div></div>
@@ -551,31 +551,33 @@ function preprocessHL(title){
 // Split a line into parts with highlight state, using \x01/\x02 markers; carries state across lines.
 function splitHL(line,startInHL){const parts=[];let buf='';let hl=!!startInHL;for(const ch of line){if(ch==='\x01'){if(buf){parts.push({t:buf,h:hl});buf=''}hl=true}else if(ch==='\x02'){if(buf){parts.push({t:buf,h:hl});buf=''}hl=false}else{buf+=ch}}if(buf)parts.push({t:buf,h:hl});return{parts,hlEnd:hl}}
 
-// DOM-based line wrapping - matches CSS word-break:keep-all exactly
+// DOM line wrapping using Range per-character detection — mirrors how the browser
+// actually renders the same plain text in .tt, so canvas matches preview exactly.
 function getWrappedLines(text,opts){
-  const {fontSize,fontWeight,fontFamily="'Noto Sans KR',sans-serif",letterSpacing=0,maxWidth}=opts;
+  const {fontSize,fontWeight,fontFamily="'Pretendard','Noto Sans KR',sans-serif",letterSpacing=0,maxWidth}=opts;
   const host=document.createElement('div');
-  host.style.cssText=`position:absolute;left:-99999px;top:0;width:${maxWidth}px;font-family:${fontFamily};font-size:${fontSize}px;font-weight:${fontWeight};letter-spacing:${letterSpacing}px;line-height:1;word-break:keep-all;white-space:normal;visibility:hidden`;
+  host.style.cssText=`position:absolute;left:-99999px;top:0;width:${maxWidth}px;font-family:${fontFamily};font-size:${fontSize}px;font-weight:${fontWeight};letter-spacing:${letterSpacing}px;line-height:1.2;word-break:keep-all;white-space:normal;visibility:hidden;box-sizing:content-box;padding:0;margin:0;border:0;text-indent:0`;
   document.body.appendChild(host);
   const out=[];
   const rawLines=(text||'').split('\n');
   rawLines.forEach(line=>{
     if(!line){out.push('');return}
-    host.innerHTML='';
-    const tokens=[];
-    // Split preserving spaces: every word + each following space becomes its own token
-    const parts=line.split(/(\s+)/);
-    parts.forEach(p=>{if(p.length)tokens.push(p)});
-    const spans=[];
-    tokens.forEach(tk=>{
-      // For each non-space token, wrap whole token in a span (keep-all unit).
-      // For spaces: wrap in span too so offsetTop tracks them.
-      const sp=document.createElement('span');sp.textContent=tk;host.appendChild(sp);spans.push({t:tk,el:sp})
-    });
-    // Group by offsetTop
-    const groups=new Map();
-    spans.forEach(s=>{const y=s.el.offsetTop;if(!groups.has(y))groups.set(y,'');groups.set(y,groups.get(y)+s.t)});
-    [...groups.keys()].sort((a,b)=>a-b).forEach(y=>{out.push(groups.get(y).replace(/\s+$/,''))});
+    const span=document.createElement('span');span.textContent=line;
+    host.innerHTML='';host.appendChild(span);
+    const tn=span.firstChild;
+    const lines=[];let cur='';let lastTop=null;
+    for(let i=0;i<line.length;i++){
+      const range=document.createRange();
+      range.setStart(tn,i);range.setEnd(tn,i+1);
+      const rect=range.getBoundingClientRect();
+      // Skip zero-size rects (e.g. collapsed whitespace at line edges)
+      if(rect.height===0&&rect.width===0){cur+=line[i];continue}
+      if(lastTop===null)lastTop=rect.top;
+      if(rect.top>lastTop+fontSize*0.3){lines.push(cur);cur='';lastTop=rect.top}
+      cur+=line[i];
+    }
+    if(cur!=='')lines.push(cur);
+    (lines.length?lines:['']).forEach(l=>out.push(l.replace(/^\s+|\s+$/g,'')));
   });
   document.body.removeChild(host);
   return out.length?out:[''];
@@ -1060,7 +1062,7 @@ function render(){
     const mkBtn=(label,accept,type)=>{const b=document.createElement('button');b.textContent=label;b.style.cssText='padding:6px 12px;font-size:11px;border-radius:6px;background:rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.2);color:#fff;cursor:pointer;backdrop-filter:blur(4px)';
       b.onmouseenter=()=>b.style.background='rgba(124,92,255,.7)';b.onmouseleave=()=>b.style.background='rgba(0,0,0,.6)';
       b.onclick=e=>{e.stopPropagation();const f=document.createElement('input');f.type='file';f.accept=accept;f.onchange=ev=>{const file=ev.target.files[0];if(!file)return;const r=new FileReader;r.onload=x=>{saveSnap();c.media=x.target.result;c.mediaType=type;c.img=null;c.mct=0;c.mcb=0;c.mcl=0;c.mcr=0;c.mzoom=100;c.mox=0;c.moy=0;refreshCard()};r.readAsDataURL(file)};f.click()};return b};
-    btns.appendChild(mkBtn('이미지','image/*','image'));
+    btns.appendChild(mkBtn('이미지','image/png,image/jpeg,image/webp,image/gif,image/*','image'));
     btns.appendChild(mkBtn('동영상','video/*','video'));
     // Grid toggle
     const gb=document.createElement('button');gb.textContent=S.grid?'▦ ON':'▦';
