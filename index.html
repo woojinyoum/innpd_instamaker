@@ -1256,7 +1256,16 @@ document.getElementById('cropToggle').onclick=()=>{S.cropMode=!S.cropMode;updCro
 updCropToggleBtn();
 document.getElementById('ta').onchange=e=>up(c=>c.t.a=e.target.value);
 document.getElementById('tw').onchange=e=>up(c=>c.t.w=e.target.value);
-document.getElementById('tf').onchange=e=>up(c=>c.t.f=e.target.value);
+async function loadFontAndRender(f){
+  try{
+    const c=cur();const z=(c&&c.t.z)||80;
+    // Load multiple weights so any title weight renders, then re-render preview
+    await Promise.all(['400','500','700','900'].map(w=>document.fonts.load(`${w} ${z}px '${f}'`).catch(()=>{})));
+    await document.fonts.ready;
+  }catch(e){}
+  render();
+}
+document.getElementById('tf').onchange=e=>{const f=e.target.value;up(c=>c.t.f=f);loadFontAndRender(f)};
 bR('tlh','tlhv','t.lh','%');bR('tls','tlsv','t.ls','px');
 bR('tsk','tskv','t.sk');bC('tskc','tskx','t.skc');
 bR('tshb','tshbv','t.shb');bC('tshc','tshx','t.shc');bR('tsha','tshav','t.sha','%');
