@@ -498,15 +498,27 @@ function applyMode(){
 
 /* Undo */
 const _hist=[];
-const _maxHist=50;
+const _maxHist=30;
+// Clone a card WITHOUT duplicating heavy base64 media (share by reference) to avoid memory blowup.
+function _cloneCard(c){
+  const o={};
+  for(const k in c){
+    if(k==='media'||k==='img'){o[k]=c[k];continue} // share big base64 strings by reference
+    if(k==='logo'){o.logo=c.logo?Object.assign({},c.logo):c.logo;continue} // shallow (logo.src shared)
+    if(k==='ovs'){o.ovs=(c.ovs||[]).map(ov=>Object.assign({},ov));continue} // shallow (ov.src shared)
+    if(k==='t'||k==='g'){o[k]=Object.assign({},c[k]);continue}
+    o[k]=c[k];
+  }
+  return o;
+}
 function saveSnap(){
-  _hist.push(JSON.stringify({cards:S.cards,idx:S.idx}));
+  _hist.push({cards:S.cards.map(_cloneCard),idx:S.idx});
   if(_hist.length>_maxHist)_hist.shift();
 }
 function undo(){
   if(!_hist.length){toast('되돌릴 내용 없음');return}
-  const snap=JSON.parse(_hist.pop());
-  S.cards=snap.cards;S.idx=snap.idx;
+  const snap=_hist.pop();
+  S.cards=snap.cards;S.idx=Math.min(snap.idx,snap.cards.length-1);
   render();rEd();toast('되돌리기');
 }
 document.addEventListener('keydown',e=>{
@@ -875,8 +887,12 @@ function bCard(c){
     let mediaEl;
     if(isVideo){
       const vol=(c.mvol==null?100:c.mvol)/100;
-      mediaEl=document.createElement('video');mediaEl.src=c.media;mediaEl.autoplay=true;mediaEl.loop=true;mediaEl.playsInline=true;
+      mediaEl=document.createElement('video');mediaEl.src=c.media;mediaEl.loop=true;mediaEl.playsInline=true;
       mediaEl.muted=vol===0;mediaEl.volume=vol;
+      // Only autoplay the current card's video — avoids 8+ videos decoding at once (freeze)
+      mediaEl.preload=isCurrent?'auto':'metadata';
+      mediaEl.autoplay=isCurrent;
+      if(!isCurrent){mediaEl.pause&&setTimeout(()=>{try{mediaEl.pause()}catch(e){}},0)}
     }else{
       mediaEl=document.createElement('img');mediaEl.src=mediaSrc;mediaEl.crossOrigin='anonymous';mediaEl.draggable=false;
     }
