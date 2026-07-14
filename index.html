@@ -692,11 +692,10 @@ async function buildImagePrompt(c){
 }
 async function genImageOpenAI(prompt){
   const key=$oai.value.trim();if(!key)throw Error('OpenAI Key를 입력하세요');
-  const size=S.mode==='reels'?'1024x1536':'1024x1536'; // portrait
-  // Try gpt-image-1 first (returns b64_json by default), fallback dall-e-3
+  // gpt-image-1 (latest) supports portrait 1024x1536; dall-e-3 fallback uses 1024x1792
   const bodies=[
-    {model:'gpt-image-1',prompt,size,n:1},
-    {model:'dall-e-3',prompt,size:'1024x1792',n:1,response_format:'b64_json',quality:'standard'}
+    {model:'gpt-image-1',prompt,size:'1024x1536',n:1,quality:'high'},
+    {model:'dall-e-3',prompt,size:'1024x1792',n:1,response_format:'b64_json',quality:'hd'}
   ];
   let lastErr='';
   for(const body of bodies){
@@ -715,6 +714,22 @@ async function genImageOpenAI(prompt){
   }
   throw Error(lastErr||'이미지 생성 실패');
 }
+// Resize/crop generated image to exact card size (1080x1350 or 1080x1920)
+async function resizeToCard(dataUrl){
+  const HH=H();
+  return new Promise((res,rej)=>{
+    const img=new Image();img.crossOrigin='anonymous';
+    img.onload=()=>{
+      const cv=document.createElement('canvas');cv.width=1080;cv.height=HH;
+      const ctx=cv.getContext('2d');
+      const iw=img.naturalWidth,ih=img.naturalHeight;
+      const s=Math.max(1080/iw,HH/ih);const dw=iw*s,dh=ih*s;
+      ctx.drawImage(img,(1080-dw)/2,(HH-dh)/2,dw,dh);
+      try{res(cv.toDataURL('image/png'))}catch(e){res(dataUrl)}
+    };
+    img.onerror=()=>res(dataUrl);img.src=dataUrl;
+  });
+}
 async function runAIImage(){
   const c=cur();if(!c){toast('카드 없음');return}
   if(!$k.value.trim()){toast('Claude Key 필요 (프롬프트 생성)');return}
@@ -723,7 +738,8 @@ async function runAIImage(){
   try{
     const prompt=await buildImagePrompt(c);console.log('[AI 이미지 프롬프트]',prompt);
     sStep(1);
-    const dataUrl=await genImageOpenAI(prompt);
+    const raw=await genImageOpenAI(prompt);
+    const dataUrl=await resizeToCard(raw); // exact 1080x1350 (or 1080x1920 reels)
     sStep(2);saveSnap();
     c.media=dataUrl;c.mediaType='image';c.img=null;
     c.mct=0;c.mcb=0;c.mcl=0;c.mcr=0;c.mzoom=100;c.mox=0;c.moy=0;
