@@ -170,8 +170,9 @@ input[type=color]{width:32px;height:26px;background:transparent;border:1px solid
   <!-- LEFT -->
   <aside class="panel">
     <h3>API</h3>
-    <div class="field"><label>Key <label id="lockLabel" style="display:inline;cursor:pointer;margin-left:6px;color:var(--acc)"><input type="checkbox" id="lockApi" style="display:none"/><span id="lockIcon">🔓 잠금</span></label></label><input type="password" id="apiKey" placeholder="sk-ant-..."/></div>
+    <div class="field"><label>Claude Key <label id="lockLabel" style="display:inline;cursor:pointer;margin-left:6px;color:var(--acc)"><input type="checkbox" id="lockApi" style="display:none"/><span id="lockIcon">🔓 잠금</span></label></label><input type="password" id="apiKey" placeholder="sk-ant-..."/></div>
     <div class="field"><label>모델</label><select id="model"><option value="claude-opus-4-8">Opus 4.8 (최신)</option><option value="claude-opus-4-7">Opus 4.7</option><option value="claude-opus-4-6">Opus 4.6</option><option value="claude-sonnet-4-6" selected>Sonnet 4.6</option><option value="claude-haiku-4-5-20251001">Haiku 4.5</option></select></div>
+    <div class="field"><label>OpenAI Key (이미지 생성용) <label id="lockLabel2" style="display:inline;cursor:pointer;margin-left:6px;color:var(--acc)"><input type="checkbox" id="lockOai" style="display:none"/><span id="lockIcon2">🔓 잠금</span></label></label><input type="password" id="oaiKey" placeholder="sk-..."/></div>
     <div class="field"><label>지침 (분석 & 번역 공통, 선택)</label><textarea id="trPrompt" placeholder="예) 제목은 숫자 포함, 본문은 존댓말, 전문용어 유지 등" style="width:100%;min-height:70px;background:var(--bg);border:1px solid var(--brd);color:var(--txt);border-radius:7px;padding:8px;font-size:12px;font-family:inherit;resize:vertical"></textarea></div>
     <div class="sep"></div>
 
@@ -179,6 +180,13 @@ input[type=color]{width:32px;height:26px;background:transparent;border:1px solid
     <div class="field"><label>게시물 이미지</label><div class="drop" id="d1"><span id="d1t">이미지 업로드</span><img id="d1p" style="display:none"/></div><input type="file" id="f1" accept="image/png,image/jpeg,image/webp,image/gif,image/*" style="display:none"/></div>
     <div class="field"><label>본문 캡쳐</label><div class="drop" id="d2"><span id="d2t">본문 스크린샷 업로드</span><img id="d2p" style="display:none"/></div><input type="file" id="f2" accept="image/png,image/jpeg,image/webp,image/gif,image/*" style="display:none"/></div>
     <button class="w100" id="goBtn">분석하고 카드 생성</button>
+    <div class="sep"></div>
+
+    <h3>🎨 AI 배경 이미지 (ChatGPT)</h3>
+    <div class="tip" style="font-size:11px;color:var(--dim);margin-bottom:6px;line-height:1.5">현재 카드의 제목·본문을 분석해 어울리는 이미지를 생성하여 배경에 넣습니다.</div>
+    <div class="field"><label>이미지 스타일 (선택)</label><input type="text" id="aiStyle" placeholder="예) 사진풍, 미니멀 일러스트, 3D 렌더 등"/></div>
+    <div class="row"><button class="w100" id="aiGenBtn">🎨 AI 이미지 생성</button></div>
+    <div class="row" style="margin-top:6px"><button class="gh" id="aiRegenBtn" style="flex:1">🔄 다시 생성</button></div>
     <div class="sep"></div>
 
     <h3>번역 & 다운로드</h3>
@@ -533,6 +541,7 @@ const mk=()=>({id:crypto.randomUUID(),img:null,media:null,mediaType:null,mvy:0,m
 const $k=document.getElementById('apiKey');$k.value=localStorage.getItem('ak')||'';$k.onchange=()=>localStorage.setItem('ak',$k.value);
 const $m=document.getElementById('model');$m.value=localStorage.getItem('am')||'claude-sonnet-4-6';$m.onchange=()=>localStorage.setItem('am',$m.value);
 const $tp=document.getElementById('trPrompt');$tp.value=localStorage.getItem('tr_prompt')||'';$tp.oninput=()=>localStorage.setItem('tr_prompt',$tp.value);
+const $oai=document.getElementById('oaiKey');$oai.value=localStorage.getItem('oai')||'';$oai.onchange=()=>localStorage.setItem('oai',$oai.value);
 
 /* API Lock */
 const $lock=document.getElementById('lockApi'),$lockIcon=document.getElementById('lockIcon');
@@ -540,6 +549,12 @@ let apiLocked=localStorage.getItem('ak_lock')==='1';
 function applyLock(){$k.disabled=apiLocked;$m.disabled=false;$lockIcon.textContent=apiLocked?'🔒 잠금':'🔓 해제';if(apiLocked)$k.type='password'}
 $lock.checked=apiLocked;applyLock();
 $lock.onchange=()=>{apiLocked=$lock.checked;localStorage.setItem('ak_lock',apiLocked?'1':'0');applyLock()};
+/* OpenAI Key Lock */
+const $lock2=document.getElementById('lockOai'),$lockIcon2=document.getElementById('lockIcon2');
+let oaiLocked=localStorage.getItem('oai_lock')==='1';
+function applyLock2(){$oai.disabled=oaiLocked;$lockIcon2.textContent=oaiLocked?'🔒 잠금':'🔓 해제'}
+$lock2.checked=oaiLocked;applyLock2();
+$lock2.onchange=()=>{oaiLocked=$lock2.checked;localStorage.setItem('oai_lock',oaiLocked?'1':'0');applyLock2()};
 
 /* Util */
 const toast=m=>{const t=document.getElementById('toast');t.textContent=m;t.classList.add('on');clearTimeout(t._);t._=setTimeout(()=>t.classList.remove('on'),2200)};
@@ -660,6 +675,64 @@ ${userGuide}
     S.idx=0;sStep(3);setTimeout(()=>{hLoad();render();toast('분석 완료!')},300);
   }catch(e){hLoad();toast('오류: '+e.message);console.error(e)}
 };
+
+/* ===== AI 배경 이미지 생성 (OpenAI) ===== */
+// 1) Build a vivid English image prompt from card title+body (via Claude), 2) generate via OpenAI images API
+async function buildImagePrompt(c){
+  const style=(document.getElementById('aiStyle').value||'').trim();
+  const sys='You are an expert prompt engineer for AI image generation (DALL-E / gpt-image). Given Korean Instagram card-news content, output ONE vivid, detailed English image prompt for a striking vertical background image. No text/letters in the image. Focus on mood, subject, composition, lighting, color. Return ONLY the prompt text, no quotes, no explanation.';
+  const txt=`Card title: ${c.title||''}\nBody: ${(c.body||'').slice(0,600)}\n${style?'Preferred visual style: '+style:''}\n\nWrite one image-generation prompt (English, ~40-70 words). Vertical 4:5 composition, editorial/thumbnail quality, NO text or words rendered in the image.`;
+  try{
+    const r=await api({sys,content:[{type:'text',text:txt}],max:400});
+    return r.trim().replace(/^["']|["']$/g,'');
+  }catch(e){
+    // Fallback: use title directly
+    return `Editorial vertical background image about: ${c.title||'news'}. ${style||'cinematic, high quality'}. No text in image.`;
+  }
+}
+async function genImageOpenAI(prompt){
+  const key=$oai.value.trim();if(!key)throw Error('OpenAI Key를 입력하세요');
+  const size=S.mode==='reels'?'1024x1536':'1024x1536'; // portrait
+  // Try gpt-image-1 first (returns b64_json by default), fallback dall-e-3
+  const bodies=[
+    {model:'gpt-image-1',prompt,size,n:1},
+    {model:'dall-e-3',prompt,size:'1024x1792',n:1,response_format:'b64_json',quality:'standard'}
+  ];
+  let lastErr='';
+  for(const body of bodies){
+    try{
+      const r=await fetch('https://api.openai.com/v1/images/generations',{
+        method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify(body)
+      });
+      if(!r.ok){const t=await r.text();lastErr=`${r.status}: ${t.slice(0,180)}`;continue}
+      const d=await r.json();
+      const b64=d.data&&d.data[0]&&d.data[0].b64_json;
+      if(b64)return 'data:image/png;base64,'+b64;
+      const url=d.data&&d.data[0]&&d.data[0].url;
+      if(url)return url; // fallback (may taint canvas)
+      lastErr='응답에 이미지 없음';
+    }catch(e){lastErr=e.message}
+  }
+  throw Error(lastErr||'이미지 생성 실패');
+}
+async function runAIImage(){
+  const c=cur();if(!c){toast('카드 없음');return}
+  if(!$k.value.trim()){toast('Claude Key 필요 (프롬프트 생성)');return}
+  if(!$oai.value.trim()){toast('OpenAI Key 필요');return}
+  sLoad('AI 이미지 생성 중...','',['프롬프트 작성 중...','이미지 그리는 중...','거의 완료...']);sStep(0);
+  try{
+    const prompt=await buildImagePrompt(c);console.log('[AI 이미지 프롬프트]',prompt);
+    sStep(1);
+    const dataUrl=await genImageOpenAI(prompt);
+    sStep(2);saveSnap();
+    c.media=dataUrl;c.mediaType='image';c.img=null;
+    c.mct=0;c.mcb=0;c.mcl=0;c.mcr=0;c.mzoom=100;c.mox=0;c.moy=0;
+    hLoad();render();toast('AI 이미지 적용 완료!');
+  }catch(e){hLoad();toast('오류: '+e.message);console.error(e)}
+}
+document.getElementById('aiGenBtn').onclick=runAIImage;
+document.getElementById('aiRegenBtn').onclick=runAIImage;
+const $aiStyle=document.getElementById('aiStyle');$aiStyle.value=localStorage.getItem('ai_style')||'';$aiStyle.oninput=()=>localStorage.setItem('ai_style',$aiStyle.value);
 
 /* Translate */
 document.getElementById('trBtn').onclick=async()=>{
