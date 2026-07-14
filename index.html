@@ -692,8 +692,9 @@ async function buildImagePrompt(c){
 }
 async function genImageOpenAI(prompt){
   const key=$oai.value.trim();if(!key)throw Error('OpenAI Key를 입력하세요');
-  // gpt-image-1 (latest) supports portrait 1024x1536; dall-e-3 fallback uses 1024x1792
+  // GPT Image 2 (latest); fallback to gpt-image-1 then dall-e-3
   const bodies=[
+    {model:'gpt-image-2',prompt,size:'1024x1536',n:1,quality:'high'},
     {model:'gpt-image-1',prompt,size:'1024x1536',n:1,quality:'high'},
     {model:'dall-e-3',prompt,size:'1024x1792',n:1,response_format:'b64_json',quality:'hd'}
   ];
