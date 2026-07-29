@@ -287,6 +287,12 @@ input[type=color]{width:32px;height:26px;background:transparent;border:1px solid
         <div class="field"><label>높이 %</label><div class="sr"><input type="range" id="gh" min="10" max="100" value="60"/><span class="v" id="ghv">60%</span></div></div>
         <div class="field"><label>강도</label><div class="sr"><input type="range" id="go" min="0" max="100" value="95"/><span class="v" id="gov">95%</span></div></div>
         <div class="field"><label>부드러움</label><div class="sr"><input type="range" id="gs" min="0" max="100" value="50"/><span class="v" id="gsv">50%</span></div></div>
+        <fieldset style="border:1px solid var(--brd);border-radius:8px;padding:8px 10px;margin-top:10px;background:rgba(124,92,255,.05)">
+          <legend style="font-size:11px;color:var(--acc);padding:0 6px;font-weight:600">⭐ 그라데이션 프리셋</legend>
+          <div class="row" style="margin-bottom:6px"><select id="gpsSel" style="flex:1"><option value="">— 선택 —</option></select><button id="gpsLoad" style="padding:5px 10px;font-size:11px">불러오기</button></div>
+          <div class="row" style="margin-bottom:6px"><input type="text" id="gpsName" placeholder="프리셋 이름" style="flex:1"/><button id="gpsSave" class="gh" style="padding:5px 10px;font-size:11px">저장</button></div>
+          <div class="row"><label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--dim);cursor:pointer"><input type="checkbox" id="gpsAll" style="width:auto;margin:0"/>모든 카드 적용</label><button id="gpsDel" style="padding:5px 10px;font-size:11px;background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.4);color:#f87171">삭제</button></div>
+        </fieldset>
       </div>
 
       <!-- Title Style -->
@@ -1099,8 +1105,17 @@ function bCard(c){
       const isDbl=(_ovLastClick.id===ov.id && now-_ovLastClick.t<400);
       _ovLastClick={id:ov.id,t:now};
       if(isDbl){S.selOv=ov.id;S.ovAdjust=(S.ovAdjust===ov.id)?null:ov.id;renderOvList&&renderOvList();refreshCard();return}
-      if(S.selOv!==ov.id){S.ovAdjust=null}
+      const wasSelected=(S.selOv===ov.id);
+      if(!wasSelected){S.ovAdjust=null}
       S.selOv=ov.id;
+      // Apply selection visuals directly (avoid full re-render that would break direct-drag)
+      oc.style.outline=adjusting?'3px solid #00e0ff':'3px dashed #7c5cff';oc.style.outlineOffset=(bw+3)+'px';
+      if(!adjusting&&!oc.querySelector('[data-act="resize"]')){
+        const hd=document.createElement('div');hd.dataset.act='resize';
+        hd.style.cssText='position:absolute;right:-12px;bottom:-12px;width:24px;height:24px;background:#7c5cff;border:3px solid #fff;border-radius:50%;cursor:nwse-resize;box-shadow:0 2px 6px rgba(0,0,0,.4);z-index:2';
+        oc.appendChild(hd);
+      }
+      renderOvList&&renderOvList();
       const sc=cardScaleOf(el);const sX=e.clientX,sY=e.clientY;
       if(adjusting){
         // Pan inner photo (ofx/ofy) — use SAME formula as posCover (includes ofz) so exit keeps look
@@ -1115,21 +1130,34 @@ function bCard(c){
       const isResize=e.target.dataset&&e.target.dataset.act==='resize';
       const oX=ov.x||0,oY=ov.y||0,oW=ov.w||300;
       const oOfx=ov.ofx||0,oOfy=ov.ofy||0;
-      const onMove=me=>{
+      const shp=ov.shape||'rect';
+      const handleEl=oc.querySelector('[data-act="resize"]');
+      // Direct DOM update during drag (NO full refreshCard) — smooth, no stutter
+      const repositionInner=(nw2,nh2)=>{
+        if(!cover)return;const iw=oi.naturalWidth,ih=oi.naturalHeight;if(!iw||!ih)return;
+        const zz=(ov.ofz==null?100:ov.ofz)/100;const s=Math.max(nw2/iw,nh2/ih)*zz;const dw=iw*s,dh=ih*s;
+        oi.style.width=dw+'px';oi.style.height=dh+'px';oi.style.left=((nw2-dw)/2+(ov.ofx||0))+'px';oi.style.top=((nh2-dh)/2+(ov.ofy||0))+'px';
+      };
+      let rafPending=false,lastME=null;
+      const applyFrame=()=>{
+        rafPending=false;const me=lastME;if(!me)return;
         const dx=(me.clientX-sX)/sc,dy=(me.clientY-sY)/sc;
         if(isResize){
           const newW=Math.max(40,Math.round(oW+dx));
           const ratio=newW/oW;
           ov.w=newW;ov.h=Math.round(ov.w*(ov.ar||1));
-          // Scale inner-photo offset proportionally so framing stays consistent
           ov.ofx=Math.round(oOfx*ratio);ov.ofy=Math.round(oOfy*ratio);
+          const dispW=ov.w, dispH=shp==='circle'?ov.w:ov.h;
+          oc.style.width=dispW+'px';oc.style.height=dispH+'px';
+          repositionInner(dispW,dispH);
+        }else{
+          ov.x=Math.round(oX+dx);ov.y=Math.round(oY+dy);
+          oc.style.left=ov.x+'px';oc.style.top=ov.y+'px';
         }
-        else{ov.x=Math.round(oX+dx);ov.y=Math.round(oY+dy)}
-        refreshCard();
       };
-      const onUp=()=>{document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp);saveSnap()};
+      const onMove=me=>{lastME=me;if(!rafPending){rafPending=true;requestAnimationFrame(applyFrame)}};
+      const onUp=()=>{document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp);saveSnap();render()};
       document.addEventListener('mousemove',onMove);document.addEventListener('mouseup',onUp);
-      refreshCard();
     });
     el.appendChild(oc);
   });
@@ -1828,6 +1856,36 @@ document.getElementById('psDel').onclick=()=>{
   refreshPSDropdown();toast('삭제됨');
 };
 refreshPSDropdown();
+
+/* ===== Gradient Presets ===== */
+const GPS_KEY='icnm_grad_presets';
+function loadGPS(){try{return JSON.parse(localStorage.getItem(GPS_KEY)||'{}')}catch{return{}}}
+function saveGPS(p){localStorage.setItem(GPS_KEY,JSON.stringify(p))}
+function refreshGPSDropdown(){
+  const sel=document.getElementById('gpsSel');if(!sel)return;const cur2=sel.value;
+  const ps=loadGPS();const names=Object.keys(ps).sort();
+  sel.innerHTML='<option value="">— 선택 —</option>'+names.map(n=>`<option value="${n.replace(/"/g,'&quot;')}">${n}</option>`).join('');
+  if(cur2&&ps[cur2])sel.value=cur2;
+}
+document.getElementById('gpsSave').onclick=()=>{
+  const c=cur();if(!c){toast('카드 없음');return}
+  const name=document.getElementById('gpsName').value.trim();if(!name){toast('이름 입력');return}
+  const ps=loadGPS();ps[name]=JSON.parse(JSON.stringify(c.g));saveGPS(ps);
+  refreshGPSDropdown();document.getElementById('gpsSel').value=name;document.getElementById('gpsName').value='';toast('그라데이션 저장: '+name);
+};
+document.getElementById('gpsLoad').onclick=()=>{
+  const name=document.getElementById('gpsSel').value;if(!name){toast('프리셋 선택');return}
+  const ps=loadGPS();if(!ps[name]){toast('없음');return}
+  const all=document.getElementById('gpsAll').checked;saveSnap();
+  if(all){S.cards.forEach(c=>Object.assign(c.g,ps[name]))}else{const c=cur();if(c)Object.assign(c.g,ps[name])}
+  render();rEd();toast(all?'전체 카드 그라데이션 적용':'현재 카드 적용');
+};
+document.getElementById('gpsDel').onclick=()=>{
+  const name=document.getElementById('gpsSel').value;if(!name){toast('선택');return}
+  if(!confirm(`"${name}" 삭제?`))return;
+  const ps=loadGPS();delete ps[name];saveGPS(ps);refreshGPSDropdown();toast('삭제됨');
+};
+refreshGPSDropdown();
 
 /* Init */
 applyMode();
