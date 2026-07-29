@@ -311,7 +311,8 @@ input[type=color]{width:32px;height:26px;background:transparent;border:1px solid
             <legend style="font-size:11px;color:var(--acc);padding:0 6px;font-weight:600;letter-spacing:.3px">🔍 확대 & 위치 이동</legend>
             <div class="field"><label>확대/축소 (%)</label><div class="sr"><input type="range" id="mzoom" min="10" max="600" value="100"/><span class="v" id="mzoomV">100</span></div></div>
             <div class="field"><label>가로 위치 (px)</label><div class="sr"><input type="range" id="mox" min="-1000" max="1000" value="0"/><span class="v" id="moxV">0</span></div></div>
-            <div class="field" style="margin-bottom:0"><label>세로 위치 (px)</label><div class="sr"><input type="range" id="moy" min="-1500" max="1500" value="0"/><span class="v" id="moyV">0</span></div></div>
+            <div class="field"><label>세로 위치 (px)</label><div class="sr"><input type="range" id="moy" min="-1500" max="1500" value="0"/><span class="v" id="moyV">0</span></div></div>
+            <button id="mReset" class="w100" style="font-size:11px;padding:7px;background:var(--panel2)">↺ 원본 크기·위치로 복귀</button>
           </fieldset>
           <fieldset id="mvolField" style="display:none;border:1px solid var(--brd);border-radius:8px;padding:10px 12px 6px;margin:8px 0;background:rgba(255,255,255,.02)">
             <legend style="font-size:11px;color:var(--acc);padding:0 6px;font-weight:600;letter-spacing:.3px">🔊 영상 음량</legend>
@@ -1384,6 +1385,8 @@ const bC=(cid,xid,path)=>{document.getElementById(cid).oninput=e=>{document.getE
 bC('gc','gx','g.c');bR('gh','ghv','g.h','%');bR('go','gov','g.o','%');bR('gs','gsv','g.s','%');
 bR('tz','tzv','t.z');bC('tc','tx','t.c');bC('thc','thx','t.hc');bR('tb','tbv','t.b');
 ['mzoom','mox','moy','mvol'].forEach(id=>{const el=document.getElementById(id);if(el)el.oninput=e=>{const v=+e.target.value;document.getElementById(id+'V').textContent=v;up(c=>{c[id]=v})}});
+// Reset media size/position/crop to original
+document.getElementById('mReset').onclick=()=>{const c=cur();if(!c||!c.media){toast('이미지 없음');return}up(cc=>{cc.mzoom=100;cc.mox=0;cc.moy=0;cc.mct=0;cc.mcb=0;cc.mcl=0;cc.mcr=0});rEd();toast('원본 크기·위치로 복귀');};
 // Crop mode toggle
 function updCropToggleBtn(){const b=document.getElementById('cropToggle');if(!b)return;b.textContent=(S.cropMode?'✂️ 크롭 모드: 켜짐 (테두리 드래그)':'✂️ 크롭 모드: 꺼짐 (사진 드래그/크기)');b.style.background=S.cropMode?'var(--acc)':'var(--panel2)';b.style.color=S.cropMode?'#fff':'var(--txt)'}
 document.getElementById('cropToggle').onclick=()=>{S.cropMode=!S.cropMode;updCropToggleBtn();render()};
