@@ -1887,9 +1887,51 @@ document.getElementById('gpsDel').onclick=()=>{
 };
 refreshGPSDropdown();
 
+/* ===== Auto-save / Restore (IndexedDB) ===== */
+const DB_NAME='icnm_db',DB_STORE='project';
+function idbOpen(){return new Promise((res,rej)=>{const r=indexedDB.open(DB_NAME,1);r.onupgradeneeded=()=>{if(!r.result.objectStoreNames.contains(DB_STORE))r.result.createObjectStore(DB_STORE)};r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
+async function idbSet(key,val){const db=await idbOpen();return new Promise((res,rej)=>{const tx=db.transaction(DB_STORE,'readwrite');tx.objectStore(DB_STORE).put(val,key);tx.oncomplete=()=>res();tx.onerror=()=>rej(tx.error)})}
+async function idbGet(key){const db=await idbOpen();return new Promise((res,rej)=>{const tx=db.transaction(DB_STORE,'readonly');const rq=tx.objectStore(DB_STORE).get(key);rq.onsuccess=()=>res(rq.result);rq.onerror=()=>rej(rq.error)})}
+let _autoT=null;
+function autoSave(){
+  clearTimeout(_autoT);
+  _autoT=setTimeout(async()=>{
+    try{await idbSet('current',{cards:S.cards,mode:S.mode,idx:S.idx,savedAt:new Date().toISOString()})}
+    catch(e){console.warn('자동저장 실패',e)}
+  },1500);
+}
+// Hook autosave into every edit
+const _origSaveSnap=saveSnap;
+saveSnap=function(){_origSaveSnap();autoSave()};
+window.addEventListener('beforeunload',()=>{try{const req=indexedDB.open(DB_NAME,1);req.onsuccess=()=>{const db=req.result;const tx=db.transaction(DB_STORE,'readwrite');tx.objectStore(DB_STORE).put({cards:S.cards,mode:S.mode,idx:S.idx,savedAt:new Date().toISOString()},'current')}}catch(e){}});
+setInterval(autoSave,10000);
+
+function showRestoreBanner(saved){
+  const n=saved.cards.length;
+  const when=(()=>{try{return new Date(saved.savedAt).toLocaleString('ko-KR')}catch{return ''}})();
+  const b=document.createElement('div');
+  b.style.cssText='position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:9998;background:var(--panel);border:1px solid var(--acc);border-radius:12px;padding:12px 16px;box-shadow:0 8px 30px rgba(0,0,0,.5);display:flex;align-items:center;gap:12px;font-size:13px;color:var(--txt);max-width:92vw';
+  b.innerHTML=`<span>💾 이전 작업이 있습니다 (카드 ${n}개 · ${when})</span>`;
+  const load=document.createElement('button');load.textContent='이어서 하기';load.style.cssText='padding:7px 14px;font-size:12px;background:var(--acc);border:none;color:#fff;border-radius:7px;cursor:pointer;font-weight:700';
+  const ign=document.createElement('button');ign.textContent='새로 시작';ign.style.cssText='padding:7px 12px;font-size:12px;background:var(--panel2);border:1px solid var(--brd);color:var(--dim);border-radius:7px;cursor:pointer';
+  load.onclick=()=>{
+    S.cards=saved.cards;S.mode=saved.mode||'post';S.idx=Math.min(saved.idx||0,saved.cards.length-1);
+    localStorage.setItem('mode',S.mode);applyMode();render();rEd();b.remove();toast('이전 작업 불러옴');
+  };
+  ign.onclick=()=>b.remove();
+  b.appendChild(load);b.appendChild(ign);document.body.appendChild(b);
+  setTimeout(()=>{if(b.parentNode)b.style.opacity='0.35'},15000);
+}
+
 /* Init */
 applyMode();
 S.cards=[mk()];S.idx=0;render();enableEditableV();
+// Offer restore if a saved project exists
+idbGet('current').then(saved=>{
+  if(saved&&saved.cards&&saved.cards.length&&!(saved.cards.length===1&&!saved.cards[0].media&&!saved.cards[0].img&&saved.cards[0].title==='제목')){
+    showRestoreBanner(saved);
+  }
+}).catch(()=>{});
 </script>
 </body>
 </html>
