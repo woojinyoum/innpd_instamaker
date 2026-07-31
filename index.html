@@ -183,8 +183,18 @@ input[type=color]{width:32px;height:26px;background:transparent;border:1px solid
     <div class="sep"></div>
 
     <h3>🎨 AI 배경 이미지 (ChatGPT)</h3>
-    <div class="tip" style="font-size:11px;color:var(--dim);margin-bottom:6px;line-height:1.5">현재 카드의 제목·본문을 분석해 어울리는 이미지를 생성하여 배경에 넣습니다.</div>
-    <div class="field"><label>이미지 스타일 (선택)</label><input type="text" id="aiStyle" placeholder="예) 사진풍, 미니멀 일러스트, 3D 렌더 등"/></div>
+    <div class="row" style="gap:6px;margin-bottom:8px">
+      <label style="flex:1;display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;padding:7px 8px;border:1px solid var(--brd);border-radius:7px;background:var(--panel2)"><input type="radio" name="aiMode" value="auto" checked style="width:auto;margin:0"/>자동 분석</label>
+      <label style="flex:1;display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;padding:7px 8px;border:1px solid var(--brd);border-radius:7px;background:var(--panel2)"><input type="radio" name="aiMode" value="manual" style="width:auto;margin:0"/>직접 입력</label>
+    </div>
+    <div id="aiAutoBox">
+      <div class="tip" style="font-size:11px;color:var(--dim);margin-bottom:6px;line-height:1.5">현재 카드의 제목·본문을 분석해 어울리는 이미지를 생성하여 배경에 넣습니다.</div>
+      <div class="field"><label>이미지 스타일 (선택)</label><input type="text" id="aiStyle" placeholder="예) 사진풍, 미니멀 일러스트, 3D 렌더 등"/></div>
+    </div>
+    <div id="aiManualBox" style="display:none">
+      <div class="tip" style="font-size:11px;color:var(--dim);margin-bottom:6px;line-height:1.5">원하는 이미지를 직접 묘사하세요. 입력한 프롬프트 그대로 이미지를 생성합니다.</div>
+      <div class="field"><label>프롬프트 직접 입력</label><textarea id="aiPrompt" placeholder="예) 노을 지는 해변, 잔잔한 파도, 따뜻한 오렌지빛 하늘, 사진풍, 글자 없음" style="width:100%;min-height:80px;background:var(--bg);border:1px solid var(--brd);color:var(--txt);border-radius:7px;padding:8px;font-size:12px;font-family:inherit;resize:vertical"></textarea></div>
+    </div>
     <div class="row"><button class="w100" id="aiGenBtn">🎨 AI 이미지 생성</button></div>
     <div class="row" style="margin-top:6px"><button class="gh" id="aiRegenBtn" style="flex:1">🔄 다시 생성</button></div>
     <div class="sep"></div>
@@ -738,17 +748,29 @@ async function resizeToCard(dataUrl){
     img.onerror=()=>res(dataUrl);img.src=dataUrl;
   });
 }
+function aiMode(){const r=document.querySelector('input[name="aiMode"]:checked');return r?r.value:'auto'}
 async function runAIImage(){
   const c=cur();if(!c){toast('카드 없음');return}
-  if(!$k.value.trim()){toast('Claude Key 필요 (프롬프트 생성)');return}
   if(!$oai.value.trim()){toast('OpenAI Key 필요');return}
-  sLoad('AI 이미지 생성 중...','',['프롬프트 작성 중...','이미지 그리는 중...','거의 완료...']);sStep(0);
+  const mode=aiMode();
+  const manualP=(document.getElementById('aiPrompt').value||'').trim();
+  if(mode==='manual'&&!manualP){toast('프롬프트를 입력하세요');return}
+  if(mode==='auto'&&!$k.value.trim()){toast('Claude Key 필요 (자동 분석용)');return}
+  sLoad('AI 이미지 생성 중...','',mode==='manual'?['이미지 그리는 중...','거의 완료...']:['프롬프트 작성 중...','이미지 그리는 중...','거의 완료...']);sStep(0);
   try{
-    const prompt=await buildImagePrompt(c);console.log('[AI 이미지 프롬프트]',prompt);
-    sStep(1);
+    let prompt, step;
+    if(mode==='manual'){
+      // Use user prompt as-is, just append no-text safeguard
+      prompt=manualP+ (/no text|글자|텍스트/i.test(manualP)?'':'. No text or words in the image.');
+      step=0;
+    }else{
+      prompt=await buildImagePrompt(c);step=1;
+    }
+    console.log('[AI 이미지 프롬프트]',prompt);
+    sStep(step);
     const raw=await genImageOpenAI(prompt);
     const dataUrl=await resizeToCard(raw); // exact 1080x1350 (or 1080x1920 reels)
-    sStep(2);saveSnap();
+    saveSnap();
     c.media=dataUrl;c.mediaType='image';c.img=null;
     c.mct=0;c.mcb=0;c.mcl=0;c.mcr=0;c.mzoom=100;c.mox=0;c.moy=0;
     hLoad();render();toast('AI 이미지 적용 완료!');
@@ -757,6 +779,13 @@ async function runAIImage(){
 document.getElementById('aiGenBtn').onclick=runAIImage;
 document.getElementById('aiRegenBtn').onclick=runAIImage;
 const $aiStyle=document.getElementById('aiStyle');$aiStyle.value=localStorage.getItem('ai_style')||'';$aiStyle.oninput=()=>localStorage.setItem('ai_style',$aiStyle.value);
+const $aiPrompt=document.getElementById('aiPrompt');$aiPrompt.value=localStorage.getItem('ai_prompt')||'';$aiPrompt.oninput=()=>localStorage.setItem('ai_prompt',$aiPrompt.value);
+// Toggle auto/manual boxes
+document.querySelectorAll('input[name="aiMode"]').forEach(r=>r.onchange=()=>{
+  const m=aiMode();
+  document.getElementById('aiAutoBox').style.display=m==='auto'?'block':'none';
+  document.getElementById('aiManualBox').style.display=m==='manual'?'block':'none';
+});
 
 /* Translate */
 document.getElementById('trBtn').onclick=async()=>{
