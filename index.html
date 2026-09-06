@@ -184,12 +184,16 @@ input[type=color]{width:32px;height:26px;background:transparent;border:1px solid
 
     <h3>✍️ 후킹 제목 뽑기</h3>
     <div class="tip" style="font-size:11px;color:var(--dim);margin-bottom:6px;line-height:1.5">게시물 이미지·본문을 분석해 후킹 노하우로 제목 후보를 뽑습니다.</div>
+    <div class="row" style="gap:6px;margin-bottom:8px">
+      <button id="hkTabAuto" class="hktab" style="flex:1;padding:8px;font-size:12px;border-radius:7px;background:var(--acc);border:none;color:#fff;cursor:pointer;font-weight:700">AI 추천</button>
+      <button id="hkTabMethod" class="hktab" style="flex:1;padding:8px;font-size:12px;border-radius:7px;background:var(--panel2);border:1px solid var(--brd);color:var(--txt);cursor:pointer">방식 선택</button>
+    </div>
     <div class="field"><label>추가 지침 (선택)</label><input type="text" id="hkNote" placeholder="예) 20대 타깃, 강한 자극, 숫자 꼭 포함 등"/></div>
-    <button class="w100" id="hkBtn">✍️ 제목 5개 뽑기</button>
-    <div id="hkResult" style="display:none;margin-top:8px"></div>
-    <div id="hkMore" style="display:none;margin-top:8px">
-      <button class="w100" id="hkRegen" style="margin-bottom:8px">🔄 새로 생성 (5개 다시)</button>
-      <div class="field" style="margin-bottom:6px"><label>다른 방식으로 뽑기</label><select id="hkWeapon">
+    <div id="hkAutoPane">
+      <button class="w100" id="hkBtn">✍️ AI 제목 5개 뽑기</button>
+    </div>
+    <div id="hkMethodPane" style="display:none">
+      <div class="field" style="margin-bottom:6px"><label>제목 짓는 방식</label><select id="hkWeapon">
         <option value="num">숫자+기간+결과</option>
         <option value="rev">통념 뒤집기</option>
         <option value="pain">손실·불안 경고</option>
@@ -197,8 +201,9 @@ input[type=color]{width:32px;height:26px;background:transparent;border:1px solid
         <option value="authority">전문가·데이터</option>
         <option value="combo">2가지 조합</option>
       </select></div>
-      <button class="w100 gh" id="hkBtn2">이 방식으로 5개 뽑기</button>
+      <button class="w100" id="hkBtn2">✍️ 이 방식으로 5개 뽑기</button>
     </div>
+    <div id="hkResult" style="display:none;margin-top:8px"></div>
     <div class="sep"></div>
 
     <h3>🎨 AI 배경 이미지 (ChatGPT)</h3>
@@ -791,16 +796,24 @@ JSON만 답변 (마크다운·설명 금지):
     const parsed=pj(res);
     hLoad();
     showHkResult(parsed,weapon);
-    document.getElementById('hkMore').style.display='block';
     toast('제목 후보 완성!');
   }catch(e){hLoad();toast('오류: '+e.message);console.error(e)}
 }
-// 제목 5개 뽑기 (AI 추천 자동)
+// AI 추천 제목 5개
 document.getElementById('hkBtn').onclick=()=>genTitles('auto');
-// 새로 생성 (AI 추천 5개 다시)
-document.getElementById('hkRegen').onclick=()=>genTitles('auto');
-// 선택한 방식으로 뽑기
+// 선택한 방식으로 5개
 document.getElementById('hkBtn2').onclick=()=>genTitles(document.getElementById('hkWeapon').value);
+// 탭 전환
+function hkTab(which){
+  const auto=which==='auto';
+  document.getElementById('hkAutoPane').style.display=auto?'block':'none';
+  document.getElementById('hkMethodPane').style.display=auto?'none':'block';
+  const ta=document.getElementById('hkTabAuto'),tm=document.getElementById('hkTabMethod');
+  ta.style.background=auto?'var(--acc)':'var(--panel2)';ta.style.color=auto?'#fff':'var(--txt)';ta.style.border=auto?'none':'1px solid var(--brd)';
+  tm.style.background=!auto?'var(--acc)':'var(--panel2)';tm.style.color=!auto?'#fff':'var(--txt)';tm.style.border=!auto?'none':'1px solid var(--brd)';
+}
+document.getElementById('hkTabAuto').onclick=()=>hkTab('auto');
+document.getElementById('hkTabMethod').onclick=()=>hkTab('method');
 
 const HK_LABEL={auto:'AI 추천',num:'숫자+기간+결과',rev:'통념 뒤집기',pain:'손실·불안 경고',secret:"핵심을 '이것'으로 감춤",authority:'전문가·데이터',combo:'2가지 조합'};
 function showHkResult(parsed,weapon){
