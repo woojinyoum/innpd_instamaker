@@ -180,11 +180,12 @@ input[type=color]{width:32px;height:26px;background:transparent;border:1px solid
     <div class="field"><label>게시물 이미지</label><div class="drop" id="d1"><span id="d1t">이미지 업로드</span><img id="d1p" style="display:none"/></div><input type="file" id="f1" accept="image/png,image/jpeg,image/webp,image/gif,image/*" style="display:none"/></div>
     <div class="field"><label>본문 캡쳐</label><div class="drop" id="d2"><span id="d2t">본문 스크린샷 업로드</span><img id="d2p" style="display:none"/></div><input type="file" id="f2" accept="image/png,image/jpeg,image/webp,image/gif,image/*" style="display:none"/></div>
     <button class="w100" id="goBtn">분석하고 카드 생성</button>
+    <!-- 제목 5개 후보: 분석하고 카드 생성 바로 아래 표시 -->
+    <div id="hkResult" style="display:none;margin-top:10px"></div>
     <div class="sep"></div>
 
-    <h3>✍️ 후킹 제목 뽑기</h3>
-    <div class="tip" style="font-size:11px;color:var(--dim);margin-bottom:6px;line-height:1.5">"분석하고 카드 생성"을 누르면 제목 후보 5개가 자동으로 나옵니다. 클릭하면 카드에 바로 적용됩니다.</div>
-    <div id="hkResult" style="display:none;margin-bottom:10px"></div>
+    <h3>✍️ 제목 다시 뽑기</h3>
+    <div class="tip" style="font-size:11px;color:var(--dim);margin-bottom:6px;line-height:1.5">위 제목이 마음에 안 들면 다시 생성하거나 방식을 골라 뽑으세요.</div>
     <div class="field"><label>추가 지침 (선택)</label><input type="text" id="hkNote" placeholder="예) 20대 타깃, 강한 자극, 숫자 꼭 포함 등"/></div>
     <button class="w100" id="hkBtn">🔄 제목 5개 다시 생성</button>
     <div class="field" style="margin-top:8px"><label>다른 방식으로 뽑기</label><select id="hkWeapon">
@@ -720,7 +721,7 @@ ${userGuide}
     const res=await api({sys,content:uc});
     sStep(2);const p=pj(res);S.cards=[];S.ko=p;
     const c1=mk();c1.title=p.title;c1.body=p.body||'';S.cards.push(c1);
-    S.idx=0;sStep(3);setTimeout(async()=>{hLoad();render();toast('분석 완료! 제목 뽑는 중...');try{await genTitles('auto')}catch(e){}},300);
+    S.idx=0;sStep(3);setTimeout(async()=>{hLoad();render();toast('분석 완료! 제목 뽑는 중...');await genTitles('auto')},300);
   }catch(e){hLoad();toast('오류: '+e.message);console.error(e)}
 };
 
@@ -789,7 +790,10 @@ JSON만 답변 (마크다운·설명 금지):
     hLoad();
     showHkResult(parsed,weapon);
     toast('제목 후보 완성!');
-  }catch(e){hLoad();toast('오류: '+e.message);console.error(e)}
+  }catch(e){
+    hLoad();toast('제목 뽑기 오류: '+e.message);console.error(e);
+    const box=document.getElementById('hkResult');if(box){box.style.display='block';box.innerHTML='<div style="padding:10px;border:1px solid #f87171;border-radius:8px;background:rgba(239,68,68,.1);color:#f87171;font-size:12px;line-height:1.5">제목 생성 실패: '+e.message.replace(/</g,'&lt;')+'<br><br>다시 시도하려면 아래 "🔄 제목 5개 다시 생성" 버튼을 눌러주세요.</div>'}
+  }
 }
 // 제목 5개 다시 생성 (AI 추천)
 document.getElementById('hkBtn').onclick=()=>genTitles('auto');
