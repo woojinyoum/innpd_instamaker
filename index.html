@@ -665,8 +665,8 @@ const drop=(dId,tId,pId,fId,cb)=>{const d=document.getElementById(dId),f=documen
 drop('d1','d1t','d1p','f1',u=>img1=u);drop('d2','d2t','d2p','f2',u=>img2=u);
 
 /* Claude API */
-const api=async({sys,content,max=2000})=>{const k=$k.value.trim();if(!k)throw Error('API 키');const payload={model:$m.value,max_tokens:max,system:sys,messages:[{role:'user',content}]};console.log('%c[API 전송]','color:#0ea5e9;font-weight:bold',{model:payload.model,system:sys,userContent:content});const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':k,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify(payload)});if(!r.ok){const t=await r.text();throw Error(`API ${r.status}: ${t.slice(0,200)}`)}return(await r.json()).content[0].text};
-const pj=t=>{const m=t.match(/\{[\s\S]*\}/);if(!m)throw Error('JSON 파싱 실패');return JSON.parse(m[0])};
+const api=async({sys,content,max=2000})=>{const k=$k.value.trim();if(!k)throw Error('API 키');const payload={model:$m.value,max_tokens:max,system:sys,messages:[{role:'user',content}]};console.log('%c[API 전송]','color:#0ea5e9;font-weight:bold',{model:payload.model,system:sys,userContent:content});const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':k,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify(payload)});if(!r.ok){const t=await r.text();throw Error(`API ${r.status}: ${t.slice(0,200)}`)}const data=await r.json();console.log('%c[API 응답]','color:#22c55e',data);const blocks=data.content||[];const textBlock=blocks.find(b=>b&&b.type==='text'&&typeof b.text==='string');const text=textBlock?textBlock.text:(blocks.map(b=>b&&b.text).filter(Boolean).join('\n'));if(!text)throw Error('응답에 텍스트가 없습니다'+(data.stop_reason?' (stop: '+data.stop_reason+')':''));return text};
+const pj=t=>{if(!t||typeof t!=='string')throw Error('빈 응답');const m=t.match(/\{[\s\S]*\}/);if(!m)throw Error('JSON 파싱 실패');return JSON.parse(m[0])};
 
 /* Analyze */
 document.getElementById('goBtn').onclick=async()=>{
