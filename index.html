@@ -645,7 +645,22 @@ function getWrappedLines(text,opts){
 
 /* Image upload */
 let img1=null,img2=null;
-const drop=(dId,tId,pId,fId,cb)=>{const d=document.getElementById(dId),f=document.getElementById(fId);d.onclick=()=>f.click();d.ondragover=e=>{e.preventDefault();d.classList.add('drag')};d.ondragleave=()=>d.classList.remove('drag');d.ondrop=e=>{e.preventDefault();d.classList.remove('drag');e.dataTransfer.files[0]&&rd(e.dataTransfer.files[0])};f.onchange=e=>e.target.files[0]&&rd(e.target.files[0]);function rd(f){const r=new FileReader;r.onload=e=>{const u=e.target.result;document.getElementById(pId).src=u;document.getElementById(pId).style.display='block';document.getElementById(tId).style.display='none';cb(u)};r.readAsDataURL(f)}};
+// Downscale image data URL so longest side <= maxPx (Claude many-image limit is 2000px)
+function shrinkImage(dataUrl,maxPx){
+  return new Promise(res=>{
+    const im=new Image();
+    im.onload=()=>{
+      const iw=im.naturalWidth,ih=im.naturalHeight;
+      if(Math.max(iw,ih)<=maxPx){res(dataUrl);return}
+      const s=maxPx/Math.max(iw,ih);const w=Math.round(iw*s),h=Math.round(ih*s);
+      const cv=document.createElement('canvas');cv.width=w;cv.height=h;
+      const ctx=cv.getContext('2d');ctx.drawImage(im,0,0,w,h);
+      try{res(cv.toDataURL('image/jpeg',0.9))}catch(e){res(dataUrl)}
+    };
+    im.onerror=()=>res(dataUrl);im.src=dataUrl;
+  });
+}
+const drop=(dId,tId,pId,fId,cb)=>{const d=document.getElementById(dId),f=document.getElementById(fId);d.onclick=()=>f.click();d.ondragover=e=>{e.preventDefault();d.classList.add('drag')};d.ondragleave=()=>d.classList.remove('drag');d.ondrop=e=>{e.preventDefault();d.classList.remove('drag');e.dataTransfer.files[0]&&rd(e.dataTransfer.files[0])};f.onchange=e=>e.target.files[0]&&rd(e.target.files[0]);function rd(f){const r=new FileReader;r.onload=async e=>{const raw=e.target.result;const u=await shrinkImage(raw,1500);document.getElementById(pId).src=u;document.getElementById(pId).style.display='block';document.getElementById(tId).style.display='none';cb(u)};r.readAsDataURL(f)}};
 drop('d1','d1t','d1p','f1',u=>img1=u);drop('d2','d2t','d2p','f2',u=>img2=u);
 
 /* Claude API */
