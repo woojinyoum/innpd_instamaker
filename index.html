@@ -184,18 +184,18 @@ input[type=color]{width:32px;height:26px;background:transparent;border:1px solid
 
     <h3>✍️ 후킹 제목 뽑기</h3>
     <div class="tip" style="font-size:11px;color:var(--dim);margin-bottom:6px;line-height:1.5">게시물 이미지·본문을 분석해 후킹 노하우로 제목 후보를 뽑습니다.</div>
-    <div class="field"><label>후킹 방식</label><select id="hkWeapon">
-      <option value="auto">🤖 AI 추천 (최적 방식 자동 선택)</option>
-      <option value="num">1) 숫자+기간+결과</option>
-      <option value="rev">2) 통념 뒤집기</option>
-      <option value="pain">3) 손실·불안 경고</option>
-      <option value="secret">4) 핵심을 '이것'으로 감춤</option>
-      <option value="authority">5) 전문가·데이터</option>
-      <option value="combo">⚡ 2가지 조합 (위력 배가)</option>
-    </select></div>
     <div class="field"><label>추가 지침 (선택)</label><input type="text" id="hkNote" placeholder="예) 20대 타깃, 강한 자극, 숫자 꼭 포함 등"/></div>
-    <button class="w100" id="hkBtn">✍️ 제목 후보 뽑기</button>
+    <button class="w100" id="hkBtn">🤖 AI 추천 제목 5개 뽑기</button>
     <div id="hkResult" style="display:none;margin-top:8px"></div>
+    <div class="field" style="margin-top:10px"><label>특정 후킹 방식으로 더 뽑기</label><select id="hkWeapon">
+      <option value="num">숫자+기간+결과</option>
+      <option value="rev">통념 뒤집기</option>
+      <option value="pain">손실·불안 경고</option>
+      <option value="secret">핵심을 '이것'으로 감춤</option>
+      <option value="authority">전문가·데이터</option>
+      <option value="combo">2가지 조합</option>
+    </select></div>
+    <button class="w100 gh" id="hkBtn2">✍️ 선택한 방식으로 뽑기</button>
     <div class="sep"></div>
 
     <h3>🎨 AI 배경 이미지 (ChatGPT)</h3>
@@ -760,10 +760,9 @@ const HK_WEAPON={
   combo:'서로 다른 기법 2개를 조합해 5개 후보를 뽑으세요(예: 권위+숫자, 반전+호기심).'
 };
 
-document.getElementById('hkBtn').onclick=async()=>{
+async function genTitles(weapon){
   if(!img1&&!img2){toast('게시물 이미지 또는 본문 캡쳐를 먼저 업로드하세요');return}
   if(!$k.value.trim()){toast('Claude Key 필요');return}
-  const weapon=document.getElementById('hkWeapon').value;
   const note=(document.getElementById('hkNote').value||'').trim();
   sLoad('제목 뽑는 중...','',['이미지 읽는 중...','후킹 적용 중...','제목 다듬는 중...']);sStep(0);
   try{
@@ -788,16 +787,21 @@ JSON만 답변 (마크다운·설명 금지):
     sStep(2);
     const parsed=pj(res);
     hLoad();
-    showHkResult(parsed);
+    showHkResult(parsed,weapon);
     toast('제목 후보 완성!');
   }catch(e){hLoad();toast('오류: '+e.message);console.error(e)}
-};
+}
+// AI 추천 (자동): 여러 기법 섞어서 5개
+document.getElementById('hkBtn').onclick=()=>genTitles('auto');
+// 선택한 방식으로 뽑기
+document.getElementById('hkBtn2').onclick=()=>genTitles(document.getElementById('hkWeapon').value);
 
-function showHkResult(parsed){
+const HK_LABEL={auto:'AI 추천',num:'숫자+기간+결과',rev:'통념 뒤집기',pain:'손실·불안 경고',secret:"핵심을 '이것'으로 감춤",authority:'전문가·데이터',combo:'2가지 조합'};
+function showHkResult(parsed,weapon){
   const box=document.getElementById('hkResult');box.style.display='block';box.innerHTML='';
   const cands=(parsed.candidates||[]).slice().sort((a,b)=>(b.score||0)-(a.score||0));
   const body=parsed.body||'';
-  const title=document.createElement('div');title.style.cssText='font-size:11px;color:var(--acc);font-weight:700;margin-bottom:6px';title.textContent='제목 후보 (클릭하면 현재 카드에 적용)';
+  const title=document.createElement('div');title.style.cssText='font-size:11px;color:var(--acc);font-weight:700;margin-bottom:6px';title.textContent=`[${HK_LABEL[weapon]||'AI 추천'}] 제목 후보 (클릭하면 적용)`;
   box.appendChild(title);
   cands.forEach(cd=>{
     const row=document.createElement('div');
@@ -819,7 +823,7 @@ function showHkResult(parsed){
 }
 document.getElementById('hkNote').value=localStorage.getItem('hk_note')||'';
 document.getElementById('hkNote').oninput=e=>localStorage.setItem('hk_note',e.target.value);
-document.getElementById('hkWeapon').value=localStorage.getItem('hk_weapon')||'auto';
+document.getElementById('hkWeapon').value=localStorage.getItem('hk_weapon')||'num';
 document.getElementById('hkWeapon').onchange=e=>localStorage.setItem('hk_weapon',e.target.value);
 
 /* ===== AI 배경 이미지 생성 (OpenAI) ===== */
