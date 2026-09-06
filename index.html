@@ -185,17 +185,20 @@ input[type=color]{width:32px;height:26px;background:transparent;border:1px solid
     <h3>✍️ 후킹 제목 뽑기</h3>
     <div class="tip" style="font-size:11px;color:var(--dim);margin-bottom:6px;line-height:1.5">게시물 이미지·본문을 분석해 후킹 노하우로 제목 후보를 뽑습니다.</div>
     <div class="field"><label>추가 지침 (선택)</label><input type="text" id="hkNote" placeholder="예) 20대 타깃, 강한 자극, 숫자 꼭 포함 등"/></div>
-    <button class="w100" id="hkBtn">🤖 AI 추천 제목 5개 뽑기</button>
+    <button class="w100" id="hkBtn">✍️ 제목 5개 뽑기</button>
     <div id="hkResult" style="display:none;margin-top:8px"></div>
-    <div class="field" style="margin-top:10px"><label>특정 후킹 방식으로 더 뽑기</label><select id="hkWeapon">
-      <option value="num">숫자+기간+결과</option>
-      <option value="rev">통념 뒤집기</option>
-      <option value="pain">손실·불안 경고</option>
-      <option value="secret">핵심을 '이것'으로 감춤</option>
-      <option value="authority">전문가·데이터</option>
-      <option value="combo">2가지 조합</option>
-    </select></div>
-    <button class="w100 gh" id="hkBtn2">✍️ 선택한 방식으로 뽑기</button>
+    <div id="hkMore" style="display:none;margin-top:8px">
+      <button class="w100" id="hkRegen" style="margin-bottom:8px">🔄 새로 생성 (5개 다시)</button>
+      <div class="field" style="margin-bottom:6px"><label>다른 방식으로 뽑기</label><select id="hkWeapon">
+        <option value="num">숫자+기간+결과</option>
+        <option value="rev">통념 뒤집기</option>
+        <option value="pain">손실·불안 경고</option>
+        <option value="secret">핵심을 '이것'으로 감춤</option>
+        <option value="authority">전문가·데이터</option>
+        <option value="combo">2가지 조합</option>
+      </select></div>
+      <button class="w100 gh" id="hkBtn2">이 방식으로 5개 뽑기</button>
+    </div>
     <div class="sep"></div>
 
     <h3>🎨 AI 배경 이미지 (ChatGPT)</h3>
@@ -788,11 +791,14 @@ JSON만 답변 (마크다운·설명 금지):
     const parsed=pj(res);
     hLoad();
     showHkResult(parsed,weapon);
+    document.getElementById('hkMore').style.display='block';
     toast('제목 후보 완성!');
   }catch(e){hLoad();toast('오류: '+e.message);console.error(e)}
 }
-// AI 추천 (자동): 여러 기법 섞어서 5개
+// 제목 5개 뽑기 (AI 추천 자동)
 document.getElementById('hkBtn').onclick=()=>genTitles('auto');
+// 새로 생성 (AI 추천 5개 다시)
+document.getElementById('hkRegen').onclick=()=>genTitles('auto');
 // 선택한 방식으로 뽑기
 document.getElementById('hkBtn2').onclick=()=>genTitles(document.getElementById('hkWeapon').value);
 
