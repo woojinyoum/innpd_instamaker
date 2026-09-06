@@ -183,16 +183,7 @@ input[type=color]{width:32px;height:26px;background:transparent;border:1px solid
     <div class="sep"></div>
 
     <h3>✍️ 후킹 제목 뽑기</h3>
-    <div class="tip" style="font-size:11px;color:var(--dim);margin-bottom:6px;line-height:1.5">게시물 이미지·본문을 분석해 후킹 노하우(7버튼·5무기)로 제목 후보를 뽑습니다.</div>
-    <div class="field"><label>후킹 방식</label><select id="hkWeapon">
-      <option value="auto">🤖 AI 추천 (최적 무기 자동 선택)</option>
-      <option value="num">1) 숫자의 칼 — 숫자+기간+결과</option>
-      <option value="rev">2) 반전의 망치 — 통념 뒤집기</option>
-      <option value="pain">3) 고통의 창 — 손실·불안 경고</option>
-      <option value="secret">4) 비밀의 미끼 — 핵심을 '이것'으로 감춤</option>
-      <option value="authority">5) 권위의 방패 — 전문가·데이터</option>
-      <option value="combo">⚡ 무기 2개 조합 (위력 배가)</option>
-    </select></div>
+    <div class="tip" style="font-size:11px;color:var(--dim);margin-bottom:6px;line-height:1.5">게시물 이미지·본문을 분석해 후킹 노하우로 제목 후보를 뽑습니다.</div>
     <div class="field"><label>추가 지침 (선택)</label><input type="text" id="hkNote" placeholder="예) 20대 타깃, 강한 자극, 숫자 꼭 포함 등"/></div>
     <button class="w100" id="hkBtn">✍️ 제목 후보 뽑기</button>
     <div id="hkResult" style="display:none;margin-top:8px"></div>
@@ -746,26 +737,23 @@ const HK_WEAPON={
 document.getElementById('hkBtn').onclick=async()=>{
   if(!img1&&!img2){toast('게시물 이미지 또는 본문 캡쳐를 먼저 업로드하세요');return}
   if(!$k.value.trim()){toast('Claude Key 필요');return}
-  const weapon=document.getElementById('hkWeapon').value;
   const note=(document.getElementById('hkNote').value||'').trim();
-  sLoad('제목 뽑는 중...','',['이미지 읽는 중...','후킹 무기 적용 중...','제목 다듬는 중...']);sStep(0);
+  sLoad('제목 뽑는 중...','',['이미지 읽는 중...','후킹 적용 중...','제목 다듬는 중...']);sStep(0);
   try{
     const uc=[];
     if(img1){const[m,b]=img1.split(',');uc.push({type:'image',source:{type:'base64',media_type:m.match(/data:(.*?);/)[1],data:b}},{type:'text',text:'위: 게시물 메인 이미지'})}
     if(img2){const[m,b]=img2.split(',');uc.push({type:'image',source:{type:'base64',media_type:m.match(/data:(.*?);/)[1],data:b}},{type:'text',text:'위: 본문 캡쳐 (OCR 대상)'})}
     sStep(1);
-    uc.push({type:'text',text:`위 인스타그램 게시물을 분석하고, 후킹 가이드에 따라 인스타 카드뉴스 첫 장에 쓸 제목 후보를 뽑아주세요.
-
-${HK_WEAPON[weapon]||HK_WEAPON.auto}
+    uc.push({type:'text',text:`위 인스타그램 게시물을 분석하고, 후킹 가이드에 따라 인스타 카드뉴스 첫 장에 쓸 제목 후보를 뽑아주세요. 콘텐츠에 가장 잘 맞는 후킹 방식을 스스로 판단해 사용하세요.
 ${note?'추가 지침(최우선): '+note:''}
 
 진행:
 1) 본문 캡쳐가 있으면 글자를 정확히 OCR해서 핵심 내용을 파악
-2) 후킹 무기를 적용해 15~25자 제목 후보 5개 생성 (각각 다른 각도)
-3) 각 후보에 사용 무기와 점수(10점 만점)를 표기, 점수 높은 순 정렬
+2) 후킹 기법을 적용해 15~25자 제목 후보 5개 생성 (각각 다른 각도)
+3) 각 후보에 점수(10점 만점)를 표기, 점수 높은 순 정렬
 
 JSON만 답변 (마크다운·설명 금지):
-{"candidates":[{"title":"제목(15~25자)","weapon":"사용 무기명","score":9,"reason":"짧은 이유"}],"body":"본문 OCR 기반 자연스러운 한국어 요약 3~5문장"}
+{"candidates":[{"title":"제목(15~25자)","score":9,"reason":"짧은 이유"}],"body":"본문 OCR 기반 자연스러운 한국어 요약 3~5문장"}
 
 규칙: 제목 이모지 금지, 강조어휘 최대 2개, 본문이 갚을 수 있는 제목만.`});
     const res=await api({sys:HOOK_SYS,content:uc,max:2000});
@@ -788,7 +776,7 @@ function showHkResult(parsed){
     row.style.cssText='padding:8px 10px;margin-bottom:6px;border:1px solid var(--brd);border-radius:8px;background:var(--panel2);cursor:pointer;transition:all .12s';
     row.onmouseenter=()=>{row.style.borderColor='var(--acc)';row.style.background='rgba(124,92,255,.08)'};
     row.onmouseleave=()=>{row.style.borderColor='var(--brd)';row.style.background='var(--panel2)'};
-    row.innerHTML=`<div style="font-size:13px;color:var(--txt);font-weight:600;line-height:1.4">${(cd.title||'').replace(/</g,'&lt;')}</div><div style="font-size:10px;color:var(--dim);margin-top:3px">${(cd.weapon||'')} · ${cd.score||''}/10 · ${(cd.reason||'').replace(/</g,'&lt;')}</div>`;
+    row.innerHTML=`<div style="font-size:13px;color:var(--txt);font-weight:600;line-height:1.4">${(cd.title||'').replace(/</g,'&lt;')}</div><div style="font-size:10px;color:var(--dim);margin-top:3px">${cd.score?cd.score+'/10 · ':''}${(cd.reason||'').replace(/</g,'&lt;')}</div>`;
     row.onclick=()=>{
       const c=cur();if(!c){toast('카드 없음');return}
       saveSnap();c.title=cd.title||c.title;if(body&&!c.body)c.body=body;render();rEd();toast('제목 적용: '+cd.title);
@@ -803,8 +791,6 @@ function showHkResult(parsed){
 }
 document.getElementById('hkNote').value=localStorage.getItem('hk_note')||'';
 document.getElementById('hkNote').oninput=e=>localStorage.setItem('hk_note',e.target.value);
-document.getElementById('hkWeapon').value=localStorage.getItem('hk_weapon')||'auto';
-document.getElementById('hkWeapon').onchange=e=>localStorage.setItem('hk_weapon',e.target.value);
 
 /* ===== AI 배경 이미지 생성 (OpenAI) ===== */
 // 1) Build a vivid English image prompt from card title+body (via Claude), 2) generate via OpenAI images API
