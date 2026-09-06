@@ -761,6 +761,30 @@ const HK_WEAPON={
   combo:'서로 다른 기법 2개를 조합해 5개 후보를 뽑으세요(예: 권위+숫자, 반전+호기심).'
 };
 
+// Robust parser: try JSON, then repair, then regex-extract titles
+function parseTitles(raw){
+  if(!raw)throw Error('빈 응답');
+  const m=raw.match(/\{[\s\S]*\}/);
+  const jsonStr=m?m[0]:raw;
+  // 1) straight parse
+  try{return JSON.parse(jsonStr)}catch(e){}
+  // 2) light repair (trailing commas, smart quotes)
+  try{
+    let s=jsonStr.replace(/,\s*([}\]])/g,'$1').replace(/[“”]/g,'"').replace(/[‘’]/g,"'");
+    return JSON.parse(s);
+  }catch(e){}
+  // 3) regex extraction (handles unescaped quotes inside values)
+  const cands=[];
+  const re=/"title"\s*:\s*"([\s\S]*?)"\s*(?:,\s*"score"\s*:\s*(\d+))?\s*(?:,\s*"reason"\s*:\s*"([\s\S]*?)")?\s*[}\]]/g;
+  let mm;
+  while((mm=re.exec(jsonStr))!==null){
+    const t=(mm[1]||'').replace(/\\n/g,'\n').replace(/\\"/g,'"').trim();
+    if(t)cands.push({title:t,score:mm[2]?+mm[2]:null,reason:(mm[3]||'').replace(/\\"/g,'"').trim()});
+  }
+  if(!cands.length)throw Error('제목을 추출하지 못했습니다');
+  let body='';const bm=jsonStr.match(/"body"\s*:\s*"([\s\S]*?)"\s*}?\s*$/);if(bm)body=bm[1].replace(/\\n/g,'\n').replace(/\\"/g,'"');
+  return {candidates:cands,body};
+}
 async function genTitles(weapon){
   if(!img1&&!img2){toast('게시물 이미지 또는 본문 캡쳐를 먼저 업로드하세요');return}
   if(!$k.value.trim()){toast('Claude Key 필요');return}
@@ -783,10 +807,11 @@ ${note?'추가 지침(최우선): '+note:''}
 JSON만 답변 (마크다운·설명 금지):
 {"candidates":[{"title":"제목(15~25자)","score":9,"reason":"짧은 이유"}],"body":"본문 OCR 기반 자연스러운 한국어 요약 3~5문장"}
 
-규칙: 제목 이모지 금지, 강조어휘 최대 2개, 본문이 갚을 수 있는 제목만.`});
+규칙: 제목 이모지 금지, 강조어휘 최대 2개, 본문이 갚을 수 있는 제목만.
+중요: JSON 문자열 값 안에서 큰따옴표(")를 쓰지 마세요. 강조가 필요하면 작은따옴표(')나 홑화살괄호(〈 〉)를 쓰세요. 줄바꿈은 \\n으로.`});
     const res=await api({sys:HOOK_SYS,content:uc,max:2000});
     sStep(2);
-    const parsed=pj(res);
+    const parsed=parseTitles(res);
     hLoad();
     showHkResult(parsed,weapon);
     toast('제목 후보 완성!');
