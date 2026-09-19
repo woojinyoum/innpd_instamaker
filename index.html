@@ -2020,10 +2020,10 @@ function refreshPSDropdown(){
   sel.innerHTML='<option value="">— 프리셋 선택 —</option>'+names.map(n=>`<option value="${n.replace(/"/g,'&quot;')}">${n}</option>`).join('');
   if(cur&&ps[cur])sel.value=cur;
 }
-function extractStyle(c){return{t:JSON.parse(JSON.stringify(c.t)),logo:{size:c.logo.size,pad:c.logo.pad,pos:c.logo.pos,x:c.logo.x,y:c.logo.y,useXY:c.logo.useXY},g:JSON.parse(JSON.stringify(c.g))}}
+function extractStyle(c){return{t:JSON.parse(JSON.stringify(c.t)),logo:{src:c.logo.src,size:c.logo.size,pad:c.logo.pad,pos:c.logo.pos,x:c.logo.x,y:c.logo.y,useXY:c.logo.useXY,op:c.logo.op},g:JSON.parse(JSON.stringify(c.g))}}
 function applyStyle(c,style){
   if(style.t)Object.assign(c.t,style.t);
-  if(style.logo){const ks=['size','pad','pos','x','y','useXY'];ks.forEach(k=>{if(style.logo[k]!=null)c.logo[k]=style.logo[k]})}
+  if(style.logo){const ks=['src','size','pad','pos','x','y','useXY','op'];ks.forEach(k=>{if(style.logo[k]!==undefined)c.logo[k]=style.logo[k]})}
   if(style.g)Object.assign(c.g,style.g);
 }
 document.getElementById('psSave').onclick=()=>{
