@@ -1307,15 +1307,20 @@ function bCard(c){
         hd.style.cssText='position:absolute;right:-12px;bottom:-12px;width:24px;height:24px;background:#7c5cff;border:3px solid #fff;border-radius:50%;cursor:nwse-resize;box-shadow:0 2px 6px rgba(0,0,0,.4);z-index:2';
         oc.appendChild(hd);
       }
-      renderOvList&&renderOvList();
       const sc=cardScaleOf(el);const sX=e.clientX,sY=e.clientY;
+      // Pause background video during drag so it doesn't compete for paint (smoother)
+      const bgVid=el.querySelector('video');if(bgVid){try{bgVid.pause()}catch(_){}}
+      const resumeVid=()=>{if(bgVid){try{bgVid.play()}catch(_){}}};
       if(adjusting){
-        // Pan inner photo (ofx/ofy) — use SAME formula as posCover (includes ofz) so exit keeps look
+        // Pan inner photo (ofx/ofy) — RAF-throttled for smoothness
         const oFx=ov.ofx||0,oFy=ov.ofy||0;
-        const onMove=me=>{ov.ofx=Math.round(oFx+(me.clientX-sX)/sc);ov.ofy=Math.round(oFy+(me.clientY-sY)/sc);
+        let rp=false,lme=null;
+        const frame=()=>{rp=false;const me=lme;if(!me)return;
+          ov.ofx=Math.round(oFx+(me.clientX-sX)/sc);ov.ofy=Math.round(oFy+(me.clientY-sY)/sc);
           const iw=oi.naturalWidth,ih=oi.naturalHeight;if(iw&&ih){const zz=(ov.ofz==null?100:ov.ofz)/100;const s=Math.max(w/iw,h/ih)*zz;const dw=iw*s,dh=ih*s;oi.style.width=dw+'px';oi.style.height=dh+'px';oi.style.left=((w-dw)/2+ov.ofx)+'px';oi.style.top=((h-dh)/2+ov.ofy)+'px'}
         };
-        const onUp=()=>{document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp);saveSnap()};
+        const onMove=me=>{lme=me;if(!rp){rp=true;requestAnimationFrame(frame)}};
+        const onUp=()=>{document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp);resumeVid();saveSnap()};
         document.addEventListener('mousemove',onMove);document.addEventListener('mouseup',onUp);
         return;
       }
@@ -1348,7 +1353,7 @@ function bCard(c){
         }
       };
       const onMove=me=>{lastME=me;if(!rafPending){rafPending=true;requestAnimationFrame(applyFrame)}};
-      const onUp=()=>{document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp);saveSnap();render()};
+      const onUp=()=>{document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp);resumeVid();saveSnap();renderOvList&&renderOvList();render()};
       document.addEventListener('mousemove',onMove);document.addEventListener('mouseup',onUp);
     });
     el.appendChild(oc);
