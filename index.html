@@ -1924,11 +1924,8 @@ async function renderVideoCard(c){
         else if(p==='tl'){_lx=pd;_ly=pd}else if(p==='tc'){_lx=(1080-sz)/2;_ly=pd}else if(p==='tr'){_lx=1080-sz-pd;_ly=pd}
         else if(p==='bl'){_lx=pd;_ly=HH-sz-pd}else if(p==='bc'){_lx=(1080-sz)/2;_ly=HH-sz-pd}else{_lx=1080-sz-pd;_ly=HH-sz-pd}
       }
-      vid.play();rec.start();
-      // Throttle draw to ~30fps
-      // 60fps target — no throttle, let RAF drive at full monitor rate (captureStream caps at 60)
-      function draw(){
-        if(vid.ended||vid.currentTime*1000>=duration){rec.stop();return}
+      // Render a single composited frame onto the canvas
+      function renderFrame(){
         // Draw video frame (source-based crop + zoom + pan)
         ctx.fillStyle='#1a1a1a';ctx.fillRect(0,0,1080,HH);
         const r=mediaDisplayRect(c,vid.videoWidth,vid.videoHeight);
@@ -1966,20 +1963,41 @@ async function renderVideoCard(c){
           }
         });
         ctx.shadowBlur=0;ctx.shadowOffsetX=0;ctx.shadowOffsetY=0;ctx.lineWidth=1;
-        // Draw logo (precomputed position)
-        if(logoImg){const pa=ctx.globalAlpha;ctx.globalAlpha=(c.logo.op==null?100:c.logo.op)/100;ctx.drawImage(logoImg,_lx,_ly,c.logo.size,c.logo.size);ctx.globalAlpha=pa}
+        // Draw logo (contain-fit, same as preview/PNG — no stretching)
+        if(logoImg){
+          const sz=c.logo.size;
+          const iw=logoImg.naturalWidth||sz, ih=logoImg.naturalHeight||sz;
+          const s=Math.min(sz/iw,sz/ih);const dw=iw*s,dh=ih*s;
+          const pa=ctx.globalAlpha;ctx.globalAlpha=(c.logo.op==null?100:c.logo.op)/100;
+          ctx.drawImage(logoImg,_lx+(sz-dw)/2,_ly+(sz-dh)/2,dw,dh);
+          ctx.globalAlpha=pa;
+        }
         // Draw overlays
         drawOverlayImages(ctx,c,ovImgs);
-        requestAnimationFrame(draw);
       }
-      // Preload logo + overlays
+      function loop(){
+        if(vid.ended||vid.currentTime*1000>=duration){rec.stop();return}
+        renderFrame();
+        requestAnimationFrame(loop);
+      }
+      // Preload logo + overlays FIRST, then draw first frame, then start recording (no blank intro)
       let logoImg=null;
       const ovImgs={};
       const preloads=[];
       if(c.logo&&c.logo.src){preloads.push(new Promise(r=>{logoImg=new Image();logoImg.onload=r;logoImg.onerror=r;logoImg.src=c.logo.src}))}
       (c.ovs||[]).forEach(ov=>preloads.push(new Promise(r=>{const im=new Image();im.onload=()=>{ovImgs[ov.id]=im;r()};im.onerror=r;im.src=ov.src})));
-      Promise.all(preloads).then(()=>draw());
-      setTimeout(()=>{if(rec.state==='recording')rec.stop()},duration+500);
+      Promise.all(preloads).then(async()=>{
+        try{vid.currentTime=0}catch(e){}
+        try{await vid.play()}catch(e){}
+        const begin=()=>{
+          renderFrame();      // paint real first frame BEFORE recording starts
+          rec.start();
+          requestAnimationFrame(loop);
+        };
+        if(vid.readyState>=2)begin();
+        else vid.addEventListener('loadeddata',begin,{once:true});
+      });
+      setTimeout(()=>{if(rec.state==='recording')rec.stop()},duration+1000);
     };
     vid.onerror=()=>reject(Error('동영상 로드 실패'));
   });
