@@ -223,7 +223,7 @@ input[type=color]{width:32px;height:26px;background:transparent;border:1px solid
     <div class="sep"></div>
 
     <h3>번역 & 다운로드</h3>
-    <div class="field"><label>언어</label><select id="lang"><option value="ko">한국어</option><option value="en">English</option><option value="ja">日本語</option><option value="zh">简体中文</option><option value="es">Espanol</option><option value="vi">Tieng Viet</option><option value="id">Indonesia</option><option value="th">ไทย</option><option value="fr">Francais</option><option value="de">Deutsch</option></select></div>
+    <div class="field"><label>언어</label><select id="lang"><option value="ko">한국어</option><option value="en">English</option><option value="ja">日本語</option><option value="zh">简体中文</option><option value="es">Espanol</option><option value="vi">Tieng Viet</option><option value="id">Indonesia</option><option value="th">ไทย</option><option value="fr">Francais</option><option value="de">Deutsch</option><option value="pt">Portugues</option></select></div>
     <div class="row"><button class="gh" id="trBtn">번역</button><button id="dlBtn">다운로드</button></div>
   </aside>
 
@@ -1018,7 +1018,7 @@ document.getElementById('trBtn').onclick=async()=>{
   const mediaBackup=S.cards.map(c=>({media:c.media,mediaType:c.mediaType,img:c.img,mvy:c.mvy,mct:c.mct,mcb:c.mcb,mcl:c.mcl,mcr:c.mcr,mzoom:c.mzoom,mox:c.mox,moy:c.moy,mvol:c.mvol,logo:c.logo?{...c.logo}:null}));
   const restoreMedia=()=>{S.cards.forEach((c,i)=>{const b=mediaBackup[i];if(!b)return;c.media=b.media;c.mediaType=b.mediaType;c.img=b.img;c.mvy=b.mvy;c.mct=b.mct;c.mcb=b.mcb;c.mcl=b.mcl;c.mcr=b.mcr;c.mzoom=b.mzoom;c.mox=b.mox;c.moy=b.moy;c.mvol=b.mvol;if(b.logo)c.logo=b.logo})};
   if(l==='ko'){if(S.ko){S.cards[0].title=S.ko.title;S.cards[0].body=S.ko.body;(S.ko.scenes||[]).forEach((s,i)=>{if(S.cards[i+1]){S.cards[i+1].title=s.title;S.cards[i+1].body=s.body}});restoreMedia();render();toast('복원')}return}
-  const lm={en:'English',ja:'Japanese',zh:'Simplified Chinese',es:'Spanish',vi:'Vietnamese',id:'Indonesian',th:'Thai',fr:'French',de:'German'};
+  const lm={en:'English',ja:'Japanese',zh:'Simplified Chinese',es:'Spanish',vi:'Vietnamese',id:'Indonesian',th:'Thai',fr:'French',de:'German',pt:'Brazilian Portuguese'};
   sLoad(lm[l]+' 번역 중...','');
   const tpEl=document.getElementById('trPrompt');
   const userGuide=((tpEl&&tpEl.value)||localStorage.getItem('tr_prompt')||'').trim();
