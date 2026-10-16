@@ -943,7 +943,7 @@ async function editImageOpenAI(dataUrl,prompt){
   }
   throw Error(lastErr||'이미지 편집 실패');
 }
-async function runImageEdit(prompt,loadingMsgs,doneMsg){
+async function runImageEdit(prompt,loadingMsgs,doneMsg,keepFraming){
   const c=cur();if(!c){toast('카드 없음');return}
   const src=(c.media&&c.mediaType!=='video')?c.media:c.img;
   if(!src){toast('먼저 이미지를 카드에 넣으세요 (영상 불가)');return}
@@ -952,22 +952,27 @@ async function runImageEdit(prompt,loadingMsgs,doneMsg){
   try{
     sStep(1);
     const raw=await editImageOpenAI(src,prompt);
-    const out=await resizeToCard(raw);
     sStep(2);saveSnap();
-    c.media=out;c.mediaType='image';c.img=null;
-    c.mct=0;c.mcb=0;c.mcl=0;c.mcr=0;c.mzoom=100;c.mox=0;c.moy=0;
+    if(keepFraming){
+      // 고화질: 기존 크기·위치·자르기 그대로 유지 (확대 안 함)
+      c.media=raw;c.mediaType='image';c.img=null;
+    }else{
+      // 깔끔하게: 카드 크기에 맞춰 꽉 채우고 프레이밍 초기화
+      c.media=await resizeToCard(raw);c.mediaType='image';c.img=null;
+      c.mct=0;c.mcb=0;c.mcl=0;c.mcr=0;c.mzoom=100;c.mox=0;c.moy=0;
+    }
     hLoad();render();toast(doneMsg);
   }catch(e){hLoad();toast('오류: '+e.message);console.error(e)}
 }
 document.getElementById('aiCleanBtn').onclick=()=>runImageEdit(
   'Remove ALL text, captions, titles, headlines, watermarks, logos, page counters (like "1/20"), UI icons (mute/volume), "swipe for more" labels, and any dark gradient or black overlay at the bottom of this image. Fully reconstruct the natural photographic content that belongs behind those overlays so the photo looks complete and seamless, matching the original lighting, colors, film grain, and composition. Keep the main subject, people, and scene exactly as they are. The final image must be a clean photo with absolutely NO text, letters, numbers, or graphic overlays anywhere.',
   ['이미지 분석 중...','글자·그라데이션 제거 중...','자연스럽게 재구성 중...'],
-  '깔끔하게 정리 완료!'
+  '깔끔하게 정리 완료!', false
 );
 document.getElementById('aiHdBtn').onclick=()=>runImageEdit(
-  'Enhance this exact image to high resolution, crisp, professional photo quality. Increase sharpness, clarity, and fine detail; remove noise, blur, compression artifacts, and pixelation. Preserve the identical scene, subject, people, faces, composition, colors, and overall style — do NOT change, add, or remove any content. Only upscale and improve realism and quality.',
+  'Enhance this exact image to high resolution, crisp, professional photo quality. Increase sharpness, clarity, and fine detail; remove noise, blur, compression artifacts, and pixelation. Preserve the identical scene, subject, people, faces, composition, colors, framing, and overall style — do NOT change, add, remove, crop, or re-frame any content. Only upscale and improve realism and quality.',
   ['이미지 분석 중...','디테일 복원 중...','고화질 마무리 중...'],
-  '고화질 변환 완료!'
+  '고화질 변환 완료!', true
 );
 
 function aiMode(){const r=document.querySelector('input[name="aiMode"]:checked');return r?r.value:'auto'}
