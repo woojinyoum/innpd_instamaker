@@ -1778,6 +1778,23 @@ document.getElementById('dlBtn').onclick=async()=>{
         files.push({name:`card-${i+1}.png`,blob,type:'image'});
       }
     }
+    hLoad();
+    const isMobile=/iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    // 모바일: 사진첩 저장이 되는 네이티브 공유 시트 사용 (파일 공유 지원 시)
+    if(isMobile){
+      try{
+        const shareFiles=files.map(f=>new File([f.blob],f.name,{type:f.blob.type||(f.type==='video'?'video/mp4':'image/png')}));
+        if(navigator.canShare&&navigator.canShare({files:shareFiles})){
+          await navigator.share({files:shareFiles,title:'Insta Card'});
+          toast('저장 완료! (사진에 저장을 선택하세요)');
+          return;
+        }
+      }catch(err){
+        if(err&&err.name==='AbortError'){toast('취소됨');return} // 사용자가 공유 시트 닫음
+        console.warn('share 실패, 일반 다운로드로 대체:',err);
+      }
+    }
+    // 데스크톱 또는 공유 미지원: 기존 다운로드
     if(files.length===1){
       const u=URL.createObjectURL(files[0].blob);dL(u,files[0].name);setTimeout(()=>URL.revokeObjectURL(u),3000);
     }else{
@@ -1785,7 +1802,7 @@ document.getElementById('dlBtn').onclick=async()=>{
       for(const f of files) z.file(f.name,f.blob);
       const b=await z.generateAsync({type:'blob'});const u=URL.createObjectURL(b);dL(u,'cards.zip');setTimeout(()=>URL.revokeObjectURL(u),3000);
     }
-    hLoad();toast('다운로드 완료!');
+    toast('다운로드 완료!');
   }catch(e){hLoad();toast('오류: '+e.message);console.error(e)}
 };
 
