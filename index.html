@@ -23,12 +23,13 @@ html,body{background:var(--bg);color:var(--txt);font-family:'Inter','Noto Sans K
 @media (max-width:860px){
   html,body{height:auto;overflow:auto;-webkit-text-size-adjust:100%}
   .app{display:flex;flex-direction:column;height:auto;min-height:100dvh;padding:8px;gap:8px}
-  .topbar{position:sticky;top:0;z-index:50}
-  .center{order:1}          /* 카드 미리보기 맨 위 */
-  .panel{order:2;max-height:none;overflow:visible}  /* 왼쪽 패널 */
-  #rp{order:3}              /* 오른쪽(편집) 패널 */
+  .topbar{display:none}                 /* 제목바 숨겨 공간 절약 */
+  /* 카드 미리보기를 화면 상단에 고정 → 아래서 편집해도 카드가 계속 보임 */
+  .center{order:0;position:sticky;top:0;z-index:40;background:var(--bg);padding:4px 0 8px;box-shadow:0 6px 16px rgba(0,0,0,.55);border-radius:0 0 12px 12px}
+  #rp{order:1;max-height:none;overflow:visible}   /* 편집 패널(제목 스타일 등) 먼저 */
+  .panel{order:2;max-height:none;overflow:visible} /* 설정 패널 다음 */
   .panel input,.panel select,.panel textarea,.panel button{font-size:16px}  /* iOS 확대 방지 */
-  .center{padding:6px 0}
+  .center .nav-bar{margin-top:2px}
 }
 
 /* Header */
@@ -541,10 +542,15 @@ const H=()=>S.mode==='reels'?1920:1350;
 // Preview slide width: desktop 432, mobile fits viewport. Dynamic.
 let PV_W=432;
 function calcPVW(){
-  // On narrow screens, fit the card to viewport width (leave gutters)
   const vw=window.innerWidth||document.documentElement.clientWidth||432;
-  if(vw<=860){return Math.max(240,Math.min(vw-32,432))}
-  return 432;
+  if(vw>860)return 432;
+  // Mobile: card is sticky at top — keep it within ~42% of viewport height so the
+  // editing panel below stays usable without scrolling the card out of view.
+  const vh=window.innerHeight||document.documentElement.clientHeight||800;
+  const maxW=vw-24;
+  const maxH=vh*0.42;
+  const wFromH=maxH*1080/H();   // width that makes card height == maxH
+  return Math.max(180,Math.min(maxW,wFromH,432));
 }
 const PV_SCALE=()=>PV_W/1080;
 const PV_H=()=>Math.round(H()*PV_SCALE());
