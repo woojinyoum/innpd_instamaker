@@ -19,6 +19,18 @@
 html,body{background:var(--bg);color:var(--txt);font-family:'Inter','Noto Sans KR',sans-serif;height:100vh;overflow:hidden}
 .app{display:grid;grid-template-columns:320px 1fr 310px;grid-template-rows:56px 1fr;gap:12px;padding:12px;height:100vh}
 
+/* ===== 모바일 반응형 ===== */
+@media (max-width:860px){
+  html,body{height:auto;overflow:auto;-webkit-text-size-adjust:100%}
+  .app{display:flex;flex-direction:column;height:auto;min-height:100dvh;padding:8px;gap:8px}
+  .topbar{position:sticky;top:0;z-index:50}
+  .center{order:1}          /* 카드 미리보기 맨 위 */
+  .panel{order:2;max-height:none;overflow:visible}  /* 왼쪽 패널 */
+  #rp{order:3}              /* 오른쪽(편집) 패널 */
+  .panel input,.panel select,.panel textarea,.panel button{font-size:16px}  /* iOS 확대 방지 */
+  .center{padding:6px 0}
+}
+
 /* Header */
 .topbar{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;padding:0 20px;background:var(--panel);border:1px solid var(--brd);border-radius:12px}
 .topbar h1{font-size:16px;font-weight:800;display:flex;align-items:center;gap:8px}
@@ -52,12 +64,12 @@ button.w100{width:100%}
 .drop img{max-width:100%;max-height:70px;border-radius:4px;margin-top:4px}
 
 /* ===== CAROUSEL: iPhone-style swipe ===== */
-:root{--card-h:1350px;--prev-h:540px}
+:root{--card-h:1350px;--prev-h:540px;--prev-w:432px;--mcard-scale:0.4}
 .center{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:14px;position:relative;overflow:auto;user-select:none;padding:14px 0}
-.track-wrap{width:432px;height:var(--prev-h);min-height:var(--prev-h);max-height:var(--prev-h);flex-shrink:0;flex-grow:0;overflow:hidden;border-radius:12px;position:relative}
+.track-wrap{width:var(--prev-w);height:var(--prev-h);min-height:var(--prev-h);max-height:var(--prev-h);flex-shrink:0;flex-grow:0;overflow:hidden;border-radius:12px;position:relative}
 .track{display:flex;height:100%;transition:transform .35s cubic-bezier(.25,.8,.25,1);will-change:transform;cursor:grab}
 .track.dragging{transition:none;cursor:grabbing}
-.track .s{flex:0 0 432px;width:432px;height:var(--prev-h);min-height:var(--prev-h);max-height:var(--prev-h);position:relative;overflow:hidden;background:#1a1a1a}
+.track .s{flex:0 0 var(--prev-w);width:var(--prev-w);height:var(--prev-h);min-height:var(--prev-h);max-height:var(--prev-h);position:relative;overflow:hidden;background:#1a1a1a}
 
 /* Nav bar */
 .nav-bar{display:flex;align-items:center;gap:8px}
@@ -72,7 +84,7 @@ button.w100{width:100%}
 .act-row button{font-size:11px;padding:6px 10px}
 
 /* Card canvas (1080x1350 or 1080x1920 scaled) */
-.card{position:absolute;inset:0;width:1080px;height:var(--card-h);transform-origin:top left;transform:scale(.4);overflow:hidden;background:#1a1a1a}
+.card{position:absolute;inset:0;width:1080px;height:var(--card-h);transform-origin:top left;transform:scale(var(--mcard-scale));overflow:hidden;background:#1a1a1a}
 .card .bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:1}
 .card .gr{position:absolute;left:0;right:0;bottom:0;pointer-events:none;z-index:2}
 .card .tt{position:absolute;left:60px;right:60px;word-break:keep-all;line-height:1.2;font-weight:900;color:#fff;font-family:'Pretendard','Noto Sans KR',sans-serif;z-index:3}
@@ -526,13 +538,23 @@ const S={cards:[],idx:0,ko:null,grid:false,mode:localStorage.getItem('mode')||'p
 let _ovLastClick={id:null,t:0};
 // Card height per mode
 const H=()=>S.mode==='reels'?1920:1350;
-// Preview slide width = 432, scale = 432/1080 = 0.4
-const PV_W=432;const PV_SCALE=PV_W/1080;
-const PV_H=()=>Math.round(H()*PV_SCALE);
+// Preview slide width: desktop 432, mobile fits viewport. Dynamic.
+let PV_W=432;
+function calcPVW(){
+  // On narrow screens, fit the card to viewport width (leave gutters)
+  const vw=window.innerWidth||document.documentElement.clientWidth||432;
+  if(vw<=860){return Math.max(240,Math.min(vw-32,432))}
+  return 432;
+}
+const PV_SCALE=()=>PV_W/1080;
+const PV_H=()=>Math.round(H()*PV_SCALE());
 function applyMode(){
+  PV_W=calcPVW();
   // Single source of truth: CSS variables drive all card/preview sizing.
   document.documentElement.style.setProperty('--card-h',H()+'px');
+  document.documentElement.style.setProperty('--prev-w',PV_W+'px');
   document.documentElement.style.setProperty('--prev-h',PV_H()+'px');
+  document.documentElement.style.setProperty('--mcard-scale',PV_SCALE());
   // Update logoY and title bottom slider ranges based on mode
   const ly=document.getElementById('logoY');if(ly){ly.max=H()}
   const tb=document.getElementById('tb');if(tb){tb.max=H()-100}
@@ -1485,7 +1507,7 @@ function render(){
   updateUI();
   rEd();
 }
-function slideTO(){$track.style.transform=`translateX(${-S.idx*432}px)`}
+function slideTO(){$track.style.transform=`translateX(${-S.idx*PV_W}px)`}
 function updateUI(){
   const n=S.cards.length;
   document.getElementById('meta').textContent=n?`카드 ${S.idx+1} / ${n} · 1080x${H()}`:'';
@@ -1506,7 +1528,7 @@ document.addEventListener('keydown',e=>{if(['INPUT','TEXTAREA','SELECT'].include
 /* Mouse drag swipe */
 let dragging=false,startX=0,curX=0;
 $track.addEventListener('mousedown',e=>{dragging=true;startX=e.clientX;curX=0;$track.classList.add('dragging');e.preventDefault()});
-document.addEventListener('mousemove',e=>{if(!dragging)return;curX=e.clientX-startX;$track.style.transform=`translateX(${-S.idx*432+curX}px)`});
+document.addEventListener('mousemove',e=>{if(!dragging)return;curX=e.clientX-startX;$track.style.transform=`translateX(${-S.idx*PV_W+curX}px)`});
 document.addEventListener('mouseup',()=>{if(!dragging)return;dragging=false;$track.classList.remove('dragging');
   if(Math.abs(curX)>60){if(curX<0&&S.idx<S.cards.length-1)S.idx++;else if(curX>0&&S.idx>0)S.idx--}
   slideTO();updateUI();rEd();curX=0});
@@ -1514,7 +1536,7 @@ document.addEventListener('mouseup',()=>{if(!dragging)return;dragging=false;$tra
 /* Touch swipe */
 let tStartX=0,tCurX=0;
 $track.addEventListener('touchstart',e=>{tStartX=e.touches[0].clientX;tCurX=0;$track.classList.add('dragging')},{passive:true});
-$track.addEventListener('touchmove',e=>{tCurX=e.touches[0].clientX-tStartX;$track.style.transform=`translateX(${-S.idx*432+tCurX}px)`},{passive:true});
+$track.addEventListener('touchmove',e=>{tCurX=e.touches[0].clientX-tStartX;$track.style.transform=`translateX(${-S.idx*PV_W+tCurX}px)`},{passive:true});
 $track.addEventListener('touchend',()=>{$track.classList.remove('dragging');
   if(Math.abs(tCurX)>60){if(tCurX<0&&S.idx<S.cards.length-1)S.idx++;else if(tCurX>0&&S.idx>0)S.idx--}
   slideTO();updateUI();rEd();tCurX=0});
@@ -2214,6 +2236,12 @@ function showRestoreBanner(saved){
   b.appendChild(load);b.appendChild(ign);document.body.appendChild(b);
   setTimeout(()=>{if(b.parentNode)b.style.opacity='0.35'},15000);
 }
+
+/* Reapply responsive sizing on resize/orientation change */
+let _rsT=null;
+function onResize(){clearTimeout(_rsT);_rsT=setTimeout(()=>{applyMode();slideTO()},150)}
+window.addEventListener('resize',onResize);
+window.addEventListener('orientationchange',onResize);
 
 /* Init */
 applyMode();
