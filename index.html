@@ -166,6 +166,8 @@ input[type=color]{width:32px;height:26px;background:transparent;border:1px solid
 .hseg button{flex:1;background:transparent;border:1px solid transparent;color:var(--dim);padding:7px 4px;font-size:12px;display:flex;flex-direction:column;align-items:center;gap:2px;border-radius:6px}
 .hseg button small{font-size:9px;font-weight:500;opacity:.8}
 .hseg button.on{background:var(--acc);color:#fff}
+.mkseg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}.mkseg button{background:var(--panel2);border:1px solid var(--brd);color:var(--dim);font-size:10px;padding:6px 4px}.mkseg button.on{background:var(--acc);border-color:var(--acc);color:#fff}
+#hotPsMaker .field{margin-bottom:6px}#hotPsMaker .field label{font-size:10px}#hotPsMaker .field label span{color:var(--acc);font-variant-numeric:tabular-nums}
 .hseg button:hover{box-shadow:none;border-color:var(--acc)}
 .hchk{flex:1;display:flex;align-items:center;gap:5px;font-size:11px;cursor:pointer;padding:6px 8px;border:1px solid var(--brd);border-radius:7px;background:var(--panel2)}
 .hchk input{width:auto;margin:0}
@@ -256,8 +258,34 @@ input[type=color]{width:32px;height:26px;background:transparent;border:1px solid
         <div class="field" style="margin:0;flex:0 0 72px"><label>개수</label><select id="hotAutoN"><option value="3">3개</option><option value="4">4개</option><option value="5">5개</option><option value="6" selected>6개</option><option value="8">8개</option><option value="10">10개</option></select></div>
         <div class="field" style="margin:0;flex:1;min-width:0"><label>스타일 프리셋 (제목·위치·로고·그라데이션)</label><select id="hotPsSel"><option value="">현재 카드 스타일 그대로</option></select></div>
       </div>
-      <div class="row" style="margin-top:6px"><button class="gh" id="hotPsSave" style="flex:1;font-size:11px">💾 지금 카드 스타일을 프리셋으로 저장</button></div>
-      <div class="tip" style="font-size:10px;margin-top:6px">프리셋 만드는 법: 카드 하나를 원하는 대로 꾸민 뒤(제목 크기·색·위치, 로고 업로드·위치, 그라데이션) 위 저장 버튼을 누르세요. 우측 편집 패널의 ⭐ 프리셋과 같은 목록을 씁니다.</div>
+      <div class="row" style="margin-top:8px;align-items:flex-start;gap:10px">
+        <div style="flex:0 0 auto;text-align:center">
+          <div style="font-size:10px;color:var(--dim);margin-bottom:3px">미리보기</div>
+          <img id="hotPsPrev" alt="프리셋 미리보기" style="width:108px;height:135px;object-fit:contain;border:1px solid var(--brd);border-radius:6px;background:#111;display:block"/>
+          <div id="hotPsPrevLbl" style="font-size:10px;color:var(--dim);margin-top:3px;max-width:108px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div class="tip" style="font-size:10px">자동 생성될 카드의 제목 스타일·위치·로고가 이렇게 나옵니다. 현재 카드에 사진이 있으면 그 사진 위에 보여줍니다.</div>
+          <button id="hotPsMakeBtn" style="width:100%;margin-top:6px;font-size:11px">✨ 로고·제목 스타일 한 번에 만들기</button>
+          <button class="gh" id="hotPsSave" style="width:100%;margin-top:6px;font-size:11px">💾 지금 카드 스타일을 프리셋으로 저장</button>
+        </div>
+      </div>
+      <div id="hotPsMaker" style="display:none;margin-top:8px;padding:8px;border:1px dashed var(--acc);border-radius:8px;background:rgba(124,92,255,.04)">
+        <div style="font-size:11px;font-weight:700;color:var(--txt);margin-bottom:6px">✨ 프리셋 빠르게 만들기 <span style="font-weight:500;color:var(--dim)">— 바꾸면 미리보기에 바로 반영</span></div>
+        <div class="field"><label>프리셋 이름</label><input type="text" id="mkName" placeholder="예) 핫뉴스 기본"/></div>
+        <div class="field"><label>로고</label>
+          <div class="row"><button class="gh" id="mkLogoBtn" style="font-size:11px">📁 로고 업로드</button><button class="gh" id="mkLogoRm" style="flex:0 0 auto;font-size:11px">로고 없음</button></div>
+          <input type="file" id="mkLogoF" accept="image/*" style="display:none"/>
+          <div id="mkLogoInfo" style="font-size:10px;color:var(--dim);margin-top:3px"></div>
+        </div>
+        <div class="field"><label>로고 위치</label><div class="mkseg" id="mkLogoPos"><button data-v="tl">↖ 좌상</button><button data-v="tc">↑ 중상</button><button data-v="tr">↗ 우상</button><button data-v="bl">↙ 좌하</button><button data-v="bc">↓ 중하</button><button data-v="br">↘ 우하</button></div></div>
+        <div class="row"><div class="field"><label>로고 크기 <span id="mkLogoSizeV">120</span></label><input type="range" id="mkLogoSize" min="40" max="300" value="120"/></div><div class="field"><label>로고 여백 <span id="mkLogoPadV">40</span></label><input type="range" id="mkLogoPad" min="20" max="120" value="40"/></div></div>
+        <div class="row"><div class="field"><label>제목 크기 <span id="mkTzV">80</span></label><input type="range" id="mkTz" min="40" max="140" value="80"/></div><div class="field"><label>제목 위치 (하단에서) <span id="mkTbV">200</span>px</label><input type="range" id="mkTb" min="40" max="1000" value="200"/></div></div>
+        <div class="row"><div class="field" style="flex:0 0 auto"><label>제목 색</label><input type="color" id="mkTc" value="#ffffff"/></div><div class="field" style="flex:0 0 auto"><label>강조색</label><input type="color" id="mkThc" value="#ffcc00"/></div><div class="field"><label>정렬</label><select id="mkTa"><option value="left">왼쪽</option><option value="center">가운데</option><option value="right">오른쪽</option></select></div><div class="field"><label>두께</label><select id="mkTw"><option value="900">Black</option><option value="700">Bold</option><option value="500">Medium</option></select></div></div>
+        <div class="field"><label>폰트</label><select id="mkTf"></select></div>
+        <div class="row"><div class="field"><label>그라데이션 높이 <span id="mkGhV">60</span>%</label><input type="range" id="mkGh" min="0" max="100" value="60"/></div><div class="field"><label>그라데이션 진하기 <span id="mkGoV">95</span></label><input type="range" id="mkGo" min="0" max="100" value="95"/></div></div>
+        <div class="row" style="margin-top:4px"><button id="mkSave">💾 프리셋 저장 + 지금 카드에 적용</button><button class="gh" id="mkCancel" style="flex:0 0 auto">닫기</button></div>
+      </div>
       <label class="hchk" style="margin-top:8px"><input type="checkbox" id="hotAutoFill"/>📐 사진에 여백이 생기면 AI로 꽉 채우기 (OpenAI 비용 · 장당 1회)</label>
       <button class="w100" id="hotAutoBtn" style="margin-top:8px">⚡ 핫뉴스 <span id="hotAutoNLbl">6</span>개 자동 생성</button>
       <div id="hotAutoStatus" style="display:none;margin-top:8px;font-size:10px;line-height:1.6;color:var(--dim);max-height:150px;overflow:auto;padding:6px 8px;background:var(--panel2);border-radius:6px;white-space:pre-wrap"></div>
@@ -1719,6 +1747,7 @@ function updateUI(){
   document.getElementById('rmBtn').style.display=n>1?'':'none';
   document.querySelectorAll('#pgs .p').forEach((b,i)=>{b.classList.toggle('on',i===S.idx)});
   if(typeof syncHotCard==='function')syncHotCard();
+  if(S.mode==='hot'&&typeof schedPreview==='function')schedPreview();
 }
 function go(i){if(i>=0&&i<S.cards.length){S.idx=i;slideTO();updateUI();rEd()}}
 
@@ -2425,7 +2454,7 @@ function enableEditableV(){
 /* Mode tabs */
 function setMode(m){if(S.mode===m)return;S.mode=m;localStorage.setItem('mode',m);const hk=document.getElementById('hkResult');if(hk)hk.style.display='none';applyMode();render()}
 document.getElementById('tabPost').onclick=()=>setMode('post');
-document.getElementById('tabHot').onclick=()=>setMode('hot');
+document.getElementById('tabHot').onclick=()=>{setMode('hot');if(typeof schedPreview==='function')schedPreview()};
 
 /* ===== Presets ===== */
 const PS_KEY='icnm_presets';
@@ -3007,12 +3036,71 @@ async function autoHot(){
   }catch(e){hLoad();toast('오류: '+e.message);console.error(e);log('❌ '+e.message)}
 }
 
+/* ===== 프리셋 미리보기 + ✨ 빠른 프리셋 만들기 (로고·제목 스타일 한 번에 저장) ===== */
+var _mkStyle=null,_prevT=null,_prevSeq=0;
+function mkIsOpen(){const m=document.getElementById('hotPsMaker');return !!(m&&m.style.display!=='none')}
+async function renderPresetPreview(){
+  const img=document.getElementById('hotPsPrev'),lbl=document.getElementById('hotPsPrevLbl');if(!img||S.mode!=='hot')return;
+  const seq=++_prevSeq;
+  const picked=(mkIsOpen()&&_mkStyle)?{name:'✨ 만드는 중',style:_mkStyle}:hotPickedStyle();
+  const c=mk();applyStyle(c,picked.style);
+  c.title='핫뉴스 {제목} 미리보기';c.body='';
+  const curC=cur();
+  if(curC){const s=(curC.media&&curC.mediaType!=='video')?curC.media:curC.img;if(s){c.media=s;c.mediaType='image';['mct','mcb','mcl','mcr','mzoom','mox','moy'].forEach(k=>c[k]=curC[k])}}
+  try{
+    const blob=await renderImageCard(c);if(seq!==_prevSeq)return;
+    const u=URL.createObjectURL(blob);const old=img.dataset.u;img.src=u;img.dataset.u=u;if(old)setTimeout(()=>URL.revokeObjectURL(old),3000);
+    img.style.height=Math.round(108*H()/1080)+'px';
+    lbl.textContent=picked.name||'현재 카드 스타일';
+  }catch(e){console.warn('미리보기 실패',e)}
+}
+function schedPreview(){clearTimeout(_prevT);_prevT=setTimeout(renderPresetPreview,180)}
+// 로고를 최대 512px로 줄여 저장 (프리셋 localStorage 용량 보호, 투명 유지)
+function shrinkLogo(dataUrl){return new Promise(res=>{const im=new Image();im.onload=()=>{const m=Math.max(im.naturalWidth,im.naturalHeight);if(m<=512)return res(dataUrl);const s=512/m;const cv=document.createElement('canvas');cv.width=Math.round(im.naturalWidth*s);cv.height=Math.round(im.naturalHeight*s);cv.getContext('2d').drawImage(im,0,0,cv.width,cv.height);res(cv.toDataURL('image/png'))};im.onerror=()=>res(dataUrl);im.src=dataUrl})}
+function mkFillInputs(){
+  const $=id=>document.getElementById(id);const st=_mkStyle;
+  const setR=(id,v)=>{$(id).value=v;$(id+'V').textContent=v};
+  setR('mkLogoSize',st.logo.size||120);setR('mkLogoPad',st.logo.pad||40);setR('mkTz',st.t.z||80);setR('mkTb',st.t.b||200);setR('mkGh',st.g.h==null?60:st.g.h);setR('mkGo',st.g.o==null?95:st.g.o);
+  $('mkTc').value=st.t.c||'#ffffff';$('mkThc').value=st.t.hc||'#ffcc00';$('mkTa').value=st.t.a||'left';$('mkTw').value=String(st.t.w||'900');
+  const tf=$('mkTf');if(!tf.options.length)tf.innerHTML=$('tf').innerHTML;tf.value=st.t.f||'Pretendard';if(!tf.value)tf.value='Pretendard';
+  document.querySelectorAll('#mkLogoPos button').forEach(b=>b.classList.toggle('on',b.dataset.v===(st.logo.pos||'tr')));
+  $('mkLogoInfo').textContent=st.logo.src?'✅ 로고 올라감 (위치·크기를 조절하세요)':'로고 없음 — 업로드하면 모든 카드에 들어갑니다';
+}
+function mkOpen(){
+  _mkStyle=extractStyle(cur()||mk());_mkStyle.logo.useXY=false;
+  mkFillInputs();document.getElementById('hotPsMaker').style.display='block';
+  const nm=document.getElementById('mkName');if(!nm.value)nm.value=document.getElementById('hotPsSel').value||'';
+  schedPreview();
+}
+function mkClose(){document.getElementById('hotPsMaker').style.display='none';schedPreview()}
+function mkBind(){
+  const $=id=>document.getElementById(id);
+  $('hotPsMakeBtn').onclick=()=>mkIsOpen()?mkClose():mkOpen();
+  $('mkCancel').onclick=mkClose;
+  const onR=(id,fn)=>{$(id).oninput=e=>{const v=+e.target.value;$(id+'V').textContent=v;fn(v);schedPreview()}};
+  onR('mkLogoSize',v=>_mkStyle.logo.size=v);onR('mkLogoPad',v=>_mkStyle.logo.pad=v);onR('mkTz',v=>_mkStyle.t.z=v);onR('mkTb',v=>_mkStyle.t.b=v);onR('mkGh',v=>_mkStyle.g.h=v);onR('mkGo',v=>_mkStyle.g.o=v);
+  $('mkTc').oninput=e=>{_mkStyle.t.c=e.target.value;schedPreview()};$('mkThc').oninput=e=>{_mkStyle.t.hc=e.target.value;schedPreview()};
+  $('mkTa').onchange=e=>{_mkStyle.t.a=e.target.value;schedPreview()};$('mkTw').onchange=e=>{_mkStyle.t.w=e.target.value;schedPreview()};$('mkTf').onchange=e=>{_mkStyle.t.f=e.target.value;schedPreview()};
+  document.querySelectorAll('#mkLogoPos button').forEach(b=>b.onclick=()=>{_mkStyle.logo.pos=b.dataset.v;_mkStyle.logo.useXY=false;document.querySelectorAll('#mkLogoPos button').forEach(x=>x.classList.toggle('on',x===b));schedPreview()});
+  $('mkLogoBtn').onclick=()=>$('mkLogoF').click();
+  $('mkLogoF').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader;r.onload=async ev=>{_mkStyle.logo.src=await shrinkLogo(ev.target.result);$('mkLogoInfo').textContent='✅ 로고 올라감: '+f.name;schedPreview()};r.readAsDataURL(f);e.target.value=''};
+  $('mkLogoRm').onclick=()=>{_mkStyle.logo.src=null;$('mkLogoInfo').textContent='로고 없음';schedPreview()};
+  $('mkSave').onclick=()=>{
+    const name=($('mkName').value||'').trim();if(!name){toast('프리셋 이름을 입력하세요');$('mkName').focus();return}
+    const ps=loadPresets();ps[name]=JSON.parse(JSON.stringify(_mkStyle));
+    try{savePresets(ps)}catch(e){toast('저장 공간 부족: 로고 이미지를 더 작게 올려주세요');return}
+    localStorage.setItem('hot_ps',name);refreshPSDropdown();$('hotPsSel').value=name;const p2=$('psSel');if(p2)p2.value=name;
+    saveSnap();S.cards.forEach(c=>applyStyle(c,_mkStyle));render();rEd();
+    mkClose();toast(`프리셋 "${name}" 저장 · 카드 ${S.cards.length}장에 적용${_mkStyle.logo.src?' (로고 포함)':''}`);
+  };
+}
+
 /* --- 초기화: 버튼 바인딩 --- */
 function hotInit(){
   const $=id=>document.getElementById(id);
   document.querySelectorAll('#hotFmtSeg button').forEach(b=>b.onclick=()=>{
     const f=b.dataset.fmt;if(S.hotFmt===f)return;
-    S.hotFmt=f;localStorage.setItem('hot_fmt',f);applyMode();render();
+    S.hotFmt=f;localStorage.setItem('hot_fmt',f);applyMode();render();if(typeof schedPreview==='function')schedPreview();
     toast(f==='reels'?'릴스 영상 형식 (1080×1920 · MP4)':'게시물 형식 (1080×1350 · PNG)');
   });
   const secs=$('hotSecs');secs.value=localStorage.getItem('hot_secs')||'7';secs.onchange=()=>{localStorage.setItem('hot_secs',secs.value);updateUI()};
@@ -3026,15 +3114,17 @@ function hotInit(){
   const an=$('hotAutoN');an.value=localStorage.getItem('hot_auto_n')||'6';if(!an.value)an.value='6';
   const syncN=()=>{$('hotAutoNLbl').textContent=an.value;localStorage.setItem('hot_auto_n',an.value)};an.onchange=syncN;syncN();
   const af=$('hotAutoFill');af.checked=localStorage.getItem('hot_auto_fill')==='1';af.onchange=()=>localStorage.setItem('hot_auto_fill',af.checked?'1':'0');
-  const hp=$('hotPsSel');hp.onchange=()=>{localStorage.setItem('hot_ps',hp.value);toast(hp.value?`자동 생성 스타일: ${hp.value}`:'자동 생성 스타일: 현재 카드 그대로')};
+  const hp=$('hotPsSel');hp.onchange=()=>{localStorage.setItem('hot_ps',hp.value);schedPreview();toast(hp.value?`자동 생성 스타일: ${hp.value}`:'자동 생성 스타일: 현재 카드 그대로')};
   if(typeof refreshPSDropdown==='function')refreshPSDropdown();
+  mkBind();
+  if(!Object.keys(loadPresets()).length){mkOpen()} else {schedPreview()}
   $('hotPsSave').onclick=()=>{
     const c=cur();if(!c){toast('카드 없음');return}
     const name=(prompt('프리셋 이름 (제목 스타일·위치·로고·그라데이션이 저장됩니다)',hp.value||'핫뉴스 기본')||'').trim();if(!name)return;
     const ps=loadPresets();ps[name]=extractStyle(c);savePresets(ps);
     localStorage.setItem('hot_ps',name);refreshPSDropdown();hp.value=name;
     const ps2=document.getElementById('psSel');if(ps2)ps2.value=name;
-    toast('프리셋 저장: '+name+(c.logo&&c.logo.src?' (로고 포함)':' (로고 없음)'));
+    schedPreview();toast('프리셋 저장: '+name+(c.logo&&c.logo.src?' (로고 포함)':' (로고 없음)'));
   };
   $('hotAutoBtn').onclick=autoHot;
   $('hotMemoBtn').onclick=downloadHotMemo;
