@@ -2863,7 +2863,8 @@ function hotInit(){
   });
   const secs=$('hotSecs');secs.value=localStorage.getItem('hot_secs')||'7';secs.onchange=()=>{localStorage.setItem('hot_secs',secs.value);updateUI()};
   const kb=$('hotKb');kb.checked=localStorage.getItem('hot_kb')!=='0';kb.onchange=()=>localStorage.setItem('hot_kb',kb.checked?'1':'0');
-  const tp=$('hotTopic');tp.value=localStorage.getItem('hot_topic')||'';tp.oninput=()=>localStorage.setItem('hot_topic',tp.value);
+  // 관심 분야는 저장하지 않음 — 새로 접속하면 항상 비어 있음(placeholder 표시). 예전 저장값도 제거
+  const tp=$('hotTopic');tp.value='';localStorage.removeItem('hot_topic');
   ['hotSrcView','hotSrcCmt'].forEach(id=>{const el=$(id);const v=localStorage.getItem(id);if(v!==null)el.checked=v==='1';el.onchange=()=>localStorage.setItem(id,el.checked?'1':'0')});
   $('hotFindBtn').onclick=()=>findHot(false);
   $('hotMoreBtn').onclick=()=>findHot(true);
