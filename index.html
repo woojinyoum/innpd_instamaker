@@ -23,7 +23,11 @@ html,body{background:var(--bg);color:var(--txt);font-family:'Inter','Noto Sans K
 @media (max-width:860px){
   html,body{height:auto;overflow:auto;-webkit-text-size-adjust:100%}
   .app{display:flex;flex-direction:column;height:auto;min-height:100dvh;padding:8px;gap:8px}
-  .topbar{display:none}                 /* 제목바 숨겨 공간 절약 */
+  .app .topbar{display:none}            /* 제목바 숨겨 공간 절약 (아래 Header 규칙보다 우선하도록 선택자 강화) */
+  /* 모드 탭: 좁은 화면에서 두 버튼이 한 줄에 들어가도록 축소, 사이즈 보조문구 숨김 */
+  #modeTabs{width:100%;justify-content:center}
+  #modeTabs .mtab{flex:1;justify-content:center;padding:8px 6px!important;font-size:13px!important;gap:5px!important}
+  #modeTabs .mtab span:last-child{display:none}
   /* 카드 미리보기를 화면 상단에 고정 → 아래서 편집해도 카드가 계속 보임 */
   .center{order:0;position:sticky;top:0;z-index:40;background:var(--bg);padding:4px 0 8px;box-shadow:0 6px 16px rgba(0,0,0,.55);border-radius:0 0 12px 12px}
   #rp{order:1;max-height:none;overflow:visible}   /* 편집 패널(제목 스타일 등) 먼저 */
@@ -156,6 +160,31 @@ input[type=color]{width:32px;height:26px;background:transparent;border:1px solid
 .lic-info a{color:var(--acc);text-decoration:none}
 .lic-logout{position:fixed;bottom:14px;right:14px;z-index:500;font-size:10px;color:var(--dim);background:var(--panel);border:1px solid var(--brd);padding:5px 10px;border-radius:5px;cursor:pointer;opacity:.4;transition:opacity .2s}
 .lic-logout:hover{opacity:1}
+
+/* ===== 핫뉴스 ===== */
+.hseg{display:flex;gap:4px;background:var(--panel2);padding:3px;border-radius:8px}
+.hseg button{flex:1;background:transparent;border:1px solid transparent;color:var(--dim);padding:7px 4px;font-size:12px;display:flex;flex-direction:column;align-items:center;gap:2px;border-radius:6px}
+.hseg button small{font-size:9px;font-weight:500;opacity:.8}
+.hseg button.on{background:var(--acc);color:#fff}
+.hseg button:hover{box-shadow:none;border-color:var(--acc)}
+.hchk{flex:1;display:flex;align-items:center;gap:5px;font-size:11px;cursor:pointer;padding:6px 8px;border:1px solid var(--brd);border-radius:7px;background:var(--panel2)}
+.hchk input{width:auto;margin:0}
+.hitem{display:flex;gap:8px;padding:7px;border:1px solid var(--brd);border-radius:8px;background:var(--panel2);cursor:pointer;margin-bottom:6px;transition:all .12s;align-items:flex-start}
+.hitem:hover{border-color:var(--acc);background:rgba(124,92,255,.08)}
+.hitem.on{border-color:var(--acc2);box-shadow:0 0 0 1px var(--acc2) inset}
+.hitem .hn{width:20px;height:20px;border-radius:5px;background:var(--acc);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.hitem .hth{width:52px;height:52px;border-radius:6px;object-fit:cover;background:#000;flex-shrink:0}
+.hitem .ht{font-size:12px;font-weight:600;line-height:1.35;color:var(--txt);word-break:keep-all}
+.hitem .hm{font-size:10px;color:var(--dim);margin-top:3px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.hb{font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(34,211,238,.15);color:var(--acc2);white-space:nowrap}
+.hb.c{background:rgba(124,92,255,.18);color:#b9a8ff}
+.hgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:6px}
+.hgrid img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;border:2px solid transparent;cursor:pointer;background:#000;display:block}
+.hgrid img:hover{border-color:var(--acc)}
+.hgrid img.on{border-color:var(--acc2)}
+.hbox{border:1px solid var(--brd);border-radius:8px;padding:8px 10px;background:rgba(255,255,255,.02);margin-top:8px}
+.hbox h4{font-size:11px;color:var(--acc);margin-bottom:6px;font-weight:700}
+.hbox details summary::-webkit-details-marker{color:var(--dim)}
 </style>
 </head>
 <body>
@@ -177,7 +206,7 @@ input[type=color]{width:32px;height:26px;background:transparent;border:1px solid
 <div class="app">
   <header class="topbar">
     <h1><span class="logo"></span>Insta Card News Maker</h1>
-    <span class="sub">Anthropic API · 게시물/릴스 · 다국어</span>
+    <span class="sub">게시물 · 🔥핫뉴스 → 릴스/게시물 · 다국어</span>
   </header>
 
   <!-- LEFT -->
@@ -189,11 +218,47 @@ input[type=color]{width:32px;height:26px;background:transparent;border:1px solid
     <div class="field"><label>지침 (분석 & 번역 공통, 선택)</label><textarea id="trPrompt" placeholder="예) 제목은 숫자 포함, 본문은 존댓말, 전문용어 유지 등" style="width:100%;min-height:70px;background:var(--bg);border:1px solid var(--brd);color:var(--txt);border-radius:7px;padding:8px;font-size:12px;font-family:inherit;resize:vertical"></textarea></div>
     <div class="sep"></div>
 
+    <!-- ===== 게시물 모드: 인스타그램 원본 분석 ===== -->
+    <div id="postPanel">
     <h3>인스타그램 원본</h3>
     <div class="field"><label>게시물 이미지</label><div class="drop" id="d1"><span id="d1t">이미지 업로드</span><img id="d1p" style="display:none"/></div><input type="file" id="f1" accept="image/png,image/jpeg,image/webp,image/gif,image/*" style="display:none"/></div>
     <div class="field"><label>본문 캡쳐</label><div class="drop" id="d2"><span id="d2t">본문 스크린샷 업로드</span><img id="d2p" style="display:none"/></div><input type="file" id="f2" accept="image/png,image/jpeg,image/webp,image/gif,image/*" style="display:none"/></div>
     <button class="w100" id="goBtn">분석하고 카드 생성</button>
-    <!-- 제목 5개 후보: 분석하고 카드 생성 바로 아래 표시 -->
+    </div>
+
+    <!-- ===== 핫뉴스 모드: 네이버 랭킹 뉴스 → 릴스/게시물 ===== -->
+    <div id="hotPanel" style="display:none">
+    <h3>🔥 핫뉴스 → 카드</h3>
+    <div class="field"><label>출력 형식</label>
+      <div class="hseg" id="hotFmtSeg">
+        <button data-fmt="reels" class="on">🎬 릴스 영상<small>1080×1920 · MP4</small></button>
+        <button data-fmt="post">📰 게시물<small>1080×1350 · PNG</small></button>
+      </div>
+    </div>
+    <div id="hotReelsOpts" class="row" style="align-items:flex-end;margin-bottom:8px">
+      <div class="field" style="margin:0"><label>영상 길이</label><select id="hotSecs"><option value="5">5초</option><option value="7" selected>7초</option><option value="10">10초</option><option value="15">15초</option></select></div>
+      <label class="hchk" style="flex:1;margin-bottom:0;padding:8px"><input type="checkbox" id="hotKb" checked/>천천히 확대 효과</label>
+    </div>
+    <div class="field"><label>뉴스 소스 (네이버 뉴스 &gt; 랭킹)</label>
+      <div class="row">
+        <label class="hchk"><input type="checkbox" id="hotSrcView" checked/>👁 많이 본 뉴스</label>
+        <label class="hchk"><input type="checkbox" id="hotSrcCmt" checked/>💬 댓글 많은 뉴스</label>
+      </div>
+    </div>
+    <div class="field"><label>관심 분야 (선택)</label><input type="text" id="hotTopic" placeholder="예) 연예, 경제, 건강, 스포츠 — 비우면 전체"/></div>
+    <button class="w100" id="hotFindBtn">🔥 핫한 뉴스 10개 찾기</button>
+    <button class="w100 gh" id="hotMoreBtn" style="display:none;margin-top:6px">🔄 다른 뉴스 10개 보기</button>
+    <div id="hotStatus" class="tip" style="display:none;margin-top:8px"></div>
+    <div id="hotList" style="margin-top:8px"></div>
+    <details style="margin-top:8px">
+      <summary style="font-size:11px;color:var(--dim);cursor:pointer">🔎 직접 찾기 (키워드 검색 / 기사 URL)</summary>
+      <div class="row" style="margin-top:6px"><input type="text" id="hotQ" placeholder="키워드로 네이버 뉴스 검색"/><button class="gh" id="hotQBtn" style="flex:0 0 auto">검색</button></div>
+      <div class="row" style="margin-top:6px"><input type="text" id="hotUrl" placeholder="네이버 뉴스 기사 URL 붙여넣기"/><button class="gh" id="hotUrlBtn" style="flex:0 0 auto">불러오기</button></div>
+    </details>
+    <div id="hotArt" style="display:none;margin-top:10px"></div>
+    </div>
+
+    <!-- 제목 5개 후보 (게시물 분석 / 핫뉴스 공통) -->
     <div id="hkResult" style="display:none;margin-top:10px"></div>
     <div class="sep"></div>
 
@@ -244,7 +309,7 @@ input[type=color]{width:32px;height:26px;background:transparent;border:1px solid
   <main class="center">
     <div id="modeTabs" style="display:flex;gap:8px;margin-bottom:8px;background:var(--panel);padding:6px;border-radius:12px;border:1px solid var(--brd);box-shadow:0 4px 16px rgba(0,0,0,.3)">
       <button id="tabPost" class="mtab on" style="padding:10px 22px;font-size:14px;font-weight:700;border-radius:8px;background:var(--acc);border:none;color:#fff;cursor:pointer;display:flex;align-items:center;gap:8px;transition:all .15s"><span style="font-size:18px">📰</span><span>게시물</span><span style="font-size:11px;opacity:.85;font-weight:500">1080×1350</span></button>
-      <button id="tabReels" class="mtab" style="padding:10px 22px;font-size:14px;font-weight:700;border-radius:8px;background:transparent;border:none;color:var(--dim);cursor:pointer;display:flex;align-items:center;gap:8px;transition:all .15s"><span style="font-size:18px">🎬</span><span>릴스</span><span style="font-size:11px;opacity:.85;font-weight:500">1080×1920</span></button>
+      <button id="tabHot" class="mtab" style="padding:10px 22px;font-size:14px;font-weight:700;border-radius:8px;background:transparent;border:none;color:var(--dim);cursor:pointer;display:flex;align-items:center;gap:8px;transition:all .15s"><span style="font-size:18px">🔥</span><span>핫뉴스</span><span id="tabHotSub" style="font-size:11px;opacity:.85;font-weight:500">릴스 1080×1920</span></button>
     </div>
     <div class="track-wrap" id="trackWrap"><div class="track" id="track"></div></div>
     <div class="nav-bar">
@@ -535,10 +600,13 @@ document.getElementById('licLogout').onclick=()=>{
 licCheck();
 
 /* ===== State ===== */
-const S={cards:[],idx:0,ko:null,grid:false,mode:localStorage.getItem('mode')||'post',selOv:null,cropMode:false,ovAdjust:null};
+// mode: 'post'(게시물) | 'hot'(핫뉴스). 예전 저장값 'reels'는 핫뉴스(릴스 형식)로 매핑
+const _mode0=localStorage.getItem('mode')||'post';
+const S={cards:[],idx:0,ko:null,grid:false,mode:_mode0==='reels'?'hot':_mode0,hotFmt:localStorage.getItem('hot_fmt')||'reels',hot:{pool:[],fetchedAt:0,shown:new Set(),list:[],article:null,similar:[]},selOv:null,cropMode:false,ovAdjust:null};
 let _ovLastClick={id:null,t:0};
 // Card height per mode
-const H=()=>S.mode==='reels'?1920:1350;
+// 카드 높이: 핫뉴스+릴스 형식만 1920, 그 외 1350
+const H=()=>(S.mode==='hot'&&S.hotFmt==='reels')?1920:1350;
 // Preview slide width: desktop 432, mobile fits viewport. Dynamic.
 let PV_W=432;
 function calcPVW(){
@@ -565,11 +633,18 @@ function applyMode(){
   const ly=document.getElementById('logoY');if(ly){ly.max=H()}
   const tb=document.getElementById('tb');if(tb){tb.max=H()-100}
   // Update tabs (segmented-control look)
-  const tp=document.getElementById('tabPost'),tr=document.getElementById('tabReels');
-  if(tp&&tr){
-    [tp,tr].forEach(b=>{b.style.background='transparent';b.style.color='var(--dim)';b.classList.remove('on')});
-    const act=S.mode==='reels'?tr:tp;act.style.background='var(--acc)';act.style.color='#fff';act.classList.add('on');
+  const tp=document.getElementById('tabPost'),th=document.getElementById('tabHot');
+  if(tp&&th){
+    [tp,th].forEach(b=>{b.style.background='transparent';b.style.color='var(--dim)';b.classList.remove('on')});
+    const act=S.mode==='hot'?th:tp;act.style.background='var(--acc)';act.style.color='#fff';act.classList.add('on');
+    const sub=document.getElementById('tabHotSub');if(sub)sub.textContent=S.hotFmt==='reels'?'릴스 1080×1920':'게시물 1080×1350';
   }
+  // 좌측 패널: 모드별 섹션 전환
+  const pp=document.getElementById('postPanel'),hp=document.getElementById('hotPanel');
+  if(pp)pp.style.display=S.mode==='hot'?'none':'';
+  if(hp)hp.style.display=S.mode==='hot'?'':'none';
+  document.querySelectorAll('#hotFmtSeg button').forEach(b=>b.classList.toggle('on',b.dataset.fmt===S.hotFmt));
+  const ro=document.getElementById('hotReelsOpts');if(ro)ro.style.display=S.hotFmt==='reels'?'':'none';
 }
 
 /* Undo */
@@ -831,16 +906,42 @@ function parseTitles(raw){
   let body='';const bm=jsonStr.match(/"body"\s*:\s*"([\s\S]*?)"\s*}?\s*$/);if(bm)body=bm[1].replace(/\\n/g,'\n').replace(/\\"/g,'"');
   return {candidates:cands,body};
 }
-async function genTitles(weapon){
-  if(!img1&&!img2){toast('게시물 이미지 또는 본문 캡쳐를 먼저 업로드하세요');return}
-  if(!$k.value.trim()){toast('Claude Key 필요');return}
+async function genTitles(weapon,opts){
+  opts=opts||{};
+  // 핫뉴스 모드: 선택한 기사 본문을 입력으로 사용 / 게시물 모드: 업로드 이미지 사용
+  const hotArt=(S.mode==='hot'&&S.hot&&S.hot.article)?S.hot.article:null;
+  if(!hotArt&&!img1&&!img2){toast(S.mode==='hot'?'먼저 핫뉴스 기사를 선택하세요':'게시물 이미지 또는 본문 캡쳐를 먼저 업로드하세요');return null}
+  if(!$k.value.trim()){toast('Claude Key 필요');return null}
   const note=(document.getElementById('hkNote').value||'').trim();
-  sLoad('제목 뽑는 중...','',['이미지 읽는 중...','후킹 적용 중...','제목 다듬는 중...']);sStep(0);
+  if(!opts.silent){sLoad('제목 뽑는 중...','',[hotArt?'기사 읽는 중...':'이미지 읽는 중...','후킹 적용 중...','제목 다듬는 중...']);sStep(0)}
   try{
     const uc=[];
+    if(hotArt){
+      uc.push({type:'text',text:`다음 뉴스 기사를 바탕으로, 후킹 가이드에 따라 인스타 ${S.hotFmt==='reels'?'릴스':'카드뉴스'} 첫 장에 쓸 제목 후보를 뽑아주세요.
+[기사 제목] ${hotArt.title}
+[언론사] ${hotArt.press||''}
+[기사 본문]
+${(hotArt.text||'').slice(0,3500)}
+
+${HK_WEAPON[weapon]||HK_WEAPON.auto}
+${note?'추가 지침(최우선): '+note:''}
+
+진행:
+1) 기사의 핵심 사실(누가·무엇·숫자·결과)을 파악
+2) 후킹 기법을 적용해 15~25자 제목 후보 5개 생성 (각각 다른 각도). 기사가 보장하지 못하는 과장·추측 금지
+3) 각 후보에 점수(10점 만점)를 표기, 점수 높은 순 정렬
+4) body: 기사 핵심을 3~5문장으로 쉬운 한국어 요약 (사실·숫자·이름 정확히, 기사에 없는 내용 금지)
+5) search_query: 이 사건의 다른 기사 사진을 찾기 위한 네이버 뉴스 검색어 (핵심 고유명사·키워드 2~4개, 공백 구분)
+6) hashtags: 관련 해시태그 10개 (# 포함, 한국어 위주)
+
+JSON만 답변 (마크다운·설명 금지):
+{"candidates":[{"title":"제목(15~25자)","score":9,"reason":"짧은 이유"}],"body":"3~5문장 요약","search_query":"검색어","hashtags":["#태그"]}
+
+규칙: 제목 이모지 금지, 강조어휘 최대 2개, 제목에서 가장 강조할 핵심 단어 1곳은 {중괄호}로 감싸기(강조색 적용용).
+중요: JSON 문자열 값 안에서 큰따옴표(")를 쓰지 마세요. 강조가 필요하면 작은따옴표(')나 홑화살괄호(〈 〉)를 쓰세요. 줄바꿈은 \\n으로.`});
+    }else{
     if(img1){const[m,b]=img1.split(',');uc.push({type:'image',source:{type:'base64',media_type:m.match(/data:(.*?);/)[1],data:b}},{type:'text',text:'위: 게시물 메인 이미지'})}
     if(img2){const[m,b]=img2.split(',');uc.push({type:'image',source:{type:'base64',media_type:m.match(/data:(.*?);/)[1],data:b}},{type:'text',text:'위: 본문 캡쳐 (OCR 대상)'})}
-    sStep(1);
     uc.push({type:'text',text:`위 인스타그램 게시물을 분석하고, 후킹 가이드에 따라 인스타 카드뉴스 첫 장에 쓸 제목 후보를 뽑아주세요.
 ${HK_WEAPON[weapon]||HK_WEAPON.auto}
 ${note?'추가 지침(최우선): '+note:''}
@@ -855,15 +956,24 @@ JSON만 답변 (마크다운·설명 금지):
 
 규칙: 제목 이모지 금지, 강조어휘 최대 2개, 본문이 갚을 수 있는 제목만.
 중요: JSON 문자열 값 안에서 큰따옴표(")를 쓰지 마세요. 강조가 필요하면 작은따옴표(')나 홑화살괄호(〈 〉)를 쓰세요. 줄바꿈은 \\n으로.`});
-    const res=await api({sys:HOOK_SYS,content:uc,max:2000});
-    sStep(2);
+    }
+    if(!opts.silent)sStep(1);
+    const res=await api({sys:HOOK_SYS,content:uc,max:2200});
+    if(!opts.silent)sStep(2);
     const parsed=parseTitles(res);
-    hLoad();
+    // 핫뉴스: 최고 점수 제목 + 요약을 카드에 자동 적용
+    if(opts.autoApply){
+      const c=cur();const top=(parsed.candidates||[]).slice().sort((a,b)=>(b.score||0)-(a.score||0))[0];
+      if(c&&top&&top.title){saveSnap();c.title=top.title;if(parsed.body)c.body=parsed.body;S.ko={title:c.title,body:c.body};render()}
+    }
+    if(!opts.silent)hLoad();
     showHkResult(parsed,weapon);
-    toast('제목 후보 완성!');
+    if(!opts.silent)toast('제목 후보 완성!');
+    return parsed;
   }catch(e){
     hLoad();toast('제목 뽑기 오류: '+e.message);console.error(e);
     const box=document.getElementById('hkResult');if(box){box.style.display='block';box.innerHTML='<div style="padding:10px;border:1px solid #f87171;border-radius:8px;background:rgba(239,68,68,.1);color:#f87171;font-size:12px;line-height:1.5">제목 생성 실패: '+e.message.replace(/</g,'&lt;')+'<br><br>다시 시도하려면 아래 "🔄 제목 5개 다시 생성" 버튼을 눌러주세요.</div>'}
+    return null;
   }
 }
 // 제목 5개 다시 생성 (AI 추천)
@@ -886,7 +996,7 @@ function showHkResult(parsed,weapon){
     row.innerHTML=`<div style="font-size:13px;color:var(--txt);font-weight:600;line-height:1.4">${(cd.title||'').replace(/</g,'&lt;')}</div><div style="font-size:10px;color:var(--dim);margin-top:3px">${cd.score?cd.score+'/10 · ':''}${(cd.reason||'').replace(/</g,'&lt;')}</div>`;
     row.onclick=()=>{
       const c=cur();if(!c){toast('카드 없음');return}
-      saveSnap();c.title=cd.title||c.title;if(body&&!c.body)c.body=body;render();rEd();toast('제목 적용: '+cd.title);
+      saveSnap();c.title=cd.title||c.title;if(body&&!c.body)c.body=body;if(S.mode==='hot')S.ko={title:c.title,body:c.body};render();rEd();toast('제목 적용: '+cd.title);
     };
     box.appendChild(row);
   });
@@ -961,7 +1071,7 @@ async function resizeToCard(dataUrl){
 async function editImageOpenAI(dataUrl,prompt){
   const key=$oai.value.trim();if(!key)throw Error('OpenAI Key 필요');
   const blob=await (await fetch(dataUrl)).blob();
-  const size=S.mode==='reels'?'1024x1536':'1024x1536';
+  const size='1024x1536';
   const models=['gpt-image-2','gpt-image-1'];
   let lastErr='';
   for(const model of models){
@@ -1516,7 +1626,8 @@ function render(){
 function slideTO(){$track.style.transform=`translateX(${-S.idx*PV_W}px)`}
 function updateUI(){
   const n=S.cards.length;
-  document.getElementById('meta').textContent=n?`카드 ${S.idx+1} / ${n} · 1080x${H()}`:'';
+  const fmt=S.mode==='hot'?(S.hotFmt==='reels'?` · 🎬 릴스 MP4 ${(document.getElementById('hotSecs')||{}).value||7}초`:' · 📰 게시물 PNG'):'';
+  document.getElementById('meta').textContent=n?`카드 ${S.idx+1} / ${n} · 1080x${H()}${fmt}`:'';
   document.getElementById('rmBtn').style.display=n>1?'':'none';
   document.querySelectorAll('#pgs .p').forEach((b,i)=>{b.classList.toggle('on',i===S.idx)});
 }
@@ -1772,6 +1883,13 @@ document.getElementById('dlBtn').onclick=async()=>{
         sLoad('동영상 렌더링...',`카드 ${i+1}`);
         const blob=await renderVideoCard(c);
         files.push({name:`card-${i+1}.mp4`,blob,type:'video'});
+      }else if(S.mode==='hot'&&S.hotFmt==='reels'){
+        // 핫뉴스 릴스: 정지 이미지 카드 → N초 MP4 (천천히 확대 효과 선택)
+        const secs=+((document.getElementById('hotSecs')||{}).value||7);
+        const kb=!!(document.getElementById('hotKb')||{}).checked;
+        sLoad('릴스 영상 렌더링...',`카드 ${i+1} · ${secs}초`);
+        const blob=await renderStillVideoCard(c,secs,kb);
+        files.push({name:`reels-${i+1}.${/webm/.test(blob.type)?'webm':'mp4'}`,blob,type:'video'});
       }else{
         // Export as PNG via Canvas (accurate aspect ratio)
         const blob=await renderImageCard(c);
@@ -1983,6 +2101,67 @@ async function renderImageCard(c){
   return new Promise(res=>canvas.toBlob(b=>res(b),'image/png'));
 }
 
+/* 정지 이미지 카드 → N초 MP4 (핫뉴스 릴스용). 배경은 선택 시 천천히 확대(켄 번즈), 제목·로고·오버레이는 고정 */
+async function renderStillVideoCard(c,secs,kenBurns){
+  await ensureFont(c);
+  const HH=H();secs=Math.max(1,Math.min(60,+secs||7));
+  const canvas=document.createElement('canvas');canvas.width=1080;canvas.height=HH;
+  const ctx=canvas.getContext('2d');
+  const src=(c.media&&c.mediaType!=='video')?c.media:c.img;
+  let img=null;
+  if(src){img=new Image();img.crossOrigin='anonymous';img.src=src;await new Promise((res,rej)=>{img.onload=res;img.onerror=()=>rej(Error('배경 이미지 로드 실패'))})}
+  let logoImg=null;
+  if(c.logo&&c.logo.src){logoImg=new Image();logoImg.src=c.logo.src;await new Promise(r=>{logoImg.onload=r;logoImg.onerror=r})}
+  const ovImgs={};
+  await Promise.all((c.ovs||[]).map(ov=>new Promise(res=>{const im=new Image();im.onload=()=>{ovImgs[ov.id]=im;res()};im.onerror=res;im.src=ov.src})));
+  const r=img?mediaDisplayRect(c,img.naturalWidth,img.naturalHeight):null;
+  const drawFrame=p=>{
+    ctx.setTransform(1,0,0,1,0,0);ctx.fillStyle='#1a1a1a';ctx.fillRect(0,0,1080,HH);
+    if(img){
+      const z=kenBurns?1+0.08*p:1;
+      ctx.save();ctx.beginPath();ctx.rect(0,0,1080,HH);ctx.clip();
+      ctx.translate(540,HH/2);ctx.scale(z,z);ctx.translate(-540,-HH/2);
+      ctx.drawImage(img,r.cropX,r.cropY,r.sw,r.sh,r.left,r.top,r.dispW,r.dispH);
+      ctx.restore();
+    }else{
+      const g=ctx.createLinearGradient(0,0,1080,HH);g.addColorStop(0,'#2a2a4a');g.addColorStop(1,'#1a1a2a');ctx.fillStyle=g;ctx.fillRect(0,0,1080,HH);
+    }
+    drawOverlay(ctx,c,logoImg,ovImgs);
+  };
+  return new Promise((resolve,reject)=>{
+    const stream=canvas.captureStream(30);
+    // 무음 오디오 트랙 추가: 오디오 트랙이 없는 영상을 거부하는 앱 대비
+    let aCtx=null;
+    try{
+      const ACtx=window.AudioContext||window.webkitAudioContext;aCtx=new ACtx();
+      const osc=aCtx.createOscillator(),gain=aCtx.createGain();gain.gain.value=0;
+      const dst=aCtx.createMediaStreamDestination();osc.connect(gain);gain.connect(dst);osc.start();
+      dst.stream.getAudioTracks().forEach(t=>stream.addTrack(t));
+    }catch(e){console.warn('silent audio track failed:',e)}
+    const hasAudio=stream.getAudioTracks().length>0;
+    const mimes=hasAudio
+      ?['video/mp4;codecs=avc1.42E01E,mp4a.40.2','video/mp4;codecs=avc1,mp4a','video/mp4','video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm']
+      :['video/mp4;codecs=avc1.42E01E','video/mp4;codecs=avc1','video/mp4','video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'];
+    const mimeType=mimes.find(m=>MediaRecorder.isTypeSupported(m))||'video/webm';
+    let rec;
+    try{rec=new MediaRecorder(stream,{mimeType,videoBitsPerSecond:10000000,audioBitsPerSecond:96000})}
+    catch(e){try{rec=new MediaRecorder(stream)}catch(e2){reject(Error('이 브라우저는 영상 녹화를 지원하지 않습니다'));return}}
+    const chunks=[];
+    rec.ondataavailable=e=>{if(e.data.size>0)chunks.push(e.data)};
+    rec.onstop=()=>{try{aCtx&&aCtx.close()}catch(e){}resolve(new Blob(chunks,{type:rec.mimeType||mimeType}))};
+    rec.onerror=e=>reject((e&&e.error)||Error('녹화 오류'));
+    drawFrame(0);
+    rec.start(250);
+    const t0=performance.now(),dur=secs*1000;
+    const iv=setInterval(()=>{
+      const p=Math.min(1,(performance.now()-t0)/dur);
+      drawFrame(p);
+      if(p>=1){clearInterval(iv);setTimeout(()=>{if(rec.state==='recording')rec.stop()},150)}
+    },1000/30);
+    setTimeout(()=>{clearInterval(iv);if(rec.state==='recording')rec.stop()},dur+3000);
+  });
+}
+
 async function renderVideoCard(c){
   await ensureFont(c);
   const HH=H();
@@ -2149,9 +2328,9 @@ function enableEditableV(){
 }
 
 /* Mode tabs */
-function setMode(m){S.mode=m;localStorage.setItem('mode',m);applyMode();render()}
+function setMode(m){if(S.mode===m)return;S.mode=m;localStorage.setItem('mode',m);const hk=document.getElementById('hkResult');if(hk)hk.style.display='none';applyMode();render()}
 document.getElementById('tabPost').onclick=()=>setMode('post');
-document.getElementById('tabReels').onclick=()=>setMode('reels');
+document.getElementById('tabHot').onclick=()=>setMode('hot');
 
 /* ===== Presets ===== */
 const PS_KEY='icnm_presets';
@@ -2233,14 +2412,14 @@ let _autoT=null;
 function autoSave(){
   clearTimeout(_autoT);
   _autoT=setTimeout(async()=>{
-    try{await idbSet('current',{cards:S.cards,mode:S.mode,idx:S.idx,savedAt:new Date().toISOString()})}
+    try{await idbSet('current',{cards:S.cards,mode:S.mode,hotFmt:S.hotFmt,hot:{article:S.hot.article,similar:S.hot.similar},idx:S.idx,savedAt:new Date().toISOString()})}
     catch(e){console.warn('자동저장 실패',e)}
   },1500);
 }
 // Hook autosave into every edit
 const _origSaveSnap=saveSnap;
 saveSnap=function(){_origSaveSnap();autoSave()};
-window.addEventListener('beforeunload',()=>{try{const req=indexedDB.open(DB_NAME,1);req.onsuccess=()=>{const db=req.result;const tx=db.transaction(DB_STORE,'readwrite');tx.objectStore(DB_STORE).put({cards:S.cards,mode:S.mode,idx:S.idx,savedAt:new Date().toISOString()},'current')}}catch(e){}});
+window.addEventListener('beforeunload',()=>{try{const req=indexedDB.open(DB_NAME,1);req.onsuccess=()=>{const db=req.result;const tx=db.transaction(DB_STORE,'readwrite');tx.objectStore(DB_STORE).put({cards:S.cards,mode:S.mode,hotFmt:S.hotFmt,hot:{article:S.hot.article,similar:S.hot.similar},idx:S.idx,savedAt:new Date().toISOString()},'current')}}catch(e){}});
 setInterval(autoSave,10000);
 
 function showRestoreBanner(saved){
@@ -2252,12 +2431,378 @@ function showRestoreBanner(saved){
   const load=document.createElement('button');load.textContent='이어서 하기';load.style.cssText='padding:7px 14px;font-size:12px;background:var(--acc);border:none;color:#fff;border-radius:7px;cursor:pointer;font-weight:700';
   const ign=document.createElement('button');ign.textContent='새로 시작';ign.style.cssText='padding:7px 12px;font-size:12px;background:var(--panel2);border:1px solid var(--brd);color:var(--dim);border-radius:7px;cursor:pointer';
   load.onclick=()=>{
-    S.cards=saved.cards;S.mode=saved.mode||'post';S.idx=Math.min(saved.idx||0,saved.cards.length-1);
-    localStorage.setItem('mode',S.mode);applyMode();render();rEd();b.remove();toast('이전 작업 불러옴');
+    S.cards=saved.cards;S.mode=saved.mode==='reels'?'hot':(saved.mode||'post');if(saved.hotFmt)S.hotFmt=saved.hotFmt;S.idx=Math.min(saved.idx||0,saved.cards.length-1);
+    if(saved.hot&&saved.hot.article){S.hot.article=saved.hot.article;S.hot.similar=saved.hot.similar||[];if(typeof renderHotArticle==='function')renderHotArticle()}
+    localStorage.setItem('mode',S.mode);localStorage.setItem('hot_fmt',S.hotFmt);applyMode();render();rEd();b.remove();toast('이전 작업 불러옴');
   };
   ign.onclick=()=>b.remove();
   b.appendChild(load);b.appendChild(ign);document.body.appendChild(b);
   setTimeout(()=>{if(b.parentNode)b.style.opacity='0.35'},15000);
+}
+
+/* ===== 🔥 핫뉴스: 네이버 뉴스 랭킹(많이 본/댓글 많은) → 릴스(MP4) / 게시물(PNG) =====
+   - 페이지 수집: r.jina.ai 리더 프록시 (CORS 허용, EUC-KR 자동 변환, HTML 그대로 반환)
+   - 사진 수집: images.weserv.nl 이미지 프록시 (CORS 허용 → canvas 내보내기 가능)
+   - 주제 선별·제목·요약·캡션: Claude API (기존 api() 사용) */
+const JINA='https://r.jina.ai/';
+const NAVER_RANK={view:'https://news.naver.com/main/ranking/popularDay.naver',cmt:'https://news.naver.com/main/ranking/popularMemo.naver'};
+const WESERV=(u,opt)=>'https://images.weserv.nl/?url='+encodeURIComponent(u)+'&'+(opt||'w=2000&output=jpg&q=90');
+const stripImgType=u=>(u||'').replace(/&#x3D;/g,'=').replace(/&amp;/g,'&').replace(/\?type=.*$/,'').trim();
+const hEsc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const resetFraming=c=>{c.mct=0;c.mcb=0;c.mcl=0;c.mcr=0;c.mzoom=100;c.mox=0;c.moy=0};
+const artIdOf=u=>{const m=(u||'').match(/article\/(\d+)\/(\d+)/);return m?{oid:m[1],aid:m[2],id:m[1]+'/'+m[2],url:`https://n.news.naver.com/mnews/article/${m[1]}/${m[2]}`}:null};
+const parseDOM=h=>new DOMParser().parseFromString(h,'text/html');
+
+async function fetchHTML(url,opt){
+  opt=opt||{};
+  const ctrl=new AbortController();const tm=setTimeout(()=>ctrl.abort(),opt.timeout||45000);
+  try{
+    const h={'X-Return-Format':'html'};if(opt.nocache)h['X-No-Cache']='true';
+    const r=await fetch(JINA+url,{headers:h,signal:ctrl.signal});
+    if(r.status===429)throw Error('뉴스 수집 서버 요청 한도 초과 — 1분 후 다시 시도하세요');
+    if(!r.ok)throw Error('뉴스 페이지를 가져오지 못했습니다 ('+r.status+')');
+    const t=await r.text();
+    if(t.length<3000||/Access Denied|접근이 거부|Forbidden/i.test(t.slice(0,800))){
+      if(!opt.nocache)return fetchHTML(url,Object.assign({},opt,{nocache:true}));
+      throw Error('뉴스 페이지 접근이 차단되었습니다. 잠시 후 다시 시도하세요');
+    }
+    return t;
+  }catch(e){if(e&&e.name==='AbortError')throw Error('뉴스 수집 시간 초과 — 다시 시도하세요');throw e}
+  finally{clearTimeout(tm)}
+}
+// 외부 이미지 → 이미지 프록시 → data URL (canvas 오염 방지)
+async function imgToDataURL(url,opt){
+  const r=await fetch(WESERV(url,opt));
+  if(!r.ok)throw Error('이미지 다운로드 실패 ('+r.status+')');
+  const b=await r.blob();if(!/^image\//.test(b.type))throw Error('이미지가 아닙니다');
+  return new Promise((res,rej)=>{const fr=new FileReader;fr.onload=()=>res(fr.result);fr.onerror=()=>rej(Error('이미지 변환 실패'));fr.readAsDataURL(b)});
+}
+
+/* --- 랭킹 페이지 파싱 (언론사별 TOP5 박스) --- */
+function parseRanking(html,kind){
+  const doc=parseDOM(html),out=[];
+  doc.querySelectorAll('.rankingnews_box').forEach(box=>{
+    const pn=box.querySelector('.rankingnews_name');const press=pn?pn.textContent.trim():'';
+    box.querySelectorAll('.rankingnews_list li').forEach(li=>{
+      const a=li.querySelector('a.list_title')||li.querySelector('a[href*="/article/"]');if(!a)return;
+      const ref=artIdOf(a.getAttribute('href'));if(!ref)return;
+      const rn=li.querySelector('.list_ranking_num');const rank=rn?(parseInt(rn.textContent)||0):0;
+      const im=li.querySelector('img');const thumb=im?stripImgType(im.getAttribute('src')||im.getAttribute('data-src')):'';
+      const tm=li.querySelector('.list_time');
+      out.push(Object.assign({title:a.textContent.trim(),press,rank,thumb:/noimage|errorimage/.test(thumb)?'':thumb,time:tm?tm.textContent.trim():'',kind},ref));
+    });
+  });
+  if(!out.length){ // 마크업 변경 대비 폴백: 기사 링크 전부
+    doc.querySelectorAll('a[href*="/article/"]').forEach(a=>{const ref=artIdOf(a.getAttribute('href'));const t=a.textContent.trim();if(ref&&t.length>8)out.push(Object.assign({title:t,press:'',rank:0,thumb:'',time:'',kind},ref))});
+  }
+  return out;
+}
+
+/* --- Claude로 핫 주제 10개 선별 (키 없으면 휴리스틱) --- */
+async function pickHotTopics(items,excludeIds,n){
+  const pool=items.filter(it=>!excludeIds.has(it.id)).sort((a,b)=>b.heat-a.heat);
+  const cand=pool.slice(0,160);
+  if(!cand.length)throw Error('더 보여줄 뉴스가 없습니다. "핫한 뉴스 찾기"로 새로 수집하세요');
+  const topic=((document.getElementById('hotTopic')||{}).value||'').trim();
+  const grams=s=>{const t=(s||'').replace(/[^0-9A-Za-z가-힣]/g,'');const g=new Set();for(let i=0;i<t.length-1;i++)g.add(t.slice(i,i+2));return g};
+  const similar=(a,b)=>{const A=grams(a),B=grams(b);if(!A.size||!B.size)return false;let inter=0;A.forEach(x=>{if(B.has(x))inter++});return inter/Math.min(A.size,B.size)>0.45};
+  const heuristic=()=>{const seen=new Set(),res=[];for(const it of cand){if(it.press&&seen.has(it.press))continue;if(res.some(r=>similar(r.title,it.title)))continue;seen.add(it.press);res.push(it);if(res.length>=n)break}return res};
+  if(!$k.value.trim())return heuristic();
+  const listTxt=cand.map(it=>`[${it.id}] (${it.press||'언론사?'}${it.rank?' '+it.rank+'위':''}${it.kinds.has('view')?' 👁':''}${it.kinds.has('cmt')?' 💬':''}) ${it.title}`).join('\n');
+  const sys='당신은 인스타그램 카드뉴스/릴스용 뉴스 큐레이터입니다. 지금 가장 화제인 뉴스 중, 짧은 영상·카드 한 장으로 만들었을 때 사람들이 스크롤을 멈추고 볼 주제를 고릅니다.';
+  const txt=`아래는 네이버 뉴스 랭킹(언론사별 많이 본 👁 / 댓글 많은 💬)에서 지금 수집한 기사 목록입니다.
+${topic?`사용자 관심 분야: "${topic}" — 이 분야와 관련된 기사를 우선 선택하세요. 관련 기사가 부족하면 가장 화제인 기사로 채우세요.\n`:''}
+이 중에서 지금 가장 핫한 주제 ${n}개를 고르세요.
+규칙:
+- 같은 사건을 다룬 기사는 1개만 (제목이 가장 명확하고 구체적인 것)
+- 👁와 💬가 둘 다 붙었거나 1~2위인 기사 우선
+- 분야(정치·경제·사회·연예·스포츠·IT·생활)를 다양하게 섞기
+- 구체적 사건·숫자·인물이 있어 궁금증을 유발하는 기사 우선
+- 단순 홍보·행사 안내·시세표·사진 모음 기사는 제외
+
+기사 목록:
+${listTxt}
+
+JSON만 답변: {"picks":[{"id":"oid/aid","why":"한 줄 이유(15자 내)"}]}`;
+  let picks=[];
+  try{
+    const res=await api({sys,content:[{type:'text',text:txt}],max:1200});
+    const p=pj(res);const byId=new Map(cand.map(it=>[it.id,it]));
+    (p.picks||[]).forEach(x=>{const it=byId.get(String(x.id||'').trim());if(it&&!picks.includes(it)){it.why=x.why||'';picks.push(it)}});
+  }catch(e){console.warn('주제 선별 실패 → 휴리스틱',e);toast('AI 선별 실패, 랭킹 순으로 표시');}
+  for(const it of cand){if(picks.length>=n)break;if(!picks.includes(it))picks.push(it)}
+  return picks.slice(0,n);
+}
+
+/* --- 핫한 뉴스 찾기 / 다른 뉴스 --- */
+async function findHot(more){
+  const useV=document.getElementById('hotSrcView').checked,useC=document.getElementById('hotSrcCmt').checked;
+  if(!useV&&!useC){toast('뉴스 소스를 하나 이상 선택하세요');return}
+  const st=document.getElementById('hotStatus');st.style.display='none';
+  sLoad(more?'다른 뉴스 고르는 중...':'핫한 뉴스 찾는 중...','네이버 뉴스 랭킹',['랭킹 페이지 수집...','주제 10개 선별...','완료!']);sStep(0);
+  try{
+    const stale=Date.now()-S.hot.fetchedAt>10*60*1000;
+    if(!more||!S.hot.pool.length||stale){
+      const jobs=[];
+      if(useV)jobs.push(fetchHTML(NAVER_RANK.view,{nocache:true}).then(h=>parseRanking(h,'view')));
+      if(useC)jobs.push(fetchHTML(NAVER_RANK.cmt,{nocache:true}).then(h=>parseRanking(h,'cmt')));
+      const lists=await Promise.all(jobs);
+      const map=new Map();
+      lists.flat().forEach(it=>{
+        const ex=map.get(it.id);const h=Math.max(0,6-(it.rank||5));
+        if(ex){ex.kinds.add(it.kind);ex.heat+=h;if(!ex.thumb)ex.thumb=it.thumb;if(!ex.press)ex.press=it.press}
+        else{it.kinds=new Set([it.kind]);it.heat=h;map.set(it.id,it)}
+      });
+      map.forEach(it=>{if(it.kinds.size>1)it.heat+=4});
+      S.hot.pool=[...map.values()];S.hot.fetchedAt=Date.now();
+      if(!more)S.hot.shown=new Set();
+      if(!S.hot.pool.length)throw Error('랭킹 기사를 찾지 못했습니다 (네이버 페이지 구조가 바뀌었을 수 있음)');
+    }
+    sStep(1);
+    const picks=await pickHotTopics(S.hot.pool,S.hot.shown,10);
+    picks.forEach(p=>S.hot.shown.add(p.id));
+    S.hot.list=picks;
+    renderHotList(picks,`🔥 지금 핫한 뉴스 ${picks.length}개 — 클릭하면 카드 생성`);
+    document.getElementById('hotMoreBtn').style.display='';
+    sStep(2);hLoad();
+    toast(`핫뉴스 ${picks.length}개 선별 (전체 ${S.hot.pool.length}건 수집)`);
+  }catch(e){hLoad();toast('오류: '+e.message);console.error(e);st.style.display='block';st.textContent='⚠️ '+e.message}
+}
+
+function renderHotList(items,label){
+  const box=document.getElementById('hotList');box.innerHTML='';
+  if(!items.length){box.innerHTML='<div class="tip">결과가 없습니다.</div>';return}
+  const h=document.createElement('div');h.style.cssText='font-size:11px;color:var(--acc);font-weight:700;margin-bottom:6px';h.textContent=label;box.appendChild(h);
+  items.forEach((it,i)=>{
+    const d=document.createElement('div');d.className='hitem'+(S.hot.article&&S.hot.article.id===it.id?' on':'');d.dataset.id=it.id;
+    const n=document.createElement('div');n.className='hn';n.textContent=i+1;d.appendChild(n);
+    if(it.thumb){const im=document.createElement('img');im.className='hth';im.loading='lazy';im.src=WESERV(it.thumb,'w=104&h=104&fit=cover&output=jpg');im.onerror=()=>im.remove();d.appendChild(im)}
+    const body=document.createElement('div');body.style.cssText='flex:1;min-width:0';
+    const t=document.createElement('div');t.className='ht';t.textContent=it.title;body.appendChild(t);
+    const m=document.createElement('div');m.className='hm';
+    const kinds=it.kinds||new Set();
+    m.innerHTML=`<span>${hEsc(it.press||'')}${it.time?' · '+hEsc(it.time):''}</span>`
+      +(kinds.has('view')?`<span class="hb">👁 많이 봄${it.rank?' '+it.rank+'위':''}</span>`:'')
+      +(kinds.has('cmt')?'<span class="hb c">💬 댓글 많음</span>':'')
+      +(it.kind==='search'?'<span class="hb">🔎 검색</span>':'');
+    body.appendChild(m);
+    if(it.why){const w=document.createElement('div');w.style.cssText='font-size:10px;color:var(--dim);margin-top:2px';w.textContent='💡 '+it.why;body.appendChild(w)}
+    d.appendChild(body);
+    d.onclick=()=>loadArticle(it);
+    box.appendChild(d);
+  });
+}
+
+/* --- 기사 본문/사진 파싱 --- */
+function parseArticle(html,it){
+  const doc=parseDOM(html);
+  const og=p=>{const m=doc.querySelector(`meta[property="${p}"]`);return m?(m.getAttribute('content')||''):''};
+  const ta=doc.querySelector('#title_area');
+  const title=((ta?ta.textContent:'').trim()||og('og:title')||it.title||'').replace(/\s+/g,' ').trim();
+  const press=(it.press||og('og:article:author').split('|')[0]||'').trim();
+  const dt=doc.querySelector('[data-date-time]');const date=dt?(dt.getAttribute('data-date-time')||''):(og('article:published_time')||'');
+  const bodyEl=doc.querySelector('#dic_area')||doc.querySelector('#newsct_article')||doc.querySelector('#articeBody')||doc.querySelector('article')||doc.body;
+  const imgs=[];
+  const pushImg=u=>{u=stripImgType(u);if(!u||!/pstatic\.net/.test(u))return;if(/QRCODE|office_logo|\/upload\/office|\.gif$|errorimage|noimage/i.test(u))return;if(!imgs.includes(u))imgs.push(u)};
+  bodyEl.querySelectorAll('img').forEach(im=>pushImg(im.getAttribute('data-src')||im.getAttribute('src')));
+  const ogi=og('og:image');if(ogi)pushImg(ogi);
+  const clone=bodyEl.cloneNode(true);
+  clone.querySelectorAll('script,style,iframe,noscript,em.img_desc,.img_desc,.vod_player_wrap,.nbd_table,.artical-btm,.byline,.copyright,.promotion,.ad_wrap,[class*="_ad"],.end_photo_org em').forEach(x=>x.remove());
+  clone.querySelectorAll('br,p,div,li').forEach(x=>x.appendChild(doc.createTextNode('\n')));
+  const text=clone.textContent.replace(/ /g,' ').replace(/[ \t]+/g,' ').replace(/\n\s*\n+/g,'\n').trim();
+  return {id:it.id,url:it.url,oid:it.oid,aid:it.aid,title,press,date,text,imgs,bgIdx:-1,simIdx:-1,caption:'',search_query:'',hashtags:[]};
+}
+
+/* --- 기사 선택 → 카드 생성 (스타일 유지, 제목/본문/배경만 교체) --- */
+async function loadArticle(it){
+  sLoad('기사 불러오는 중...',it.title||it.url,['기사 본문 수집...','대표 사진 적용...','후킹 제목 5개 생성...']);sStep(0);
+  try{
+    const html=await fetchHTML(it.url);
+    const art=parseArticle(html,it);
+    if(!art.text||art.text.length<80)throw Error('기사 본문을 읽지 못했습니다 (영상·포토 기사일 수 있음). 다른 기사를 선택하세요');
+    S.hot.article=art;S.hot.similar=[];
+    sStep(1);
+    if(!S.cards.length){S.cards=[mk()];S.idx=0}
+    const c=cur();saveSnap();
+    c.title=art.title;c.body=art.text.slice(0,700);resetFraming(c);
+    if(art.imgs.length){
+      try{c.media=await imgToDataURL(art.imgs[0]);c.mediaType='image';c.img=null;art.bgIdx=0}
+      catch(e){console.warn('대표 이미지 로드 실패',e);toast('대표 사진을 불러오지 못했습니다 — 다른 사진을 선택하세요')}
+    }
+    S.ko={title:c.title,body:c.body};
+    render();renderHotArticle();
+    document.querySelectorAll('.hitem').forEach(d=>d.classList.toggle('on',d.dataset.id===art.id));
+    sStep(2);
+    if($k.value.trim()){
+      const parsed=await genTitles('auto',{silent:true,autoApply:true});
+      if(parsed){if(parsed.search_query)art.search_query=String(parsed.search_query);if(Array.isArray(parsed.hashtags))art.hashtags=parsed.hashtags}
+    }else{toast('Claude Key를 입력하면 후킹 제목이 자동 생성됩니다')}
+    hLoad();autoSave();
+    toast(S.hotFmt==='reels'?'릴스 카드 생성 완료! 제목 후보에서 바꿀 수 있어요':'게시물 카드 생성 완료! 제목 후보에서 바꿀 수 있어요');
+    // 모바일: 편집/제목 후보가 보이도록 왼쪽 패널 위치로 스크롤
+    if(window.innerWidth<=860){const hk=document.getElementById('hkResult');if(hk&&hk.style.display!=='none')hk.scrollIntoView({behavior:'smooth',block:'start'})}
+  }catch(e){hLoad();toast('오류: '+e.message);console.error(e)}
+}
+
+/* --- 선택 기사 패널 (사진 소스 / 캡션) --- */
+function renderHotArticle(){
+  const a=S.hot.article;const box=document.getElementById('hotArt');if(!box)return;
+  if(!a){box.style.display='none';box.innerHTML='';return}
+  box.style.display='block';
+  box.innerHTML=`<div class="hbox"><h4>📰 선택한 기사</h4>
+    <div style="font-size:12px;font-weight:600;line-height:1.4;word-break:keep-all">${hEsc(a.title)}</div>
+    <div style="font-size:10px;color:var(--dim);margin-top:3px">${hEsc(a.press||'')}${a.date?' · '+hEsc(String(a.date).slice(0,16)):''} · <a href="${hEsc(a.url)}" target="_blank" rel="noopener" style="color:var(--acc);text-decoration:none">원문 보기 ↗</a></div>
+    <details style="margin-top:6px"><summary style="font-size:10px;color:var(--dim);cursor:pointer">기사 본문 보기 (${a.text.length}자)</summary><div style="font-size:11px;color:var(--dim);line-height:1.5;margin-top:4px;max-height:160px;overflow:auto;white-space:pre-wrap">${hEsc(a.text)}</div></details>
+  </div>
+  <div class="hbox"><h4>🖼 배경 사진 선택</h4>
+    <div style="font-size:10px;color:var(--dim)">📷 기사 사진 ${a.imgs.length}장 — 클릭하면 배경으로</div>
+    <div class="hgrid" id="hotImgs"></div>
+    <button class="w100 gh" id="hotSimBtn" style="margin-top:8px">🔎 유사 기사 사진 찾기${a.simQuery?' (다시)':''}</button>
+    <div id="hotSimWrap" style="display:none"><div style="font-size:10px;color:var(--dim);margin-top:8px" id="hotSimLabel">🔎 유사 기사 사진 — 클릭하면 배경으로</div><div class="hgrid" id="hotSim"></div></div>
+    <div class="row" style="margin-top:8px"><button id="hotAiBtn">🎨 기사 내용으로 AI 생성</button><button class="gh" id="hotUpBtn">📁 직접 업로드</button></div>
+    <input type="file" id="hotUpF" accept="image/*" style="display:none"/>
+    <div class="tip" style="margin-top:8px;font-size:10px">기사 사진은 언론사 저작물입니다. 게시 시 출처 표기 또는 AI 생성 이미지 사용을 권장합니다.</div>
+  </div>
+  <div class="hbox"><h4>📋 인스타 캡션 · 해시태그</h4>
+    <button class="w100 gh" id="hotCapBtn">${a.caption?'🔄 캡션 다시 만들기':'📋 캡션 + 해시태그 만들기'}</button>
+    <div id="hotCapWrap" style="${a.caption?'':'display:none;'}margin-top:6px"><textarea id="hotCap" style="min-height:130px;font-size:11px;line-height:1.5">${hEsc(a.caption||'')}</textarea><button class="w100 gh" id="hotCapCopy" style="margin-top:4px">📋 복사</button></div>
+  </div>`;
+  const grid=document.getElementById('hotImgs');
+  if(!a.imgs.length)grid.innerHTML='<div class="tip" style="grid-column:1/-1;font-size:10px">기사에 사진이 없습니다. 유사 기사 사진이나 AI 생성을 이용하세요.</div>';
+  a.imgs.forEach((u,i)=>{
+    const im=document.createElement('img');im.src=WESERV(u,'w=200&h=200&fit=cover&output=jpg');im.loading='lazy';im.title='기사 사진 '+(i+1);
+    if(a.bgIdx===i)im.classList.add('on');im.onerror=()=>im.remove();
+    im.onclick=()=>setHotBg(u,()=>{a.bgIdx=i;a.simIdx=-1;markHotSel()});
+    grid.appendChild(im);
+  });
+  renderSimGrid();
+  document.getElementById('hotSimBtn').onclick=findSimilar;
+  document.getElementById('hotAiBtn').onclick=()=>{if(!$oai.value.trim()){toast('OpenAI Key를 입력하세요 (좌측 API 섹션)');return}a.bgIdx=-1;a.simIdx=-1;markHotSel();runAIImage()};
+  document.getElementById('hotUpBtn').onclick=()=>document.getElementById('hotUpF').click();
+  document.getElementById('hotUpF').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader;r.onload=ev=>{const c=cur();if(!c)return;saveSnap();c.media=ev.target.result;c.mediaType='image';c.img=null;resetFraming(c);a.bgIdx=-1;a.simIdx=-1;render();markHotSel();toast('업로드 사진 적용')};r.readAsDataURL(f);e.target.value=''};
+  document.getElementById('hotCapBtn').onclick=genCaption;
+  document.getElementById('hotCapCopy').onclick=()=>{const t=document.getElementById('hotCap');t.select();const done=()=>toast('캡션 복사 완료');if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t.value).then(done,()=>{document.execCommand('copy');done()});else{document.execCommand('copy');done()}};
+  document.getElementById('hotCap').oninput=e=>{a.caption=e.target.value};
+}
+function markHotSel(){
+  const a=S.hot.article;if(!a)return;
+  document.querySelectorAll('#hotImgs img').forEach((im,i)=>im.classList.toggle('on',a.bgIdx===i));
+  document.querySelectorAll('#hotSim img').forEach((im,i)=>im.classList.toggle('on',a.simIdx===i));
+}
+async function setHotBg(u,after){
+  const c=cur();if(!c){toast('카드 없음');return}
+  sLoad('사진 적용 중...','');
+  try{const d=await imgToDataURL(u);saveSnap();c.media=d;c.mediaType='image';c.img=null;resetFraming(c);hLoad();render();if(after)after();toast('배경 사진 적용')}
+  catch(e){hLoad();toast('사진 적용 실패: '+e.message)}
+}
+
+/* --- 네이버 뉴스 검색 (유사 기사 사진 / 키워드 검색) --- */
+async function searchNews(q){
+  const url='https://search.naver.com/search.naver?where=news&query='+encodeURIComponent(q)+'&sort=0';
+  const html=await fetchHTML(url);const doc=parseDOM(html);
+  const out=[],seen=new Set(),usedBox=new Set();
+  const decodeThumb=s=>{if(!s)return '';let u=s;const m=s.match(/[?&]src=([^&]+)/);if(m){try{u=decodeURIComponent(m[1])}catch(e){u=m[1]}}u=stripImgType(u);return (/imgnews\.pstatic\.net/.test(u)&&!/office_logo|\/upload\/office|QRCODE/.test(u))?u:''};
+  doc.querySelectorAll('a[href*="n.news.naver.com"]').forEach(a=>{
+    const ref=artIdOf(a.getAttribute('href'));if(!ref||seen.has(ref.id))return;
+    let el=a,title='',thumb='',press='';
+    for(let d=0;d<10&&el&&el.parentElement&&el.parentElement!==doc.body;d++){
+      el=el.parentElement;
+      const hls=el.querySelectorAll('[class*="headline"],.news_tit,.title');
+      if(hls.length>1)break; // 여러 기사를 포함하는 상위 컨테이너까지 올라갔음
+      if(hls.length===1&&hls[0].textContent.trim().length>5){
+        if(usedBox.has(el))return; // 같은 기사 묶음(관련뉴스) 안의 하위 링크 → 중복 제외
+        usedBox.add(el);
+        title=hls[0].textContent.replace(/새 창 열림/g,'').trim();
+        thumb=[...el.querySelectorAll('img')].map(x=>decodeThumb(x.getAttribute('src')||x.getAttribute('data-src')||x.getAttribute('data-lazysrc'))).find(Boolean)||'';
+        // 언론사명: 텍스트가 있는 press 링크 우선, 없으면 프로필 이미지 alt("○○의 프로필 이미지")
+        for(const pr of el.querySelectorAll('a[href*="media.naver.com/press"]')){const t=pr.textContent.replace(/새 창 열림/g,'').trim();if(t){press=t;break}}
+        if(!press){const pi=el.querySelector('img[alt*="프로필 이미지"]');if(pi)press=(pi.getAttribute('alt')||'').replace(/의 프로필 이미지/,'').trim()}
+        break;
+      }
+    }
+    if(!title){title=a.textContent.replace(/새 창 열림|네이버뉴스/g,'').trim()}
+    if(!title||title.length<5)return;
+    seen.add(ref.id);out.push(Object.assign({title,thumb,press,time:'',kind:'search'},ref));
+  });
+  return out;
+}
+async function findSimilar(){
+  const a=S.hot.article;if(!a){toast('먼저 기사를 선택하세요');return}
+  sLoad('유사 기사 사진 찾는 중...','네이버 뉴스 검색');
+  try{
+    let q=(a.search_query||'').trim();
+    if(!q)q=a.title.replace(/\[[^\]]*\]|\([^)]*\)|["“”'‘’…·,]/g,' ').replace(/\s+/g,' ').trim().split(' ').slice(0,4).join(' ');
+    const res=await searchNews(q);
+    const items=res.filter(x=>x.thumb&&x.id!==a.id);
+    S.hot.similar=items.slice(0,12);a.simQuery=q;a.simIdx=-1;
+    hLoad();renderSimGrid();autoSave();
+    toast(items.length?`유사 사진 ${S.hot.similar.length}장 (검색어: ${q})`:`유사 기사 사진을 찾지 못했습니다 (검색어: ${q})`);
+  }catch(e){hLoad();toast('오류: '+e.message);console.error(e)}
+}
+function renderSimGrid(){
+  const wrap=document.getElementById('hotSimWrap'),g=document.getElementById('hotSim'),lb=document.getElementById('hotSimLabel');if(!wrap||!g)return;
+  const a=S.hot.article;const items=S.hot.similar||[];
+  wrap.style.display=items.length?'block':'none';g.innerHTML='';
+  if(lb&&a&&a.simQuery)lb.textContent=`🔎 유사 기사 사진 — 검색어 "${a.simQuery}" · 클릭하면 배경으로`;
+  items.forEach((it,i)=>{
+    const im=document.createElement('img');im.src=WESERV(it.thumb,'w=200&h=200&fit=cover&output=jpg');im.loading='lazy';im.title=(it.press?it.press+' · ':'')+it.title;
+    if(a&&a.simIdx===i)im.classList.add('on');im.onerror=()=>im.remove();
+    im.onclick=()=>setHotBg(it.thumb,()=>{a.simIdx=i;a.bgIdx=-1;markHotSel()});
+    g.appendChild(im);
+  });
+}
+
+/* --- 인스타 캡션 + 해시태그 --- */
+async function genCaption(){
+  const a=S.hot.article;const c=cur();if(!a||!c){toast('먼저 기사를 선택하세요');return}
+  if(!$k.value.trim()){toast('Claude Key 필요');return}
+  sLoad('캡션 작성 중...','');
+  try{
+    const guide=((document.getElementById('trPrompt')||{}).value||'').trim();
+    const lang=(document.getElementById('lang')||{}).value||'ko';
+    const lm={ko:'한국어',en:'English',ja:'Japanese',zh:'Simplified Chinese',es:'Spanish',vi:'Vietnamese',id:'Indonesian',th:'Thai',fr:'French',de:'German',pt:'Brazilian Portuguese'};
+    const sys='당신은 인스타그램 뉴스 계정 운영자입니다. 릴스/카드뉴스에 붙일 캡션을 씁니다. 사실은 기사 그대로, 문장은 쉽고 짧게.'+(guide?'\n사용자 지침(최우선): '+guide:'');
+    const txt=`카드 제목: ${c.title}
+기사 제목: ${a.title}
+언론사: ${a.press||''}
+기사 본문:
+${a.text.slice(0,3000)}
+
+위 내용으로 인스타그램 캡션을 ${lm[lang]||'한국어'}로 작성하세요.
+구성: 1) 첫 줄 후킹 한 문장 2) 핵심 내용 3~5문장 (기사 사실만, 쉬운 말) 3) 빈 줄 후 "출처: ${a.press||'네이버 뉴스'}" 4) 빈 줄 후 해시태그 12~15개 (공백 구분, # 포함${a.hashtags&&a.hashtags.length?', 참고: '+a.hashtags.join(' '):''})
+이모지는 2~3개만. 캡션 텍스트만 출력 (설명·마크다운·따옴표 금지).`;
+    const r=await api({sys,content:[{type:'text',text:txt}],max:900});
+    a.caption=r.trim();hLoad();renderHotArticle();autoSave();toast('캡션 완성! 복사해서 붙여넣으세요');
+  }catch(e){hLoad();toast('오류: '+e.message)}
+}
+
+/* --- 초기화: 버튼 바인딩 --- */
+function hotInit(){
+  const $=id=>document.getElementById(id);
+  document.querySelectorAll('#hotFmtSeg button').forEach(b=>b.onclick=()=>{
+    const f=b.dataset.fmt;if(S.hotFmt===f)return;
+    S.hotFmt=f;localStorage.setItem('hot_fmt',f);applyMode();render();
+    toast(f==='reels'?'릴스 영상 형식 (1080×1920 · MP4)':'게시물 형식 (1080×1350 · PNG)');
+  });
+  const secs=$('hotSecs');secs.value=localStorage.getItem('hot_secs')||'7';secs.onchange=()=>{localStorage.setItem('hot_secs',secs.value);updateUI()};
+  const kb=$('hotKb');kb.checked=localStorage.getItem('hot_kb')!=='0';kb.onchange=()=>localStorage.setItem('hot_kb',kb.checked?'1':'0');
+  const tp=$('hotTopic');tp.value=localStorage.getItem('hot_topic')||'';tp.oninput=()=>localStorage.setItem('hot_topic',tp.value);
+  ['hotSrcView','hotSrcCmt'].forEach(id=>{const el=$(id);const v=localStorage.getItem(id);if(v!==null)el.checked=v==='1';el.onchange=()=>localStorage.setItem(id,el.checked?'1':'0')});
+  $('hotFindBtn').onclick=()=>findHot(false);
+  $('hotMoreBtn').onclick=()=>findHot(true);
+  const doSearch=async()=>{
+    const q=($('hotQ').value||'').trim();if(!q){toast('검색어를 입력하세요');return}
+    sLoad('뉴스 검색 중...',q);
+    try{const items=await searchNews(q);hLoad();renderHotList(items.slice(0,15),`🔎 "${q}" 검색 결과 ${Math.min(items.length,15)}개 — 클릭하면 카드 생성`);if(!items.length)toast('검색 결과가 없습니다')}
+    catch(e){hLoad();toast('오류: '+e.message)}
+  };
+  $('hotQBtn').onclick=doSearch;$('hotQ').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();doSearch()}};
+  const doUrl=()=>{
+    const u=($('hotUrl').value||'').trim();const ref=artIdOf(u);
+    if(!ref){toast('네이버 뉴스 기사 URL이 아닙니다 (n.news.naver.com/article/...)');return}
+    loadArticle(Object.assign({title:'',press:''},ref));
+  };
+  $('hotUrlBtn').onclick=doUrl;$('hotUrl').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();doUrl()}};
 }
 
 /* Reapply responsive sizing on resize/orientation change */
@@ -2267,7 +2812,7 @@ window.addEventListener('resize',onResize);
 window.addEventListener('orientationchange',onResize);
 
 /* Init */
-applyMode();
+applyMode();hotInit();
 S.cards=[mk()];S.idx=0;render();enableEditableV();
 // Offer restore if a saved project exists
 idbGet('current').then(saved=>{
