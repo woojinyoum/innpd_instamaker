@@ -50,6 +50,9 @@ git push
   - 배경 사진: 기사 사진 / 유사 기사 사진(네이버 뉴스 검색 썸네일) / AI 생성(OpenAI) / 직접 업로드. 외부 이미지는 `images.weserv.nl` 프록시로 받아 data URL화(캔버스 내보내기 가능)
   - 부가: 키워드 검색·기사 URL 직접 입력, 인스타 캡션+해시태그 생성(복사), 번역 버튼 그대로 사용 가능
   - 릴스 형식 다운로드 시 정지 이미지 카드도 MP4로 렌더(`renderStillVideoCard`, 무음 오디오 트랙 포함)
+  - ⚡ 자동 생성(`autoHot`): 랭킹 수집 → 주제 N개 선별 → 기사별 카드 생성(프리셋 스타일 `applyStyle` 일괄 적용, 대표 사진, 후킹 제목·기승전결 요약 `hotTitlePrompt`) → 각 카드에 `c.hotArt` 연결(카드 이동 시 `syncHotCard`가 기사 패널·제목 후보 동기화)
+  - 다운로드 ZIP(`hotnews_YYYY-MM-DD.zip`)에 본문 메모장 `본문메모_YYYY-MM-DD.txt` 동봉(`buildHotMemo`: 카드별 제목·출처·원문·제목 후보·본문(참고용)·해시태그·캡션, UTF-8 BOM + CRLF)
+  - 스타일 프리셋은 우측 ⭐ 프리셋(`icnm_presets`)과 동일 목록(제목 스타일 t·본문 스타일 b·로고·그라데이션), 핫뉴스 선택값은 `hot_ps`
 - **API**: Claude(Anthropic) — 이미지 분석·후킹 제목·번역 / OpenAI — AI 배경 이미지 생성·캡처 정리·고화질 변환
   - API 키는 사용자가 좌측 패널에 입력, 브라우저 localStorage에 저장 (코드에 하드코딩 안 됨)
 - **라이선스 게이트**: Supabase로 키 검증 + 기기 2개 제한 (SB_URL/SB_KEY는 공개 anon 키)
