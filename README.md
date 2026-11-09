@@ -51,7 +51,7 @@ git push
   - 부가: 키워드 검색·기사 URL 직접 입력, 인스타 캡션+해시태그 생성(복사), 번역 버튼 그대로 사용 가능
   - 릴스 형식 다운로드 시 정지 이미지 카드도 MP4로 렌더(`renderStillVideoCard`, 무음 오디오 트랙 포함)
   - ⚡ 자동 생성(`autoHot`): 랭킹 수집 → 주제 N개 선별 → 기사별 카드 생성(프리셋 스타일 `applyStyle` 일괄 적용, 대표 사진, 후킹 제목·기승전결 요약 `hotTitlePrompt`) → 각 카드에 `c.hotArt` 연결(카드 이동 시 `syncHotCard`가 기사 패널·제목 후보 동기화)
-  - 카드 장수는 AI 판단(게시물 형식만): 프롬프트 `slides` → `makeSlideCards`가 표지 뒤에 장 카드 생성(`c.hotSlide` 1.., `c.hotTotal`), 교체(`replaceHotCard`)는 `hotGroupIdx`로 그룹 통째 교체, 목록·메모장은 표지(`!c.hotSlide`) 기준
+  - 여러 장은 기사 사진이 2장 이상일 때만(게시물 형식): 1장 제목 카드 + 나머지 사진 카드(`makePhotoCards`, 제목·그라데이션 없음, `fitPhotoToCard`로 블러 배경 채움 또는 AI 채우기). `c.hotSlide`/`c.hotTotal`, 교체는 `hotGroupIdx`로 그룹 통째, 목록·메모장은 표지(`!c.hotSlide`) 기준
   - 다운로드 ZIP(`hotnews_YYYY-MM-DD.zip`)에 본문 메모장 `본문메모_YYYY-MM-DD.txt` 동봉(`buildHotMemo`: 카드별 제목·출처·원문·제목 후보·본문(참고용)·해시태그·캡션, UTF-8 BOM + CRLF)
   - 스타일 프리셋은 우측 ⭐ 프리셋(`icnm_presets`)과 동일 목록(제목 스타일 t·본문 스타일 b·로고·그라데이션), 핫뉴스 선택값은 `hot_ps`
 - **API**: Claude(Anthropic) — 이미지 분석·후킹 제목·번역 / OpenAI — AI 배경 이미지 생성·캡처 정리·고화질 변환

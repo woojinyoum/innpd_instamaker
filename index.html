@@ -286,7 +286,7 @@ input[type=color]{width:32px;height:26px;background:transparent;border:1px solid
         <div class="row"><div class="field"><label>그라데이션 높이 <span id="mkGhV">60</span>%</label><input type="range" id="mkGh" min="0" max="100" value="60"/></div><div class="field"><label>그라데이션 진하기 <span id="mkGoV">95</span></label><input type="range" id="mkGo" min="0" max="100" value="95"/></div></div>
         <div class="row" style="margin-top:4px"><button id="mkSave">💾 프리셋 저장 + 지금 카드에 적용</button><button class="gh" id="mkCancel" style="flex:0 0 auto">닫기</button></div>
       </div>
-      <label class="hchk" style="margin-top:8px"><input type="checkbox" id="hotAutoFill"/>📐 사진에 여백이 생기면 AI로 꽉 채우기 (OpenAI 비용 · 장당 1회)</label>
+      <label class="hchk" style="margin-top:8px"><input type="checkbox" id="hotAutoFill"/>📐 사진 여백을 AI로 꽉 채우기 (OpenAI 비용 · 장당 1회, 끄면 블러 배경으로 채움)</label>
       <button class="w100" id="hotAutoBtn" style="margin-top:8px">⚡ 핫뉴스 <span id="hotAutoNLbl">6</span>개 자동 생성</button>
       <div id="hotAutoStatus" style="display:none;margin-top:8px;font-size:10px;line-height:1.6;color:var(--dim);max-height:150px;overflow:auto;padding:6px 8px;background:var(--panel2);border-radius:6px;white-space:pre-wrap"></div>
       <button class="w100 gh" id="hotMemoBtn" style="display:none;margin-top:6px">📝 본문 메모장(.txt)만 받기</button>
@@ -952,7 +952,7 @@ function parseTitles(raw){
   return {candidates:cands,body};
 }
 /* 핫뉴스 제목·요약 프롬프트 (단건·자동 생성 공용) */
-function hotTitlePrompt(art,weapon,note,fmt,multi){return `다음 뉴스 기사를 바탕으로, 후킹 가이드에 따라 인스타 ${fmt==='reels'?'릴스':'카드뉴스'} 첫 장에 쓸 제목 후보를 뽑아주세요.
+function hotTitlePrompt(art,weapon,note,fmt){return `다음 뉴스 기사를 바탕으로, 후킹 가이드에 따라 인스타 ${fmt==='reels'?'릴스':'카드뉴스'} 첫 장에 쓸 제목 후보를 뽑아주세요.
 [기사 제목] ${art.title}
 [언론사] ${art.press||''}
 [기사 본문]
@@ -973,14 +973,8 @@ ${note?'추가 지침(최우선): '+note:''}
    - 쉬운 구어체, 한 문장은 짧게, 사실·숫자·이름은 기사 그대로 정확히, 기사에 없는 내용·추측 금지. 기사가 짧으면 문단을 합쳐도 되지만 300자 이상은 쓸 것
 5) search_query: 이 사건의 다른 기사 사진을 찾기 위한 네이버 뉴스 검색어 (핵심 고유명사·키워드 2~4개, 공백 구분)
 6) hashtags: 관련 해시태그 10개 (# 포함, 한국어 위주)
-${multi?`7) slides: 이 기사를 인스타 카드뉴스로 만들 때 표지 1장으로 충분한지, 여러 장이 필요한지 직접 판단하세요.
-   - 사건이 단순해 표지 제목만으로 핵심이 전달되면 빈 배열 []
-   - 사실·숫자·단계·순서·비교·등장인물이 많거나, 표지만 보면 내용을 알 수 없는 기사라면 표지 뒤에 붙을 장을 2~4개 작성
-   - 각 장은 text 하나: 그 장의 핵심을 전하는 문장 1~2개 (합쳐 20~45자, 쉬운 구어체, 가장 중요한 단어 1곳만 {중괄호}, 이모지 금지, 줄바꿈 금지)
-   - 장 순서는 기승전결 흐름, 마지막 장은 결과·전망 또는 한 줄 정리. 표지 제목과 같은 문장 반복 금지`:''}
-
 JSON만 답변 (마크다운·설명 금지):
-{"candidates":[{"title":"제목(15~25자)","score":9,"reason":"짧은 이유"}],"body":"발단 문단\\n\\n전개 문단\\n\\n쟁점 문단\\n\\n결과 문단","search_query":"검색어","hashtags":["#태그"]${multi?',"slides":[{"text":"2장 문장"},{"text":"3장 문장"}]':''}}
+{"candidates":[{"title":"제목(15~25자)","score":9,"reason":"짧은 이유"}],"body":"발단 문단\\n\\n전개 문단\\n\\n쟁점 문단\\n\\n결과 문단","search_query":"검색어","hashtags":["#태그"]}
 
 규칙: 제목 이모지 금지, 강조어휘 최대 2개, 제목에서 가장 강조할 핵심 단어 1곳은 {중괄호}로 감싸기(강조색 적용용).
 중요: JSON 문자열 값 안에서 큰따옴표(")를 쓰지 마세요. 강조가 필요하면 작은따옴표(')나 홑화살괄호(〈 〉)를 쓰세요. 줄바꿈은 \\n으로.`}
@@ -995,7 +989,7 @@ async function genTitles(weapon,opts){
   try{
     const uc=[];
     if(hotArt){
-      uc.push({type:'text',text:hotTitlePrompt(hotArt,weapon,note,S.hotFmt,hotMultiOK())});
+      uc.push({type:'text',text:hotTitlePrompt(hotArt,weapon,note,S.hotFmt)});
     }else{
     if(img1){const[m,b]=img1.split(',');uc.push({type:'image',source:{type:'base64',media_type:m.match(/data:(.*?);/)[1],data:b}},{type:'text',text:'위: 게시물 메인 이미지'})}
     if(img2){const[m,b]=img2.split(',');uc.push({type:'image',source:{type:'base64',media_type:m.match(/data:(.*?);/)[1],data:b}},{type:'text',text:'위: 본문 캡쳐 (OCR 대상)'})}
@@ -2771,6 +2765,12 @@ async function loadArticle(it){
       try{c.media=await imgToDataURL(art.imgs[0]);c.mediaType='image';c.img=null;art.bgIdx=0}
       catch(e){console.warn('대표 이미지 로드 실패',e);toast('대표 사진을 불러오지 못했습니다 — 다른 사진을 선택하세요')}
     }
+    // 기사 사진이 2장 이상이면 나머지 사진을 사진 카드로 뒤에 추가 (게시물 형식)
+    if(hotMultiOK()&&art.imgs.length>1){
+      const wantFill=!!(document.getElementById('hotAutoFill')||{}).checked&&!!$oai.value.trim();
+      const extra=await makePhotoCards(art,c,extractStyle(c),{fill:wantFill,progress:s=>{document.getElementById('lsu').textContent=s}});
+      if(extra.length){S.cards.splice(S.idx+1,0,...extra);toast(`기사 사진 ${extra.length+1}장 → 제목 카드 1장 + 사진 카드 ${extra.length}장`)}
+    }
     S.ko={title:c.title,body:c.body};
     render();renderHotArticle();
     fillHintFor(c).then(need=>{if(need)toast('📐 사진이 카드보다 가로로 넓어 여백이 생깁니다 → "배경 사진 선택"에서 직접 첨부 또는 AI 채우기')});
@@ -2778,10 +2778,7 @@ async function loadArticle(it){
     sStep(2);
     if($k.value.trim()){
       const parsed=await genTitles('auto',{silent:true,autoApply:true});
-      if(parsed){art.parsed=parsed;if(parsed.search_query)art.search_query=String(parsed.search_query);if(Array.isArray(parsed.hashtags))art.hashtags=parsed.hashtags;
-        const texts=hotMultiOK()?slideTexts(parsed):[];
-        if(texts.length){const extra=await makeSlideCards(art,texts,c,extractStyle(c));S.cards.splice(S.idx+1,0,...extra);render();toast(`AI 판단: 카드뉴스 ${extra.length+1}장으로 구성했어요 (표지 + ${extra.length}장)`)}
-      }
+      if(parsed){art.parsed=parsed;if(parsed.search_query)art.search_query=String(parsed.search_query);if(Array.isArray(parsed.hashtags))art.hashtags=parsed.hashtags}
     }else{toast('Claude Key를 입력하면 후킹 제목이 자동 생성됩니다')}
     hLoad();autoSave();
     toast(S.hotFmt==='reels'?'릴스 카드 생성 완료! 제목 후보에서 바꿀 수 있어요':'게시물 카드 생성 완료! 제목 후보에서 바꿀 수 있어요');
@@ -2964,7 +2961,7 @@ function buildHotMemo(){
     out+=`• 기사 제목: ${a.title||'-'}\n• 출처: ${a.press||'-'}${a.date?' · '+String(a.date).slice(0,16):''}\n• 원문: ${a.url||'-'}\n`;
     if(cands.length)out+=`• 제목 후보:\n`+cands.map((x,j)=>`   ${j+1}) ${stripBrace(x.title)}${x.score?' ('+x.score+'/10)':''}`).join('\n')+'\n';
     const grp=S.cards.filter(x=>x.hotArt&&x.hotArt.id===a.id&&x.hotSlide>0).sort((x,y)=>x.hotSlide-y.hotSlide);
-    if(grp.length)out+=`\n[카드 구성 — ${grp.length+1}장]\n   1장(표지): ${stripBrace(c.title)}\n`+grp.map(x=>`   ${x.hotSlide+1}장: ${stripBrace(x.title)}`).join('\n')+'\n';
+    if(grp.length)out+=`\n[카드 구성 — ${grp.length+1}장]\n   1장: 제목 카드 (${stripBrace(c.title)})\n`+grp.map(x=>`   ${x.hotSlide+1}장: 기사 사진 ${x.hotSlide+1}`).join('\n')+'\n';
     out+=`\n[본문 참고용]\n${(c.body||'-').trim()}\n`;
     if(a.hashtags&&a.hashtags.length)out+=`\n[해시태그]\n${a.hashtags.join(' ')}\n`;
     if(a.caption)out+=`\n[인스타 캡션]\n${a.caption.trim()}\n`;
@@ -2978,22 +2975,40 @@ function downloadHotMemo(){
 }
 
 
-/* 카드뉴스 여러 장: 게시물(PNG) 형식일 때만 AI가 장수를 판단 (릴스는 영상 1개) */
+/* 카드뉴스 여러 장: 기사 안에 사진이 2장 이상일 때만 (게시물 형식). 1장 = 제목 카드, 나머지 = 사진만 */
 const hotMultiOK=()=>S.hotFmt==='post';
-const slideTexts=parsed=>Array.isArray(parsed&&parsed.slides)?parsed.slides.map(s=>typeof s==='string'?s:(s&&(s.text||s.title))||'').map(s=>String(s).replace(/\s*\n+\s*/g,' ').trim()).filter(s=>s.length>=4).slice(0,4):[];
-// 표지 카드 뒤에 붙는 장들: 같은 스타일(제목 글자는 조금 작게), 기사 사진이 여러 장이면 장마다 다른 사진, 없으면 표지 사진
-async function makeSlideCards(art,texts,cover,style){
-  const out=[];
-  for(let k=0;k<texts.length;k++){
+const HOT_MAX_PHOTOS=9; // 표지 포함 최대 10장 (인스타 한도)
+// 사진을 1080×H 카드에 "어색하지 않게" 채우기: 비율이 맞으면 그대로, 아니면 같은 사진을 확대·블러한 배경 위에 원본을 얹어 여백 없이 채움
+async function fitPhotoToCard(dataUrl){
+  const im=await loadImgEl(dataUrl);
+  if(fillCoverage(im.naturalWidth,im.naturalHeight)>0.97)return dataUrl;
+  const W=1080,HH=H();const cv=document.createElement('canvas');cv.width=W;cv.height=HH;const ctx=cv.getContext('2d');
+  const cs=Math.max(W/im.naturalWidth,HH/im.naturalHeight)*1.1;const cw=im.naturalWidth*cs,ch=im.naturalHeight*cs;
+  ctx.filter='blur(48px) brightness(0.72)';ctx.drawImage(im,(W-cw)/2,(HH-ch)/2,cw,ch);ctx.filter='none';
+  ctx.fillStyle='rgba(0,0,0,0.12)';ctx.fillRect(0,0,W,HH);
+  const fs=Math.min(W/im.naturalWidth,HH/im.naturalHeight);const fw=im.naturalWidth*fs,fh=im.naturalHeight*fs;
+  ctx.shadowColor='rgba(0,0,0,0.45)';ctx.shadowBlur=40;ctx.shadowOffsetY=10;
+  ctx.drawImage(im,(W-fw)/2,(HH-fh)/2,fw,fh);
+  return cv.toDataURL('image/jpeg',0.92);
+}
+// 표지 뒤에 붙는 사진 카드들: 기사 사진 2번째부터, 제목·그라데이션 없이 사진만(로고는 프리셋대로 유지)
+async function makePhotoCards(art,cover,style,opts){
+  opts=opts||{};const out=[];const urls=(art.imgs||[]).slice(1,1+HOT_MAX_PHOTOS);
+  for(let k=0;k<urls.length;k++){
+    if(opts.progress)opts.progress(`기사 사진 ${k+2}/${urls.length+1} 카드 만들기...`);
+    let data=null;try{data=await imgToDataURL(urls[k])}catch(e){console.warn('사진 로드 실패',urls[k]);continue}
     const s=mk();applyStyle(s,style);
-    s.t.z=Math.max(40,Math.round((style.t&&style.t.z||80)*0.82));
-    s.title=texts[k];s.body='';s.hotArt=art;s.hotSlide=k+1;
-    const imgU=(art.imgs||[])[k+1];
-    if(imgU){try{s.media=await imgToDataURL(imgU);s.mediaType='image';s.img=null}catch(e){}}
-    if(!s.media&&cover&&cover.media&&cover.mediaType!=='video'){s.media=cover.media;s.mediaType='image';s.img=null;['mct','mcb','mcl','mcr','mzoom','mox','moy'].forEach(q=>s[q]=cover[q])}
+    s.title='';s.body='';s.g.o=0;s.hotArt=art;
+    try{
+      let fitted=null;
+      if(opts.fill){try{const inp=await buildOutpaintInputs(data);if(inp.coverage<0.97){if(opts.progress)opts.progress(`사진 ${k+2} 여백 AI 채우기...`);const raw=await outpaintOpenAI(inp.imageBlob,inp.maskBlob,OUTPAINT_PROMPT);fitted=await resizeToCard(raw)}}catch(e){console.warn('AI 채우기 실패 → 블러 채움',e)}}
+      s.media=fitted||await fitPhotoToCard(data);
+    }catch(e){s.media=data}
+    s.mediaType='image';s.img=null;resetFraming(s);
     out.push(s);
   }
-  if(out.length){cover.hotSlide=0;cover.hotTotal=out.length+1;out.forEach(s=>s.hotTotal=out.length+1)}
+  out.forEach((s,k)=>{s.hotSlide=k+1;s.hotTotal=out.length+1});
+  if(out.length){cover.hotSlide=0;cover.hotTotal=out.length+1}
   return out;
 }
 // 같은 기사에 속한 카드들의 인덱스 (표지 + 장들)
@@ -3011,7 +3026,7 @@ async function buildHotCard(it,style,opts){
   if(art.imgs.length){try{c.media=await imgToDataURL(art.imgs[0]);c.mediaType='image';c.img=null;art.bgIdx=0}catch(e){console.warn('대표 사진 실패',e)}}
   // 후킹 제목 5개 + 기승전결 요약
   prog('후킹 제목·요약 생성...');
-  const res=await api({sys:HOOK_SYS,content:[{type:'text',text:hotTitlePrompt(art,'auto',opts.note||'',S.hotFmt,hotMultiOK())}],max:4000});
+  const res=await api({sys:HOOK_SYS,content:[{type:'text',text:hotTitlePrompt(art,'auto',opts.note||'',S.hotFmt)}],max:4000});
   const parsed=parseTitles(res);
   const top=(parsed.candidates||[]).slice().sort((a,b)=>(b.score||0)-(a.score||0))[0];
   if(top&&top.title)c.title=top.title;
@@ -3024,15 +3039,14 @@ async function buildHotCard(it,style,opts){
       if(inp.coverage<0.97){prog('사진 여백 AI 채우기...');const raw=await outpaintOpenAI(inp.imageBlob,inp.maskBlob,OUTPAINT_PROMPT);c.media=await resizeToCard(raw);resetFraming(c);art.bgIdx=-1;fillNote=' · 📐채움'}
     }catch(e){console.warn('AI 채우기 실패',e);fillNote=' · 채우기 실패'}
   }
-  // AI가 여러 장이 낫다고 판단한 경우 → 장 카드 생성 (게시물 형식만)
+  // 기사 안에 사진이 2장 이상이면 → 나머지 사진을 사진 카드로 (게시물 형식만)
   let extra=[];
-  const texts=hotMultiOK()?slideTexts(parsed):[];
-  if(texts.length){prog(`카드뉴스 ${texts.length+1}장 구성...`);extra=await makeSlideCards(art,texts,c,style);fillNote+=` · 카드뉴스 ${extra.length+1}장`}
+  if(hotMultiOK()&&(art.imgs||[]).length>1){extra=await makePhotoCards(art,c,style,{fill:opts.fill,progress:prog});if(extra.length)fillNote+=` · 사진 ${extra.length+1}장`}
   return {c,extra,art,fillNote};
 }
 // 기사 연결된 카드들을 목록으로 (클릭 → 카드 이동, 🔄 → 다른 뉴스로 교체)
 function renderAutoList(){
-  const items=S.cards.map((c,i)=>(c.hotArt&&!c.hotSlide)?{id:c.hotArt.id,url:c.hotArt.url,title:c.hotArt.title,press:c.hotArt.press,thumb:(c.hotArt.imgs||[])[0]||'',kind:'auto',cardIdx:i,time:c.hotTotal>1?`🗂 카드뉴스 ${c.hotTotal}장`:'표지 1장'}:null).filter(Boolean);
+  const items=S.cards.map((c,i)=>(c.hotArt&&!c.hotSlide)?{id:c.hotArt.id,url:c.hotArt.url,title:c.hotArt.title,press:c.hotArt.press,thumb:(c.hotArt.imgs||[])[0]||'',kind:'auto',cardIdx:i,time:c.hotTotal>1?`🗂 사진 ${c.hotTotal}장`:'1장'}:null).filter(Boolean);
   if(!items.length)return;
   renderHotList(items,`⚡ 생성된 뉴스 ${items.length}개 — 클릭하면 카드로 이동 · 🔄 다른 뉴스로 교체`,it=>go(it.cardIdx),it=>showReplaceOptions(it.cardIdx));
 }
@@ -3078,7 +3092,7 @@ async function replaceHotCard(idx,it){
     S.idx=at;S.hot.article=null;S.hot.similar=[];
     render();syncHotCard();renderAutoList();
     hLoad();autoSave();
-    toast(`카드 교체 완료: ${stripBrace(c.title)}${extra.length?` (카드뉴스 ${extra.length+1}장)`:''}`);
+    toast(`카드 교체 완료: ${stripBrace(c.title)}${extra.length?` (사진 ${extra.length+1}장)`:''}`);
     fillHintFor(c).then(need=>{if(need)toast('📐 새 사진이 가로로 넓어 여백이 생깁니다 → 배경 사진 선택에서 직접 첨부 또는 AI 채우기')});
   }catch(e){hLoad();toast('교체 실패: '+e.message+' — 다른 뉴스를 고르세요');console.warn(e)}
 }
@@ -3130,7 +3144,7 @@ async function autoHot(){
     render();syncHotCard();
     renderAutoList();
     const noPic=cards.filter(c=>!c.media).length;
-    log(`🎉 완료: 뉴스 ${made.length}개 · 카드 ${cards.length}장${cards.length>made.length?` (카드뉴스 ${cards.filter(c=>c.hotTotal>1&&!c.hotSlide).length}개 포함)`:''}${fails?` · 건너뜀 ${fails}`:''}${noPic?` · 사진 없는 카드 ${noPic}장은 배경을 직접 고르세요`:''}`);
+    log(`🎉 완료: 뉴스 ${made.length}개 · 카드 ${cards.length}장${cards.length>made.length?` (사진 여러 장 기사 ${cards.filter(c=>c.hotTotal>1&&!c.hotSlide).length}개 포함)`:''}${fails?` · 건너뜀 ${fails}`:''}${noPic?` · 사진 없는 카드 ${noPic}장은 배경을 직접 고르세요`:''}`);
     log(`⬇ 상단 "다운로드"를 누르면 ${S.hotFmt==='reels'?'릴스 MP4':'게시물 PNG'} ${cards.length}개 + ${hotMemoName()} 가 ZIP으로 저장됩니다`);
     localStorage.setItem('hot_auto_last',JSON.stringify({at:Date.now(),n:cards.length}));
     hLoad();autoSave();
