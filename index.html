@@ -1046,7 +1046,9 @@ function showHkResult(parsed,weapon){
     row.onmouseleave=()=>{row.style.borderColor='var(--brd)';row.style.background='var(--panel2)'};
     row.innerHTML=`<div style="font-size:13px;color:var(--txt);font-weight:600;line-height:1.4">${(cd.title||'').replace(/</g,'&lt;')}</div><div style="font-size:10px;color:var(--dim);margin-top:3px">${cd.score?cd.score+'/10 · ':''}${(cd.reason||'').replace(/</g,'&lt;')}</div>`;
     row.onclick=()=>{
-      const c=cur();if(!c){toast('카드 없음');return}
+      let c=cur();if(!c){toast('카드 없음');return}
+      // 사진 카드(제목 없는 장)에는 글을 넣지 않음 → 같은 기사의 제목 카드에 적용
+      if(c.hotSlide>0&&c.hotArt){const cv=S.cards.find(x=>x.hotArt&&x.hotArt.id===c.hotArt.id&&!x.hotSlide);if(cv){c=cv;go(S.cards.indexOf(cv));toast('사진 카드에는 글을 넣지 않아요 → 제목 카드에 적용')}}
       saveSnap();c.title=cd.title||c.title;if(body&&!c.body)c.body=body;if(S.mode==='hot')S.ko={title:c.title,body:c.body};render();rEd();toast('제목 적용: '+cd.title);
     };
     box.appendChild(row);
