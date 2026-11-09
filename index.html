@@ -2702,7 +2702,7 @@ async function findHot(more){
   }catch(e){hLoad();toast('오류: '+e.message);console.error(e);st.style.display='block';st.textContent='⚠️ '+e.message}
 }
 
-function renderHotList(items,label,onPick){
+function renderHotList(items,label,onPick,onSwap){
   const box=document.getElementById('hotList');box.innerHTML='';
   if(!items.length){box.innerHTML='<div class="tip">결과가 없습니다.</div>';return}
   const h=document.createElement('div');h.style.cssText='font-size:11px;color:var(--acc);font-weight:700;margin-bottom:6px';h.textContent=label;box.appendChild(h);
@@ -2721,6 +2721,7 @@ function renderHotList(items,label,onPick){
     body.appendChild(m);
     if(it.why){const w=document.createElement('div');w.style.cssText='font-size:10px;color:var(--dim);margin-top:2px';w.textContent='💡 '+it.why;body.appendChild(w)}
     d.appendChild(body);
+    if(onSwap){const sw=document.createElement('button');sw.className='gh';sw.textContent='🔄';sw.title='이 뉴스를 다른 핫뉴스로 교체';sw.style.cssText='flex:0 0 auto;align-self:center;padding:5px 8px;font-size:12px';sw.onclick=e=>{e.stopPropagation();onSwap(it,i)};d.appendChild(sw)}
     d.onclick=()=>onPick?onPick(it,i):loadArticle(it);
     box.appendChild(d);
   });
@@ -2786,6 +2787,7 @@ function renderHotArticle(){
   box.innerHTML=`<div class="hbox"><h4>📰 선택한 기사</h4>
     <div style="font-size:12px;font-weight:600;line-height:1.4;word-break:keep-all">${hEsc(a.title)}</div>
     <div style="font-size:10px;color:var(--dim);margin-top:3px">${hEsc(a.press||'')}${a.date?' · '+hEsc(String(a.date).slice(0,16)):''} · <a href="${hEsc(a.url)}" target="_blank" rel="noopener" style="color:var(--acc);text-decoration:none">원문 보기 ↗</a></div>
+    <button class="w100 gh" id="hotSwapBtn" style="margin-top:8px;font-size:11px">🔄 이 카드를 다른 핫뉴스로 교체</button>
     <details style="margin-top:6px"><summary style="font-size:10px;color:var(--dim);cursor:pointer">기사 본문 보기 (${a.text.length}자)</summary><div style="font-size:11px;color:var(--dim);line-height:1.5;margin-top:4px;max-height:160px;overflow:auto;white-space:pre-wrap">${hEsc(a.text)}</div></details>
   </div>
   <div class="hbox"><h4>🖼 배경 사진 선택</h4>
@@ -2816,6 +2818,7 @@ function renderHotArticle(){
   });
   renderSimGrid();
   document.getElementById('hotSimBtn').onclick=findSimilar;
+  const swb=document.getElementById('hotSwapBtn');if(swb)swb.onclick=()=>showReplaceOptions(S.idx);
   document.getElementById('hotAiBtn').onclick=()=>{if(!$oai.value.trim()){toast('OpenAI Key를 입력하세요 (좌측 API 섹션)');return}a.bgIdx=-1;a.simIdx=-1;markHotSel();runAIImage()};
   document.getElementById('hotUpBtn').onclick=()=>document.getElementById('hotUpF').click();
   document.getElementById('hotFitUp').onclick=()=>document.getElementById('hotUpF').click();
@@ -2960,6 +2963,84 @@ function downloadHotMemo(){
   const memo=buildHotMemo();if(!memo){toast('핫뉴스 카드가 없습니다');return}
   const b=new Blob(['\ufeff'+memo],{type:'text/plain;charset=utf-8'});const u=URL.createObjectURL(b);dL(u,hotMemoName());setTimeout(()=>URL.revokeObjectURL(u),3000);toast('본문 메모장 저장: '+hotMemoName());
 }
+
+/* 뉴스 1건 → 카드 1장 (스타일 적용, 대표 사진, 후킹 제목·기승전결 요약, 선택 시 여백 AI 채우기). 자동 생성·교체 공용 */
+async function buildHotCard(it,style,opts){
+  opts=opts||{};const prog=opts.progress||(()=>{});
+  prog(it.title||'');
+  const html=await fetchHTML(it.url);
+  const art=parseArticle(html,it);
+  if(!art.text||art.text.length<80)throw Error('본문 없음(영상·포토 기사)');
+  const c=mk();applyStyle(c,style);
+  c.title=art.title;c.body=art.text.slice(0,1500);c.hotArt=art;
+  if(art.imgs.length){try{c.media=await imgToDataURL(art.imgs[0]);c.mediaType='image';c.img=null;art.bgIdx=0}catch(e){console.warn('대표 사진 실패',e)}}
+  // 후킹 제목 5개 + 기승전결 요약
+  prog('후킹 제목·요약 생성...');
+  const res=await api({sys:HOOK_SYS,content:[{type:'text',text:hotTitlePrompt(art,'auto',opts.note||'',S.hotFmt)}],max:3500});
+  const parsed=parseTitles(res);
+  const top=(parsed.candidates||[]).slice().sort((a,b)=>(b.score||0)-(a.score||0))[0];
+  if(top&&top.title)c.title=top.title;
+  if(parsed.body)c.body=parsed.body;
+  art.parsed=parsed;if(parsed.search_query)art.search_query=String(parsed.search_query);if(Array.isArray(parsed.hashtags))art.hashtags=parsed.hashtags;
+  // 여백 생기는 사진 → AI 채우기 (선택)
+  let fillNote='';
+  if(opts.fill&&c.media){
+    try{const inp=await buildOutpaintInputs(c.media);
+      if(inp.coverage<0.97){prog('사진 여백 AI 채우기...');const raw=await outpaintOpenAI(inp.imageBlob,inp.maskBlob,OUTPAINT_PROMPT);c.media=await resizeToCard(raw);resetFraming(c);art.bgIdx=-1;fillNote=' · 📐채움'}
+    }catch(e){console.warn('AI 채우기 실패',e);fillNote=' · 채우기 실패'}
+  }
+  return {c,art,fillNote};
+}
+// 기사 연결된 카드들을 목록으로 (클릭 → 카드 이동, 🔄 → 다른 뉴스로 교체)
+function renderAutoList(){
+  const items=S.cards.map((c,i)=>c.hotArt?{id:c.hotArt.id,url:c.hotArt.url,title:c.hotArt.title,press:c.hotArt.press,thumb:(c.hotArt.imgs||[])[0]||'',kind:'auto',cardIdx:i}:null).filter(Boolean);
+  if(!items.length)return;
+  renderHotList(items,`⚡ 생성된 뉴스 ${items.length}개 — 클릭하면 카드로 이동 · 🔄 다른 뉴스로 교체`,it=>go(it.cardIdx),it=>showReplaceOptions(it.cardIdx));
+}
+// N번 카드를 바꿀 다른 핫뉴스 5개 보여주기 (이미 쓴 뉴스 제외)
+async function showReplaceOptions(idx){
+  const c=S.cards[idx];if(!c){toast('카드 없음');return}
+  if(!$k.value.trim()){toast('Claude Key를 입력하세요 — 교체 시 제목·요약을 새로 만듭니다');return}
+  const useV=document.getElementById('hotSrcView').checked,useC=document.getElementById('hotSrcCmt').checked;
+  sLoad('다른 뉴스 고르는 중...',`${idx+1}번 카드 교체 후보`);
+  try{
+    const stale=Date.now()-S.hot.fetchedAt>10*60*1000;
+    if(!S.hot.pool.length||stale)await refreshHotPool(useV||!useC,useC);
+    const exclude=new Set([...S.hot.shown,...S.cards.map(x=>x.hotArt&&x.hotArt.id).filter(Boolean)]);
+    const alts=await pickHotTopics(S.hot.pool,exclude,5);
+    hLoad();
+    if(!alts.length){toast('더 보여줄 뉴스가 없습니다');return}
+    go(idx);
+    renderHotList(alts,`🔄 ${idx+1}번 카드를 바꿀 뉴스 고르기 — 클릭하면 바로 교체`,it=>replaceHotCard(idx,it));
+    const box=document.getElementById('hotList');
+    const bar=document.createElement('div');bar.className='row';bar.style.cssText='margin:6px 0 8px';
+    const back=document.createElement('button');back.className='gh';back.style.fontSize='11px';back.textContent='← 생성된 목록으로';back.onclick=renderAutoList;
+    const more=document.createElement('button');more.className='gh';more.style.fontSize='11px';more.textContent='🔄 다른 후보 5개';more.onclick=()=>{alts.forEach(a=>S.hot.shown.add(a.id));showReplaceOptions(idx)};
+    bar.appendChild(back);bar.appendChild(more);box.insertBefore(bar,box.children[1]||null);
+    box.scrollIntoView({behavior:'smooth',block:'nearest'});
+  }catch(e){hLoad();toast('오류: '+e.message);console.error(e)}
+}
+// N번 카드를 선택한 뉴스로 교체 (제목 스타일·로고는 그 카드 것 유지)
+async function replaceHotCard(idx,it){
+  const old=S.cards[idx];if(!old){toast('카드 없음');return}
+  const style=extractStyle(old);
+  const wantFill=document.getElementById('hotAutoFill').checked&&!!$oai.value.trim();
+  const note=(document.getElementById('hkNote').value||'').trim();
+  sLoad(`${idx+1}번 카드 교체 중...`,it.title,['기사 본문·사진 수집','후킹 제목·요약 생성','카드 교체']);sStep(0);
+  try{
+    const {c}=await buildHotCard(it,style,{fill:wantFill,note,progress:s=>{document.getElementById('lsu').textContent=s;if(/제목/.test(s))sStep(1)}});
+    sStep(2);
+    saveSnap();
+    if(old.hotArt)S.hot.shown.add(old.hotArt.id);
+    S.hot.shown.add(it.id);
+    S.cards[idx]=c;S.idx=idx;S.hot.article=null;S.hot.similar=[];
+    render();syncHotCard();renderAutoList();
+    hLoad();autoSave();
+    toast(`${idx+1}번 카드 교체 완료: ${stripBrace(c.title)}`);
+    fillHintFor(c).then(need=>{if(need)toast('📐 새 사진이 가로로 넓어 여백이 생깁니다 → 배경 사진 선택에서 직접 첨부 또는 AI 채우기')});
+  }catch(e){hLoad();toast('교체 실패: '+e.message+' — 다른 뉴스를 고르세요');console.warn(e)}
+}
+
 // 현재 프리셋 선택값 → 스타일 객체 (없으면 현재 카드 스타일)
 function hotPickedStyle(){
   const sel=document.getElementById('hotPsSel');const name=sel?sel.value:'';
@@ -2993,26 +3074,7 @@ async function autoHot(){
       const k=cards.length+1;
       document.getElementById('lsu').textContent=`${k}/${n} · ${it.title}`;
       try{
-        const html=await fetchHTML(it.url);
-        const art=parseArticle(html,it);
-        if(!art.text||art.text.length<80)throw Error('본문 없음(영상·포토 기사)');
-        const c=mk();applyStyle(c,style);
-        c.title=art.title;c.body=art.text.slice(0,1500);c.hotArt=art;
-        if(art.imgs.length){try{c.media=await imgToDataURL(art.imgs[0]);c.mediaType='image';c.img=null;art.bgIdx=0}catch(e){console.warn('대표 사진 실패',e)}}
-        // 후킹 제목 5개 + 기승전결 요약
-        const res=await api({sys:HOOK_SYS,content:[{type:'text',text:hotTitlePrompt(art,'auto',note,S.hotFmt)}],max:3500});
-        const parsed=parseTitles(res);
-        const top=(parsed.candidates||[]).slice().sort((a,b)=>(b.score||0)-(a.score||0))[0];
-        if(top&&top.title)c.title=top.title;
-        if(parsed.body)c.body=parsed.body;
-        art.parsed=parsed;if(parsed.search_query)art.search_query=String(parsed.search_query);if(Array.isArray(parsed.hashtags))art.hashtags=parsed.hashtags;
-        // 여백 생기는 사진 → AI 채우기 (선택)
-        let fillNote='';
-        if(wantFill&&c.media){
-          try{const inp=await buildOutpaintInputs(c.media);
-            if(inp.coverage<0.97){document.getElementById('lsu').textContent=`${k}/${n} · 사진 여백 AI 채우기...`;const raw=await outpaintOpenAI(inp.imageBlob,inp.maskBlob,OUTPAINT_PROMPT);c.media=await resizeToCard(raw);resetFraming(c);art.bgIdx=-1;fillNote=' · 📐채움'}
-          }catch(e){console.warn('AI 채우기 실패',e);fillNote=' · 채우기 실패'}
-        }
+        const {c,fillNote}=await buildHotCard(it,style,{fill:wantFill,note,progress:s=>{document.getElementById('lsu').textContent=`${k}/${n} · ${s}`}});
         cards.push(c);made.push(it);
         log(`✅ ${k}. ${stripBrace(c.title)}${c.media?'':' · 사진 없음'}${fillNote}`);
       }catch(e){fails++;log(`⏭ 건너뜀: ${it.title} — ${e.message}`);console.warn(e)}
@@ -3024,7 +3086,7 @@ async function autoHot(){
     S.cards=cards;S.idx=0;S.hot.list=made;
     S.hot.article=null;S.hot.similar=[];
     render();syncHotCard();
-    renderHotList(made,`⚡ 자동 생성된 뉴스 ${made.length}개 — 클릭하면 해당 카드로 이동`,(it,i)=>go(i));
+    renderAutoList();
     const noPic=cards.filter(c=>!c.media).length;
     log(`🎉 완료: 카드 ${cards.length}장${fails?` (건너뜀 ${fails})`:''}${noPic?` · 사진 없는 카드 ${noPic}장은 배경을 직접 고르세요`:''}`);
     log(`⬇ 상단 "다운로드"를 누르면 ${S.hotFmt==='reels'?'릴스 MP4':'게시물 PNG'} ${cards.length}개 + ${hotMemoName()} 가 ZIP으로 저장됩니다`);
