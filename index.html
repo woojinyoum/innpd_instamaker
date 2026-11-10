@@ -1414,7 +1414,7 @@ function setupMoveResize(el,mediaEl,c,nw,nh){
   };
   placeHandle();
   if(IS_TOUCH&&!MADJ)handle.style.display='none';
-  if(IS_TOUCH&&MADJ){const hint=document.createElement('div');hint.className='media-hint';hint.textContent='🖐 한 손가락: 이동 · 두 손가락: 확대/축소 · 모서리 핸들: 크기';hint.style.cssText='position:absolute;left:50%;top:24px;transform:translateX(-50%);background:rgba(124,92,255,.9);color:#fff;font-size:30px;padding:14px 26px;border-radius:40px;z-index:14;white-space:nowrap;pointer-events:none';el.appendChild(hint)}
+  if(IS_TOUCH&&MADJ){const hint=document.createElement('div');hint.className='media-hint';hint.textContent='🖐 한 손가락: 이동 · 두 손가락: 확대/축소 · 모서리 핸들: 크기';hint.style.cssText='position:absolute;left:50%;top:150px;transform:translateX(-50%);background:rgba(124,92,255,.9);color:#fff;font-size:30px;padding:14px 26px;border-radius:40px;z-index:14;white-space:nowrap;pointer-events:none;max-width:96%;overflow:hidden;text-overflow:ellipsis';el.appendChild(hint)}
   const SNAP=18; // snap threshold in card px
   mediaEl.style.cursor='grab';
   mediaEl.style.touchAction=touchOK()?'none':'';
