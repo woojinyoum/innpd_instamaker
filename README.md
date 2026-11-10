@@ -44,6 +44,7 @@ git push
 ## 주요 기능 메모 (Claude가 맥락 파악용)
 - **모드**: 게시물(1080×1350) / 🔥핫뉴스 탭 전환 (예전 "릴스" 탭은 핫뉴스 탭으로 대체)
 - **핫뉴스 탭** (`#hotPanel`, JS는 `/* ===== 🔥 핫뉴스` 블록)
+  - 나라 선택 `S.hotCountry` kr/jp/us (`HOT_CC` 설정, `applyHotCountry`): 한국=네이버 랭킹, 일본=Yahoo!ニュース 아크세스 랭킹(`fetchRankJPYahoo`, `yjItemFromAnchor`)+라이브도어(`fetchRankJPLivedoor`), 미국=Google Trends RSS(`fetchRankUSTrends`)+Yahoo News 홈(`fetchRankUSYahoo`). 기사 파서는 호스트별 디스패치(`parseArticle` → Naver/YJ/LD/Generic), 검색은 `searchNews` → 네이버/Yahoo!ニュース/Yahoo News. 미국 차단 언론사는 `hotFetchArticle`이 Yahoo News 검색으로 같은 기사 Yahoo 게재본을 대체 수집. 출력 언어 `hotOutLang()`(일본·미국은 기사 언어 그대로/한국어 선택), 일본어면 `hotFontFix`로 Noto Sans JP.
   - 출력 형식 선택: 🎬 릴스 영상(1080×1920, N초 MP4 — 기본 7초, 천천히 확대 효과 선택) / 📰 게시물(1080×1350 PNG)
   - 네이버 뉴스 랭킹(많이 본 `popularDay` / 댓글 많은 `popularMemo`)을 `r.jina.ai` 리더 프록시(CORS 허용, EUC-KR 변환)로 수집 → Claude가 핫 주제 10개 선별(키 없으면 휴리스틱) → "다른 뉴스 10개"로 교체 가능
   - 기사 클릭 → 본문/사진 파싱 → 카드 생성(기존 제목 스타일·로고·오버레이·그라데이션 유지) → 후킹 제목 5개 자동 생성·최고점 적용 (제목 다시 뽑기 섹션으로 교체 가능)

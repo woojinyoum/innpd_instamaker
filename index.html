@@ -241,12 +241,21 @@ input[type=color]{width:32px;height:26px;background:transparent;border:1px solid
       <div class="field" style="margin:0"><label>영상 길이</label><select id="hotSecs"><option value="5">5초</option><option value="7" selected>7초</option><option value="10">10초</option><option value="15">15초</option></select></div>
       <label class="hchk" style="flex:1;margin-bottom:0;padding:8px"><input type="checkbox" id="hotKb" checked/>천천히 확대 효과</label>
     </div>
-    <div class="field"><label>뉴스 소스 (네이버 뉴스 &gt; 랭킹)</label>
-      <div class="row">
-        <label class="hchk"><input type="checkbox" id="hotSrcView" checked/>👁 많이 본 뉴스</label>
-        <label class="hchk"><input type="checkbox" id="hotSrcCmt" checked/>💬 댓글 많은 뉴스</label>
+    <div class="field"><label>나라 (뉴스를 가져올 곳)</label>
+      <div class="hseg" id="hotCcSeg">
+        <button data-cc="kr" class="on">🇰🇷 한국<small>네이버 랭킹</small></button>
+        <button data-cc="jp">🇯🇵 일본<small>Yahoo! JAPAN</small></button>
+        <button data-cc="us">🇺🇸 미국<small>Google Trends</small></button>
       </div>
     </div>
+    <div class="field"><label id="hotSrcTitle">뉴스 소스 (네이버 뉴스 &gt; 랭킹)</label>
+      <div class="row">
+        <label class="hchk"><input type="checkbox" id="hotSrcView" checked/><span id="hotSrcViewL">👁 많이 본 뉴스</span></label>
+        <label class="hchk"><input type="checkbox" id="hotSrcCmt" checked/><span id="hotSrcCmtL">💬 댓글 많은 뉴스</span></label>
+      </div>
+    </div>
+    <div class="field" id="hotLangField" style="display:none"><label>제목·요약 언어</label><select id="hotLang"><option value="auto">기사 언어 그대로 (일본어/영어)</option><option value="ko">한국어로 번역해서</option></select>
+      <div class="tip" style="font-size:10px;margin-top:4px">해외 계정용이면 "기사 언어 그대로", 한국 계정에 올릴 거면 "한국어"를 고르세요. 일본어 제목은 글꼴이 자동으로 Noto Sans JP로 바뀝니다.</div></div>
     <div class="field"><label>관심 분야 (선택)</label><input type="text" id="hotTopic" placeholder="예) 연예, 경제, 건강, 스포츠 — 비우면 전체"/></div>
     <button class="w100" id="hotFindBtn">🔥 핫한 뉴스 10개 찾기</button>
     <button class="w100 gh" id="hotMoreBtn" style="display:none;margin-top:6px">🔄 다른 뉴스 10개 보기</button>
@@ -646,7 +655,7 @@ licCheck();
 /* ===== State ===== */
 // mode: 'post'(게시물) | 'hot'(핫뉴스). 예전 저장값 'reels'는 핫뉴스(릴스 형식)로 매핑
 const _mode0=localStorage.getItem('mode')||'post';
-const S={cards:[],idx:0,ko:null,grid:false,mode:_mode0==='reels'?'hot':_mode0,hotFmt:localStorage.getItem('hot_fmt')||'reels',hot:{pool:[],fetchedAt:0,shown:new Set(),list:[],article:null,similar:[]},selOv:null,cropMode:false,ovAdjust:null};
+const S={cards:[],idx:0,ko:null,grid:false,mode:_mode0==='reels'?'hot':_mode0,hotFmt:localStorage.getItem('hot_fmt')||'reels',hotCountry:localStorage.getItem('hot_country')||'kr',hot:{pool:[],fetchedAt:0,shown:new Set(),list:[],article:null,similar:[]},selOv:null,cropMode:false,ovAdjust:null};
 let _ovLastClick={id:null,t:0};
 // Card height per mode
 // 카드 높이: 핫뉴스+릴스 형식만 1920, 그 외 1350
@@ -952,7 +961,7 @@ function parseTitles(raw){
   return {candidates:cands,body};
 }
 /* 핫뉴스 제목·요약 프롬프트 (단건·자동 생성 공용) */
-function hotTitlePrompt(art,weapon,note,fmt){return `다음 뉴스 기사를 바탕으로, 후킹 가이드에 따라 인스타 ${fmt==='reels'?'릴스':'카드뉴스'} 첫 장에 쓸 제목 후보를 뽑아주세요.
+function hotTitlePrompt(art,weapon,note,fmt,lang){lang=lang||'ko';return `다음 뉴스 기사를 바탕으로, 후킹 가이드에 따라 인스타 ${fmt==='reels'?'릴스':'카드뉴스'} 첫 장에 쓸 제목 후보를 뽑아주세요.
 [기사 제목] ${art.title}
 [언론사] ${art.press||''}
 [기사 본문]
@@ -960,7 +969,9 @@ ${(art.text||'').slice(0,3500)}
 
 ${HK_WEAPON[weapon]||HK_WEAPON.auto}
 ${note?'추가 지침(최우선): '+note:''}
-
+${lang!=='ko'?`
+[출력 언어] 결과물(candidates의 title, body, hashtags, search_query)은 모두 ${HOT_LANG_NAME[lang]||lang}로 작성하세요. 지침의 한국어 글자 수 기준은 ${lang==='ja'?'일본어 15~25자':'영어 6~10단어(40~60자)'}로 바꿔 적용하고, reason만 한국어로 쓰세요. search_query는 ${lang==='ja'?'Yahoo!ニュース':'Yahoo News'} 검색에 쓸 ${HOT_LANG_NAME[lang]} 키워드 2~4개입니다.
+`:''}
 진행:
 1) 기사의 핵심 사실(누가·무엇·숫자·결과)을 파악
 2) 후킹 기법을 적용해 15~25자 제목 후보 5개 생성 (각각 다른 각도). 기사가 보장하지 못하는 과장·추측 금지
@@ -989,7 +1000,7 @@ async function genTitles(weapon,opts){
   try{
     const uc=[];
     if(hotArt){
-      uc.push({type:'text',text:hotTitlePrompt(hotArt,weapon,note,S.hotFmt)});
+      uc.push({type:'text',text:hotTitlePrompt(hotArt,weapon,note,S.hotFmt,hotOutLang())});
     }else{
     if(img1){const[m,b]=img1.split(',');uc.push({type:'image',source:{type:'base64',media_type:m.match(/data:(.*?);/)[1],data:b}},{type:'text',text:'위: 게시물 메인 이미지'})}
     if(img2){const[m,b]=img2.split(',');uc.push({type:'image',source:{type:'base64',media_type:m.match(/data:(.*?);/)[1],data:b}},{type:'text',text:'위: 본문 캡쳐 (OCR 대상)'})}
@@ -1015,7 +1026,7 @@ JSON만 답변 (마크다운·설명 금지):
     // 핫뉴스: 최고 점수 제목 + 요약을 카드에 자동 적용
     if(opts.autoApply){
       const c=cur();const top=(parsed.candidates||[]).slice().sort((a,b)=>(b.score||0)-(a.score||0))[0];
-      if(c&&top&&top.title){saveSnap();c.title=top.title;if(parsed.body)c.body=parsed.body;S.ko={title:c.title,body:c.body};render()}
+      if(c&&top&&top.title){saveSnap();c.title=top.title;if(parsed.body)c.body=parsed.body;hotFontFix(c);S.ko={title:c.title,body:c.body};render()}
     }
     if(!opts.silent)hLoad();
     showHkResult(parsed,weapon);
@@ -2541,14 +2552,14 @@ let _autoT=null;
 function autoSave(){
   clearTimeout(_autoT);
   _autoT=setTimeout(async()=>{
-    try{await idbSet('current',{cards:S.cards,mode:S.mode,hotFmt:S.hotFmt,hot:{article:S.hot.article,similar:S.hot.similar},idx:S.idx,savedAt:new Date().toISOString()})}
+    try{await idbSet('current',{cards:S.cards,mode:S.mode,hotFmt:S.hotFmt,hotCountry:S.hotCountry,hot:{article:S.hot.article,similar:S.hot.similar},idx:S.idx,savedAt:new Date().toISOString()})}
     catch(e){console.warn('자동저장 실패',e)}
   },1500);
 }
 // Hook autosave into every edit
 const _origSaveSnap=saveSnap;
 saveSnap=function(){_origSaveSnap();autoSave()};
-window.addEventListener('beforeunload',()=>{try{const req=indexedDB.open(DB_NAME,1);req.onsuccess=()=>{const db=req.result;const tx=db.transaction(DB_STORE,'readwrite');tx.objectStore(DB_STORE).put({cards:S.cards,mode:S.mode,hotFmt:S.hotFmt,hot:{article:S.hot.article,similar:S.hot.similar},idx:S.idx,savedAt:new Date().toISOString()},'current')}}catch(e){}});
+window.addEventListener('beforeunload',()=>{try{const req=indexedDB.open(DB_NAME,1);req.onsuccess=()=>{const db=req.result;const tx=db.transaction(DB_STORE,'readwrite');tx.objectStore(DB_STORE).put({cards:S.cards,mode:S.mode,hotFmt:S.hotFmt,hotCountry:S.hotCountry,hot:{article:S.hot.article,similar:S.hot.similar},idx:S.idx,savedAt:new Date().toISOString()},'current')}}catch(e){}});
 setInterval(autoSave,10000);
 
 function showRestoreBanner(saved){
@@ -2560,7 +2571,7 @@ function showRestoreBanner(saved){
   const load=document.createElement('button');load.textContent='이어서 하기';load.style.cssText='padding:7px 14px;font-size:12px;background:var(--acc);border:none;color:#fff;border-radius:7px;cursor:pointer;font-weight:700';
   const ign=document.createElement('button');ign.textContent='새로 시작';ign.style.cssText='padding:7px 12px;font-size:12px;background:var(--panel2);border:1px solid var(--brd);color:var(--dim);border-radius:7px;cursor:pointer';
   load.onclick=()=>{
-    S.cards=saved.cards;S.mode=saved.mode==='reels'?'hot':(saved.mode||'post');if(saved.hotFmt)S.hotFmt=saved.hotFmt;S.idx=Math.min(saved.idx||0,saved.cards.length-1);
+    S.cards=saved.cards;S.mode=saved.mode==='reels'?'hot':(saved.mode||'post');if(saved.hotFmt)S.hotFmt=saved.hotFmt;if(saved.hotCountry&&HOT_CC[saved.hotCountry]){S.hotCountry=saved.hotCountry;localStorage.setItem('hot_country',S.hotCountry);applyHotCountry()}S.idx=Math.min(saved.idx||0,saved.cards.length-1);
     if(saved.hot&&saved.hot.article){S.hot.article=saved.hot.article;S.hot.similar=saved.hot.similar||[];if(typeof renderHotArticle==='function')renderHotArticle()}
     localStorage.setItem('mode',S.mode);localStorage.setItem('hot_fmt',S.hotFmt);applyMode();render();rEd();if(typeof syncHotCard==='function')syncHotCard();b.remove();toast('이전 작업 불러옴');
   };
@@ -2581,6 +2592,112 @@ const hEsc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').re
 const resetFraming=c=>{c.mct=0;c.mcb=0;c.mcl=0;c.mcr=0;c.mzoom=100;c.mox=0;c.moy=0};
 const artIdOf=u=>{const m=(u||'').match(/article\/(\d+)\/(\d+)/);return m?{oid:m[1],aid:m[2],id:m[1]+'/'+m[2],url:`https://n.news.naver.com/mnews/article/${m[1]}/${m[2]}`}:null};
 const parseDOM=h=>new DOMParser().parseFromString(h,'text/html');
+/* ===== 🌏 나라별 뉴스 소스 설정 ===== */
+const HOT_CC={
+  kr:{name:'한국',lang:'ko',langName:'한국어',srcTitle:'뉴스 소스 (네이버 뉴스 > 랭킹)',srcA:'👁 많이 본 뉴스',srcB:'💬 댓글 많은 뉴스',badgeA:'👁 많이 봄',badgeB:'💬 댓글 많음',
+      poolDesc:'네이버 뉴스 랭킹(언론사별 많이 본 👁 / 댓글 많은 💬)',qPh:'키워드로 네이버 뉴스 검색',uPh:'네이버 뉴스 기사 URL 붙여넣기',searchName:'네이버 뉴스 검색',rankName:'네이버 뉴스 랭킹'},
+  jp:{name:'일본',lang:'ja',langName:'일본어',srcTitle:'뉴스 소스 (일본)',srcA:'📈 Yahoo!ニュース 아크세스 랭킹',srcB:'📰 라이브도어 뉴스 랭킹',badgeA:'📈 Yahoo!',badgeB:'📰 livedoor',
+      poolDesc:'일본 Yahoo!ニュース 아크세스 랭킹(📈) / 라이브도어 뉴스 랭킹(📰)',qPh:'キーワード — Yahoo!ニュース 검색',uPh:'Yahoo!ニュース 또는 ライブドア 기사 URL',searchName:'Yahoo!ニュース 검색',rankName:'일본 뉴스 랭킹'},
+  us:{name:'미국',lang:'en',langName:'영어',srcTitle:'뉴스 소스 (미국)',srcA:'🔥 Google Trends 급상승 (관련 기사)',srcB:'📰 Yahoo News 주요 뉴스',badgeA:'🔥 Trends',badgeB:'📰 Yahoo',
+      poolDesc:'미국 Google Trends 실시간 급상승 검색어의 관련 기사(🔥) / Yahoo News 주요 뉴스(📰)',qPh:'Keyword — Yahoo News 검색',uPh:'기사 URL (Yahoo News 기사 권장 · 일부 언론사는 차단됨)',searchName:'Yahoo News 검색',rankName:'미국 트렌드 뉴스'}
+};
+const hotCC=()=>HOT_CC[S.hotCountry]||HOT_CC.kr;
+// 제목·요약 출력 언어: 한국은 항상 한국어, 일본·미국은 선택(기사 언어 그대로 / 한국어)
+function hotOutLang(){if(S.hotCountry==='kr')return 'ko';const v=((document.getElementById('hotLang')||{}).value)||'auto';return v==='ko'?'ko':hotCC().lang}
+const HOT_LANG_NAME={ko:'한국어',ja:'일본어(日本語)',en:'영어(English)'};
+// 일본어 제목이면 한글 전용 글꼴 → Noto Sans JP
+function hotFontFix(c){if(!c||!c.t)return;if(hotOutLang()==='ja'&&/^(Pretendard|Yeogi_Jalnan|Noto Sans KR|Black Han Sans|Do Hyeon|Gowun Dodum|Nanum Myeongjo)$/.test(c.t.f||'Pretendard'))c.t.f='Noto Sans JP'}
+function applyHotCountry(){
+  const cc=hotCC();const $=id=>document.getElementById(id);
+  document.querySelectorAll('#hotCcSeg button').forEach(b=>b.classList.toggle('on',b.dataset.cc===S.hotCountry));
+  if($('hotSrcTitle'))$('hotSrcTitle').textContent=cc.srcTitle;
+  if($('hotSrcViewL'))$('hotSrcViewL').textContent=cc.srcA;if($('hotSrcCmtL'))$('hotSrcCmtL').textContent=cc.srcB;
+  if($('hotQ'))$('hotQ').placeholder=cc.qPh;if($('hotUrl'))$('hotUrl').placeholder=cc.uPh;
+  if($('hotLangField'))$('hotLangField').style.display=S.hotCountry==='kr'?'none':'';
+}
+// 기사 URL → 공통 참조 {id,url}
+function hotRefOf(u){
+  u=(u||'').trim();if(!u)return null;
+  if(/naver\.com/.test(u)||/^\/?(mnews\/)?article\/\d+\/\d+/.test(u)){const r=artIdOf(u);if(r)return r}
+  let m=u.match(/news\.yahoo\.co\.jp\/articles\/([a-z0-9]+)/);if(m)return {id:'yj/'+m[1],url:'https://news.yahoo.co.jp/articles/'+m[1],cc:'jp'};
+  m=u.match(/news\.livedoor\.com\/(?:topics|article)\/detail\/(\d+)/);if(m)return {id:'ld/'+m[1],url:'https://news.livedoor.com/article/detail/'+m[1]+'/',cc:'jp'};
+  if(/^https?:\/\/[^/]+\.[a-z]{2,}/i.test(u))return {id:'u/'+u.replace(/^https?:\/\/(www\.)?/,'').replace(/[?#].*$/,'').slice(0,180),url:u,cc:'us'};
+  return null;
+}
+const absUrl=(u,base)=>{try{return new URL(u,base).href}catch(e){return ''}};
+const hostOf=u=>{try{return new URL(u).hostname.replace(/^www\./,'')}catch(e){return ''}};
+const JP_TIME_RE=/(\d{1,2}\/\d{1,2}\([^)]*\)\s*\d{1,2}:\d{2})\s*$/;
+// Yahoo!ニュース 목록 항목(<a>) → {title,press,time,thumb}. 구조: span(순위) + .newsFeed_item_body > [썸네일][본문: div(제목) + div(span 매체 + time)]
+function yjItemFromAnchor(a){
+  const body=a.querySelector('.newsFeed_item_body')||a;
+  const tEl=body.querySelector('time');const time=tEl?tEl.textContent.trim():'';
+  let press='';if(tEl){const ps=tEl.previousElementSibling;if(ps&&ps.tagName==='SPAN')press=ps.textContent.trim();if(!press&&tEl.parentElement){const sp=tEl.parentElement.querySelector('span');if(sp)press=sp.textContent.trim()}}
+  const leaves=[...body.querySelectorAll('div,p,h2,h3')].filter(d=>d.children.length===0&&d.textContent.trim().length>4).sort((x,y)=>y.textContent.trim().length-x.textContent.trim().length);
+  let title=leaves.length?leaves[0].textContent.replace(/\s+/g,' ').trim():'';
+  if(!title){let t=a.textContent.replace(/\s+/g,' ').trim();const sp=a.querySelector('span');if(sp&&/^\d+$/.test(sp.textContent.trim()))t=t.replace(sp.textContent.trim(),'').trim();const tm=t.match(JP_TIME_RE);if(tm)t=t.slice(0,tm.index).trim();if(press&&t.endsWith(press))t=t.slice(0,-press.length).trim();title=t}
+  const pic=a.querySelector('picture source,img');let thumb=pic?(pic.getAttribute('srcset')||pic.getAttribute('srcSet')||pic.getAttribute('src')||''):'';thumb=thumb.split(/[\s,]/)[0]||'';if(!/yimg\.jp/.test(thumb))thumb='';
+  return {title,press,time,thumb};
+}
+// 일본: Yahoo!ニュース 아크세스 랭킹
+async function fetchRankJPYahoo(){
+  const html=await fetchHTML('https://news.yahoo.co.jp/ranking/access/news',{nocache:true});const doc=parseDOM(html),out=[],seen=new Set();
+  doc.querySelectorAll('a[href*="news.yahoo.co.jp/articles/"]').forEach((a,i)=>{
+    const ref=hotRefOf(a.getAttribute('href'));if(!ref||seen.has(ref.id))return;
+    const sp=a.querySelector('span');const rank=sp&&/^\d+$/.test(sp.textContent.trim())?+sp.textContent.trim():i+1;
+    const {title,press,time,thumb}=yjItemFromAnchor(a);
+    if(!title||title.length<4)return;
+    seen.add(ref.id);out.push(Object.assign({title,press,rank,thumb,time,kind:'view'},ref));
+  });
+  if(!out.length)throw Error('Yahoo!ニュース 랭킹을 읽지 못했습니다 (페이지 구조 변경 가능)');
+  return out;
+}
+// 일본: 라이브도어 뉴스 랭킹
+async function fetchRankJPLivedoor(){
+  const html=await fetchHTML('https://news.livedoor.com/ranking/',{nocache:true});const doc=parseDOM(html),out=[],seen=new Set();
+  doc.querySelectorAll('a[href*="news.livedoor.com/topics/detail/"],a[href*="news.livedoor.com/article/detail/"]').forEach((a,i)=>{
+    const ref=hotRefOf(a.getAttribute('href'));if(!ref||seen.has(ref.id))return;
+    const li=a.closest('li')||a;
+    const rk=li.querySelector('.articleListRanking,[class*="Ranking"]');const rank=rk?(parseInt(rk.textContent)||i+1):i+1;
+    const h=li.querySelector('h3,.articleListTtl,[class*="Ttl"]');const title=(h?h.textContent:a.textContent).replace(/\s+/g,' ').trim();
+    const im=li.querySelector('img');let thumb=im?(im.getAttribute('src')||im.getAttribute('data-src')||''):'';const orig=thumb.match(/(https?:\/\/image\.news\.livedoor\.com\/[^\s"]+)$/);if(orig)thumb=orig[1];
+    const v=li.querySelector('[class*="Vender"],[class*="vender"],[class*="Media"]');const press=v?v.textContent.trim():'';
+    const d=li.querySelector('time,[class*="Date"]');const time=d?d.textContent.trim():'';
+    if(!title||title.length<4)return;
+    seen.add(ref.id);out.push(Object.assign({title,press,rank,thumb,time,kind:'cmt'},ref));
+  });
+  if(!out.length)throw Error('라이브도어 랭킹을 읽지 못했습니다');
+  return out;
+}
+// 미국: Google Trends 급상승 RSS (주제별 관련 기사 3건)
+async function fetchRankUSTrends(){
+  const xml=await fetchHTML('https://trends.google.com/trending/rss?geo=US',{nocache:true});
+  const doc=new DOMParser().parseFromString(xml,'text/xml');const out=[],seen=new Set();
+  const tx=(el,n)=>{const x=el.getElementsByTagName(n)[0];return x?x.textContent.trim():''};
+  [...doc.getElementsByTagName('item')].forEach((item,i)=>{
+    const topic=tx(item,'title'),traffic=tx(item,'ht:approx_traffic')||tx(item,'approx_traffic');
+    [...item.getElementsByTagName('ht:news_item')].forEach(n=>{
+      const url=tx(n,'ht:news_item_url'),title=tx(n,'ht:news_item_title'),press=tx(n,'ht:news_item_source'),thumb=tx(n,'ht:news_item_picture');
+      const ref=hotRefOf(url);if(!ref||seen.has(ref.id)||!title)return;
+      seen.add(ref.id);out.push(Object.assign({title,press,rank:i+1,thumb,time:traffic?traffic+' 검색':'',kind:'view',topic,why:`🔥 "${topic}" 급상승${traffic?' · '+traffic:''}`},ref));
+    });
+  });
+  if(!out.length)throw Error('Google Trends RSS를 읽지 못했습니다');
+  return out;
+}
+// 미국: Yahoo News 홈 주요 기사
+async function fetchRankUSYahoo(){
+  const html=await fetchHTML('https://www.yahoo.com/news/',{nocache:true});const doc=parseDOM(html),out=[],seen=new Set();
+  doc.querySelectorAll('a[href*="/articles/"],a[href*="/article/"]').forEach((a,i)=>{
+    const href=absUrl(a.getAttribute('href')||'','https://www.yahoo.com/');if(!/yahoo\.com\/.*-\d{9}\.html/.test(href))return;
+    const ref=hotRefOf(href);if(!ref||seen.has(ref.id))return;
+    const title=(a.getAttribute('aria-label')||a.getAttribute('title')||a.textContent).replace(/\s+/g,' ').trim();if(title.length<12)return;
+    const box=a.closest('li,article,div');const im=box?box.querySelector('img[src^="http"]'):null;
+    seen.add(ref.id);out.push(Object.assign({title,press:'Yahoo News',rank:out.length+1,thumb:im?im.getAttribute('src'):'',time:'',kind:'cmt'},ref));
+  });
+  if(!out.length)throw Error('Yahoo News 목록을 읽지 못했습니다');
+  return out.slice(0,40);
+}
+
 
 async function fetchHTML(url,opt){
   opt=opt||{};
@@ -2601,7 +2718,10 @@ async function fetchHTML(url,opt){
 }
 // 외부 이미지 → 이미지 프록시 → data URL (canvas 오염 방지)
 async function imgToDataURL(url,opt){
-  const r=await fetch(WESERV(url,opt));
+  // 60초 안에 안 오면 포기 (느린 원본 서버 때문에 전체 흐름이 멈추지 않도록)
+  const ctrl=new AbortController();const tm=setTimeout(()=>ctrl.abort(),60000);
+  let r;try{r=await fetch(WESERV(url,opt),{signal:ctrl.signal})}catch(e){clearTimeout(tm);throw Error(e&&e.name==='AbortError'?'이미지 다운로드 시간 초과':'이미지 다운로드 실패')}
+  clearTimeout(tm);
   if(!r.ok)throw Error('이미지 다운로드 실패 ('+r.status+')');
   const b=await r.blob();if(!/^image\//.test(b.type))throw Error('이미지가 아닙니다');
   return new Promise((res,rej)=>{const fr=new FileReader;fr.onload=()=>res(fr.result);fr.onerror=()=>rej(Error('이미지 변환 실패'));fr.readAsDataURL(b)});
@@ -2639,7 +2759,7 @@ async function pickHotTopics(items,excludeIds,n){
   if(!$k.value.trim())return heuristic();
   const listTxt=cand.map(it=>`[${it.id}] (${it.press||'언론사?'}${it.rank?' '+it.rank+'위':''}${it.kinds.has('view')?' 👁':''}${it.kinds.has('cmt')?' 💬':''}) ${it.title}`).join('\n');
   const sys='당신은 인스타그램 카드뉴스/릴스용 뉴스 큐레이터입니다. 지금 가장 화제인 뉴스 중, 짧은 영상·카드 한 장으로 만들었을 때 사람들이 스크롤을 멈추고 볼 주제를 고릅니다.';
-  const txt=`아래는 네이버 뉴스 랭킹(언론사별 많이 본 👁 / 댓글 많은 💬)에서 지금 수집한 기사 목록입니다.
+  const txt=`아래는 ${hotCC().poolDesc}에서 지금 수집한 기사 목록입니다.${S.hotCountry!=='kr'?' (기사 제목은 '+hotCC().langName+'이며, why는 한국어로 쓰세요)':''}
 ${topic?`사용자 관심 분야: "${topic}" — 이 분야와 관련된 기사를 우선 선택하세요. 관련 기사가 부족하면 가장 화제인 기사로 채우세요.\n`:''}
 이 중에서 지금 가장 핫한 주제 ${n}개를 고르세요.
 규칙:
@@ -2665,19 +2785,23 @@ JSON만 답변: {"picks":[{"id":"oid/aid","why":"한 줄 이유(15자 내)"}]}`;
 
 /* --- 랭킹 페이지 수집 → S.hot.pool (많이 본 + 댓글 많은, 중복 합산) --- */
 async function refreshHotPool(useV,useC){
-  const jobs=[];
-  if(useV)jobs.push(fetchHTML(NAVER_RANK.view,{nocache:true}).then(h=>parseRanking(h,'view')));
-  if(useC)jobs.push(fetchHTML(NAVER_RANK.cmt,{nocache:true}).then(h=>parseRanking(h,'cmt')));
-  const lists=await Promise.all(jobs);
+  const jobs=[];const cc=S.hotCountry;
+  if(cc==='jp'){if(useV)jobs.push(fetchRankJPYahoo());if(useC)jobs.push(fetchRankJPLivedoor())}
+  else if(cc==='us'){if(useV)jobs.push(fetchRankUSTrends());if(useC)jobs.push(fetchRankUSYahoo())}
+  else{if(useV)jobs.push(fetchHTML(NAVER_RANK.view,{nocache:true}).then(h=>parseRanking(h,'view')));if(useC)jobs.push(fetchHTML(NAVER_RANK.cmt,{nocache:true}).then(h=>parseRanking(h,'cmt')))}
+  // 한 소스가 실패해도 다른 소스로 진행
+  const settled=await Promise.allSettled(jobs);const lists=settled.filter(r=>r.status==='fulfilled').map(r=>r.value);
+  settled.filter(r=>r.status==='rejected').forEach(r=>{console.warn('소스 실패',r.reason);toast('일부 소스 실패: '+(r.reason&&r.reason.message||r.reason))});
+  if(!lists.length)throw (settled[0]&&settled[0].reason)||Error('뉴스 소스를 읽지 못했습니다');
   const map=new Map();
   lists.flat().forEach(it=>{
     const ex=map.get(it.id);const h=Math.max(0,6-(it.rank||5));
     if(ex){ex.kinds.add(it.kind);ex.heat+=h;if(!ex.thumb)ex.thumb=it.thumb;if(!ex.press)ex.press=it.press}
     else{it.kinds=new Set([it.kind]);it.heat=h;map.set(it.id,it)}
   });
-  map.forEach(it=>{if(it.kinds.size>1)it.heat+=4});
+  map.forEach(it=>{if(it.kinds.size>1)it.heat+=4;if(S.hotCountry==='us'&&/yahoo\.com$/.test(hostOf(it.url)))it.heat+=2});// 미국: Yahoo 기사는 본문 수집이 안정적 → 가산
   S.hot.pool=[...map.values()];S.hot.fetchedAt=Date.now();
-  if(!S.hot.pool.length)throw Error('랭킹 기사를 찾지 못했습니다 (네이버 페이지 구조가 바뀌었을 수 있음)');
+  if(!S.hot.pool.length)throw Error('랭킹 기사를 찾지 못했습니다 (페이지 구조가 바뀌었을 수 있음)');
 }
 
 /* --- 핫한 뉴스 찾기 / 다른 뉴스 --- */
@@ -2685,7 +2809,7 @@ async function findHot(more){
   const useV=document.getElementById('hotSrcView').checked,useC=document.getElementById('hotSrcCmt').checked;
   if(!useV&&!useC){toast('뉴스 소스를 하나 이상 선택하세요');return}
   const st=document.getElementById('hotStatus');st.style.display='none';
-  sLoad(more?'다른 뉴스 고르는 중...':'핫한 뉴스 찾는 중...','네이버 뉴스 랭킹',['랭킹 페이지 수집...','주제 10개 선별...','완료!']);sStep(0);
+  sLoad(more?'다른 뉴스 고르는 중...':'핫한 뉴스 찾는 중...',hotCC().rankName,['랭킹 페이지 수집...','주제 10개 선별...','완료!']);sStep(0);
   try{
     const stale=Date.now()-S.hot.fetchedAt>10*60*1000;
     if(!more||!S.hot.pool.length||stale){
@@ -2716,8 +2840,8 @@ function renderHotList(items,label,onPick,onSwap){
     const m=document.createElement('div');m.className='hm';
     const kinds=it.kinds||new Set();
     m.innerHTML=`<span>${hEsc(it.press||'')}${it.time?' · '+hEsc(it.time):''}</span>`
-      +(kinds.has('view')?`<span class="hb">👁 많이 봄${it.rank?' '+it.rank+'위':''}</span>`:'')
-      +(kinds.has('cmt')?'<span class="hb c">💬 댓글 많음</span>':'')
+      +(kinds.has('view')?`<span class="hb">${hotCC().badgeA}${it.rank?' '+it.rank+'위':''}</span>`:'')
+      +(kinds.has('cmt')?`<span class="hb c">${hotCC().badgeB}</span>`:'')
       +(it.kind==='search'?'<span class="hb">🔎 검색</span>':'');
     body.appendChild(m);
     if(it.why){const w=document.createElement('div');w.style.cssText='font-size:10px;color:var(--dim);margin-top:2px';w.textContent='💡 '+it.why;body.appendChild(w)}
@@ -2729,7 +2853,7 @@ function renderHotList(items,label,onPick,onSwap){
 }
 
 /* --- 기사 본문/사진 파싱 --- */
-function parseArticle(html,it){
+function parseArticleNaver(html,it){
   const doc=parseDOM(html);
   const og=p=>{const m=doc.querySelector(`meta[property="${p}"]`);return m?(m.getAttribute('content')||''):''};
   const ta=doc.querySelector('#title_area');
@@ -2748,13 +2872,96 @@ function parseArticle(html,it){
   return {id:it.id,url:it.url,oid:it.oid,aid:it.aid,title,press,date,text,imgs,bgIdx:-1,simIdx:-1,caption:'',search_query:'',hashtags:[]};
 }
 
+
+/* --- 기사 파서 디스패치: URL 호스트로 판단 --- */
+function parseArticle(html,it){
+  const h=hostOf(it.url||'');
+  if(/naver\.com$/.test(h))return parseArticleNaver(html,it);
+  if(/yahoo\.co\.jp$/.test(h))return parseArticleYJ(html,it);
+  if(/livedoor\.com$/.test(h))return parseArticleLD(html,it);
+  return parseArticleGeneric(html,it);
+}
+const textOf=(doc,el,rm)=>{const clone=el.cloneNode(true);clone.querySelectorAll('script,style,iframe,noscript,figure figcaption,figcaption,aside,nav,form,button,[class*="ad_"],[class*="_ad"],[class*="advert"],[class*="share"],[class*="related"],[class*="recommend"]'+(rm?','+rm:'')).forEach(x=>x.remove());clone.querySelectorAll('br,p,div,li,h2,h3').forEach(x=>x.appendChild(doc.createTextNode('\n')));return clone.textContent.replace(/ /g,' ').replace(/[ \t]+/g,' ').replace(/\n\s*\n+/g,'\n').trim()};
+const badImg=u=>/logo|icon|avatar|sprite|pixel|badge|button|emoji|1x1|\.svg(\?|$)|\.gif(\?|$)|QRCODE|noimage|errorimage|default\/\d{8}\/|app-store|google-play|profile/i.test(u);
+// 일본 Yahoo!ニュース 기사
+function parseArticleYJ(html,it){
+  const doc=parseDOM(html);const og=p=>{const m=doc.querySelector(`meta[property="${p}"]`);return m?(m.getAttribute('content')||''):''};
+  let ogt=og('og:title').replace(/\s*-\s*Yahoo!ニュース\s*$/,'');let press=it.press||'';const pm=ogt.match(/（([^（）]+)）\s*$/);if(pm){if(!press)press=pm[1];ogt=ogt.slice(0,pm.index).trim()}
+  const h1=doc.querySelector('article h1');const title=(ogt||(h1?h1.textContent:'')||it.title||'').replace(/\s+/g,' ').trim();
+  const tEl=doc.querySelector('article time,time');const date=tEl?(tEl.getAttribute('datetime')||tEl.textContent.trim()):(og('article:published_time')||'');
+  const bodyEl=doc.querySelector('.article_body')||doc.querySelector('[class*="article_body"]')||doc.querySelector('article')||doc.body;
+  const imgs=[];const push=u=>{u=(u||'').trim();if(!u)return;u=absUrl(u,it.url);if(!/yimg\.jp/.test(u)||badImg(u))return;const key=u.replace(/\?.*$/,'');if(imgs.some(x=>x.replace(/\?.*$/,'')===key))return;imgs.push(u)};
+  const ogi=og('og:image');if(ogi)push(ogi);
+  bodyEl.querySelectorAll('img,source').forEach(im=>push((im.getAttribute('srcset')||im.getAttribute('srcSet')||im.getAttribute('data-src')||im.getAttribute('src')||'').split(/[\s,]/)[0]));
+  const text=textOf(doc,bodyEl,'[class*="Comment"],[class*="comment"]').replace(/^現在JavaScriptが無効になっています.*$/m,'').trim();
+  return {id:it.id,url:it.url,title,press,date,text,imgs,bgIdx:-1,simIdx:-1,caption:'',search_query:'',hashtags:[]};
+}
+// 일본 라이브도어 기사
+function parseArticleLD(html,it){
+  const doc=parseDOM(html);const og=p=>{const m=doc.querySelector(`meta[property="${p}"]`);return m?(m.getAttribute('content')||''):''};
+  const h1=doc.querySelector('h1');const title=((h1?h1.textContent:'')||og('og:title').replace(/\s*-\s*ライブドアニュース\s*$/,'')||it.title||'').replace(/\s*\(\d{4}年\d{1,2}月\d{1,2}日掲載\)\s*/,'').replace(/\s+/g,' ').trim();
+  const v=doc.querySelector('.articleVender,[class*="Vender"],[class*="vender"]');const press=it.press||(v?v.textContent.trim():'')||'';
+  const tEl=doc.querySelector('time');const date=tEl?(tEl.getAttribute('datetime')||tEl.textContent.trim()):(og('article:published_time')||'');
+  const bodyEl=doc.querySelector('.articleBody')||doc.querySelector('[itemprop="articleBody"]')||doc.querySelector('.summaryList')||doc.querySelector('article')||doc.body;
+  const imgs=[];const push=u=>{u=absUrl((u||'').trim(),it.url);if(!u)return;const o=u.match(/(https?:\/\/image\.news\.livedoor\.com\/[^\s"]+)$/);if(o)u=o[1];if(!/livedoor\.com/.test(u)||badImg(u))return;if(!imgs.includes(u))imgs.push(u)};
+  const ogi=og('og:image');if(ogi)push(ogi);
+  (doc.querySelector('article')||doc.body).querySelectorAll('img').forEach(im=>push(im.getAttribute('data-src')||im.getAttribute('src')));
+  return {id:it.id,url:it.url,title,press,date,text:textOf(doc,bodyEl),imgs,bgIdx:-1,simIdx:-1,caption:'',search_query:'',hashtags:[]};
+}
+// 미국 등 일반 기사 (Yahoo News 포함)
+function parseArticleGeneric(html,it){
+  const doc=parseDOM(html);const og=p=>{const m=doc.querySelector(`meta[property="${p}"],meta[name="${p}"]`);return m?(m.getAttribute('content')||''):''};
+  const h1=doc.querySelector('article h1,h1');const title=((h1?h1.textContent:'')||og('og:title')||it.title||'').replace(/\s+/g,' ').trim();
+  const press=it.press||og('og:site_name')||hostOf(it.url);
+  const date=og('article:published_time')||og('datePublished')||((doc.querySelector('time')||{}).getAttribute?(doc.querySelector('time').getAttribute('datetime')||''):'');
+  const cands=[...doc.querySelectorAll('article,[class*="article-body"],[class*="articleBody"],[class*="body-wrap"],[class*="caas-body"],[itemprop="articleBody"],main')];
+  let bodyEl=null,best=0;cands.forEach(el=>{const n=[...el.querySelectorAll('p')].filter(p=>p.textContent.trim().length>40).length;if(n>best){best=n;bodyEl=el}});
+  if(!bodyEl)bodyEl=doc.body;
+  const ps=[...bodyEl.querySelectorAll('p')].map(p=>p.textContent.replace(/\s+/g,' ').trim()).filter(t=>t.length>40&&!/cookie|subscribe|newsletter|all rights reserved|©/i.test(t));
+  const text=ps.join('\n');
+  const imgs=[];const push=u=>{u=absUrl((u||'').split(/[\s,]/)[0].trim(),it.url);if(!/^https?:/.test(u)||badImg(u))return;if(!imgs.includes(u))imgs.push(u)};
+  const ogi=og('og:image');if(ogi)push(ogi);
+  // 본문 안의 사진만 (링크 걸린 썸네일 = 관련 기사 추천이므로 제외)
+  bodyEl.querySelectorAll('figure img,picture img').forEach(im=>{if(im.closest('a'))return;const w=parseInt(im.getAttribute('width')||'0');if(w&&w<200)return;push(im.getAttribute('data-src')||im.getAttribute('src')||im.getAttribute('srcset'))});
+  return {id:it.id,url:it.url,title,press,date,text,imgs:imgs.slice(0,5),bgIdx:-1,simIdx:-1,caption:'',search_query:'',hashtags:[]};
+}
+
+
+/* --- 기사 수집 (차단·실패 시 대체): 미국은 Yahoo News 검색으로 같은 뉴스의 Yahoo 게재본을 찾음 --- */
+// 프록시에서 차단·유료벽으로 본문을 못 받는 미국 언론사 → 직접 수집 건너뛰고 바로 Yahoo 게재본 검색 (시간 절약)
+const US_BLOCKED_HOST=/(^|\.)(reuters\.com|apnews\.com|nytimes\.com|cbsnews\.com|people\.com|nypost\.com|dailymail\.co\.uk|bloomberg\.com|wsj\.com|washingtonpost\.com|ft\.com|theguardian\.com|reddit\.com|nbcnews\.com|digg\.com)$/i;
+async function hotFetchArticle(it){
+  let art=null,err=null;
+  const skipDirect=S.hotCountry==='us'&&US_BLOCKED_HOST.test(hostOf(it.url));
+  if(!skipDirect){try{const html=await fetchHTML(it.url,{timeout:S.hotCountry==='us'?25000:45000});art=parseArticle(html,it);if(!art.text||art.text.length<80)throw Error('본문 없음')}catch(e){err=e}}
+  else err=Error('차단된 언론사('+hostOf(it.url)+') — Yahoo 게재본을 찾지 못했습니다');
+  if((!art||!art.text||art.text.length<80)&&S.hotCountry==='us'&&!/yahoo\.com$/.test(hostOf(it.url))){
+    try{
+      // 긴 제목 그대로는 검색 결과가 없는 경우가 많아 핵심 단어 4→3→2개로 줄여가며 검색
+      const STOP=new Set(['this','that','with','from','after','over','into','their','about','what','when','where','which','while','will','would','could','says','said','amid','than','them','they','have','been','were','more','most','also','just','like','year','years','week','news']);
+      const words=(it.title||'').replace(/[^\w\s'-]/g,' ').split(/\s+/).filter(w=>w.length>=4&&!STOP.has(w.toLowerCase()));
+      let alt=null;
+      for(const n of [4,3,2]){if(words.length<n&&n>2)continue;const q=words.slice(0,n).join(' ');if(!q)break;
+        const res=await searchNewsYUS(q);
+        // 같은 사건인지 확인: 원제목 핵심 단어의 절반 이상(또는 4개 이상)이 겹쳐야 채택 (엉뚱한 기사로 바뀌는 것 방지)
+        const sig=new Set(words.map(w=>w.toLowerCase()));
+        alt=res.find(x=>{const h=hostOf(x.url);if(!/yahoo\.com$/.test(h)||/^(search|r)\./.test(h))return false;const tw=new Set((x.title||'').toLowerCase().replace(/[^\w\s'-]/g,' ').split(/\s+/));let sh=0;sig.forEach(w=>{if(tw.has(w))sh++});return sh>=4||(sig.size&&sh/sig.size>=0.5)});
+        if(alt)break}
+      if(alt){const html=await fetchHTML(alt.url);const a2=parseArticle(html,Object.assign({},alt,{press:alt.press||it.press}));
+        if(a2.text&&a2.text.length>=80){a2.id=it.id;a2.origUrl=it.url;a2.viaYahoo=alt.url;if(!a2.imgs.length&&it.thumb)a2.imgs.push(it.thumb);return a2}}
+    }catch(e2){console.warn('Yahoo 대체 수집 실패',e2)}
+  }
+  if(!art)throw err||Error('기사를 읽지 못했습니다');
+  if(!art.imgs.length&&it.thumb&&!badImg(it.thumb))art.imgs.push(it.thumb);
+  return art;
+}
+
 /* --- 기사 선택 → 카드 생성 (스타일 유지, 제목/본문/배경만 교체) --- */
 async function loadArticle(it){
   sLoad('기사 불러오는 중...',it.title||it.url,['기사 본문 수집...','대표 사진 적용...','후킹 제목 5개 생성...']);sStep(0);
   try{
-    const html=await fetchHTML(it.url);
-    const art=parseArticle(html,it);
-    if(!art.text||art.text.length<80)throw Error('기사 본문을 읽지 못했습니다 (영상·포토 기사일 수 있음). 다른 기사를 선택하세요');
+    const art=await hotFetchArticle(it);
+    if(!art.text||art.text.length<80)throw Error('기사 본문을 읽지 못했습니다 (영상·포토 기사이거나 접근이 차단된 사이트). 다른 기사를 선택하세요');
     S.hot.article=art;S.hot.similar=[];
     sStep(1);
     if(!S.cards.length){S.cards=[mk()];S.idx=0}
@@ -2796,7 +3003,7 @@ function renderHotArticle(){
   box.style.display='block';
   box.innerHTML=`<div class="hbox"><h4>📰 선택한 기사</h4>
     <div style="font-size:12px;font-weight:600;line-height:1.4;word-break:keep-all">${hEsc(a.title)}</div>
-    <div style="font-size:10px;color:var(--dim);margin-top:3px">${hEsc(a.press||'')}${a.date?' · '+hEsc(String(a.date).slice(0,16)):''} · <a href="${hEsc(a.url)}" target="_blank" rel="noopener" style="color:var(--acc);text-decoration:none">원문 보기 ↗</a></div>
+    <div style="font-size:10px;color:var(--dim);margin-top:3px">${hEsc(a.press||'')}${a.date?' · '+hEsc(String(a.date).slice(0,16)):''} · <a href="${hEsc(a.url)}" target="_blank" rel="noopener" style="color:var(--acc);text-decoration:none">원문 보기 ↗</a>${a.viaYahoo?' · <span title="원래 언론사 페이지가 차단되어 Yahoo News에 실린 같은 기사를 가져왔습니다">Yahoo 게재본</span>':''}</div>
     <button class="w100 gh" id="hotSwapBtn" style="margin-top:8px;font-size:11px">🔄 이 카드를 다른 핫뉴스로 교체</button>
     <details style="margin-top:6px"><summary style="font-size:10px;color:var(--dim);cursor:pointer">기사 본문 보기 (${a.text.length}자)</summary><div style="font-size:11px;color:var(--dim);line-height:1.5;margin-top:4px;max-height:160px;overflow:auto;white-space:pre-wrap">${hEsc(a.text)}</div></details>
   </div>
@@ -2853,7 +3060,7 @@ async function setHotBg(u,after){
 }
 
 /* --- 네이버 뉴스 검색 (유사 기사 사진 / 키워드 검색) --- */
-async function searchNews(q){
+async function searchNewsNaver(q){
   const url='https://search.naver.com/search.naver?where=news&query='+encodeURIComponent(q)+'&sort=0';
   const html=await fetchHTML(url);const doc=parseDOM(html);
   const out=[],seen=new Set(),usedBox=new Set();
@@ -2882,9 +3089,40 @@ async function searchNews(q){
   });
   return out;
 }
+
+/* --- 뉴스 검색 디스패치 (유사 기사 사진 / 키워드 검색) --- */
+async function searchNews(q){
+  if(S.hotCountry==='jp')return searchNewsYJ(q);
+  if(S.hotCountry==='us')return searchNewsYUS(q);
+  return searchNewsNaver(q);
+}
+async function searchNewsYJ(q){
+  const html=await fetchHTML('https://news.yahoo.co.jp/search?p='+encodeURIComponent(q)+'&ei=utf-8');const doc=parseDOM(html);const out=[],seen=new Set();
+  doc.querySelectorAll('a[href*="news.yahoo.co.jp/articles/"]').forEach(a=>{
+    const ref=hotRefOf(a.getAttribute('href'));if(!ref||seen.has(ref.id))return;
+    let {title,press,time,thumb}=yjItemFromAnchor(a);
+    if(!thumb){const box=a.closest('li,article,div');const pic=box?box.querySelector('picture source,img'):null;if(pic){thumb=(pic.getAttribute('srcset')||pic.getAttribute('srcSet')||pic.getAttribute('src')||'').split(/[\s,]/)[0]||'';if(!/yimg\.jp/.test(thumb))thumb=''}}
+    if(!title||title.length<4)return;
+    seen.add(ref.id);out.push(Object.assign({title,thumb,press,time,kind:'search'},ref));
+  });
+  return out;
+}
+async function searchNewsYUS(q){
+  const html=await fetchHTML('https://news.search.yahoo.com/search?p='+encodeURIComponent(q));const doc=parseDOM(html);const out=[],seen=new Set();
+  const realUrl=h=>{const m=(h||'').match(/[?&/]RU=([^/&]+)/);if(m){try{return decodeURIComponent(m[1])}catch(e){}}return h||''};
+  doc.querySelectorAll('img[src*="yimg.com"]').forEach(im=>{
+    let box=im;for(let d=0;d<6&&box.parentElement;d++){box=box.parentElement;if(box.querySelector('h4 a,h3 a,a[href^="http"]'))break}
+    const okA=x=>{const u=realUrl(x.getAttribute('href'));const h=hostOf(u);return u&&h&&!/search\.yahoo\.com|\/search/.test(u)&&!/^(r|search)\./.test(h)&&x.textContent.trim().length>12};
+    const a=[...box.querySelectorAll('h4 a,h3 a')].find(okA)||[...box.querySelectorAll('a[href^="http"]')].find(okA);if(!a)return;
+    const url=realUrl(a.getAttribute('href'));const ref=hotRefOf(url);if(!ref||seen.has(ref.id))return;
+    const title=a.textContent.replace(/\s+/g,' ').trim();const sEl=box.querySelector('[class*="s-source"],[class*="source"],span.s-time');
+    seen.add(ref.id);out.push(Object.assign({title,thumb:im.getAttribute('src'),press:sEl?sEl.textContent.trim():hostOf(url),time:'',kind:'search'},ref));
+  });
+  return out;
+}
 async function findSimilar(){
   const a=S.hot.article;if(!a){toast('먼저 기사를 선택하세요');return}
-  sLoad('유사 기사 사진 찾는 중...','네이버 뉴스 검색');
+  sLoad('유사 기사 사진 찾는 중...',hotCC().searchName);
   try{
     let q=(a.search_query||'').trim();
     if(!q)q=a.title.replace(/\[[^\]]*\]|\([^)]*\)|["“”'‘’…·,]/g,' ').replace(/\s+/g,' ').trim().split(' ').slice(0,4).join(' ');
@@ -2995,20 +3233,27 @@ async function fitPhotoToCard(dataUrl){
 }
 // 표지 뒤에 붙는 사진 카드들: 기사 사진 2번째부터, 제목·그라데이션 없이 사진만(로고는 프리셋대로 유지)
 async function makePhotoCards(art,cover,style,opts){
-  opts=opts||{};const out=[];const urls=(art.imgs||[]).slice(1,1+HOT_MAX_PHOTOS);
-  for(let k=0;k<urls.length;k++){
-    if(opts.progress)opts.progress(`기사 사진 ${k+2}/${urls.length+1} 카드 만들기...`);
-    let data=null;try{data=await imgToDataURL(urls[k])}catch(e){console.warn('사진 로드 실패',urls[k]);continue}
+  opts=opts||{};const urls=(art.imgs||[]).slice(1,1+HOT_MAX_PHOTOS);
+  let done=0;const total=urls.length;
+  const one=async(u,k)=>{
+    let data=null;try{data=await imgToDataURL(u)}catch(e){console.warn('사진 로드 실패',u);return null}
     const s=mk();applyStyle(s,style);
     s.title='';s.body='';s.g.o=0;s.hotArt=art;
     try{
       let fitted=null;
-      if(opts.fill){try{const inp=await buildOutpaintInputs(data);if(inp.coverage<0.97){if(opts.progress)opts.progress(`사진 ${k+2} 여백 AI 채우기...`);const raw=await outpaintOpenAI(inp.imageBlob,inp.maskBlob,OUTPAINT_PROMPT);fitted=await resizeToCard(raw)}}catch(e){console.warn('AI 채우기 실패 → 블러 채움',e)}}
+      if(opts.fill){try{const inp=await buildOutpaintInputs(data);if(inp.coverage<0.97){const raw=await outpaintOpenAI(inp.imageBlob,inp.maskBlob,OUTPAINT_PROMPT);fitted=await resizeToCard(raw)}}catch(e){console.warn('AI 채우기 실패 → 블러 채움',e)}}
       s.media=fitted||await fitPhotoToCard(data);
     }catch(e){s.media=data}
     s.mediaType='image';s.img=null;resetFraming(s);
-    out.push(s);
-  }
+    done++;if(opts.progress)opts.progress(`기사 사진 ${done}/${total}장 준비${opts.fill?' (AI 채우기 포함)':''}...`);
+    return s;
+  };
+  // 3장씩 동시에 내려받아 시간 단축
+  const results=new Array(urls.length).fill(null);let next=0;
+  const worker=async()=>{while(next<urls.length){const k=next++;results[k]=await one(urls[k],k)}};
+  if(opts.progress)opts.progress(`기사 사진 ${total}장 내려받는 중...`);
+  await Promise.all([0,1,2].map(worker));
+  const out=results.filter(Boolean);
   out.forEach((s,k)=>{s.hotSlide=k+1;s.hotTotal=out.length+1});
   if(out.length){cover.hotSlide=0;cover.hotTotal=out.length+1}
   return out;
@@ -3020,19 +3265,19 @@ const hotGroupIdx=id=>S.cards.map((c,i)=>c.hotArt&&c.hotArt.id===id?i:-1).filter
 async function buildHotCard(it,style,opts){
   opts=opts||{};const prog=opts.progress||(()=>{});
   prog(it.title||'');
-  const html=await fetchHTML(it.url);
-  const art=parseArticle(html,it);
-  if(!art.text||art.text.length<80)throw Error('본문 없음(영상·포토 기사)');
+  const art=await hotFetchArticle(it);
+  if(!art.text||art.text.length<80)throw Error('본문 없음(영상·포토 기사 또는 차단된 사이트)');
   const c=mk();applyStyle(c,style);
   c.title=art.title;c.body=art.text.slice(0,1500);c.hotArt=art;c.hotSlide=0;c.hotTotal=1;
   if(art.imgs.length){try{c.media=await imgToDataURL(art.imgs[0]);c.mediaType='image';c.img=null;art.bgIdx=0}catch(e){console.warn('대표 사진 실패',e)}}
   // 후킹 제목 5개 + 기승전결 요약
   prog('후킹 제목·요약 생성...');
-  const res=await api({sys:HOOK_SYS,content:[{type:'text',text:hotTitlePrompt(art,'auto',opts.note||'',S.hotFmt)}],max:4000});
+  const res=await api({sys:HOOK_SYS,content:[{type:'text',text:hotTitlePrompt(art,'auto',opts.note||'',S.hotFmt,hotOutLang())}],max:4000});
   const parsed=parseTitles(res);
   const top=(parsed.candidates||[]).slice().sort((a,b)=>(b.score||0)-(a.score||0))[0];
   if(top&&top.title)c.title=top.title;
   if(parsed.body)c.body=parsed.body;
+  hotFontFix(c);
   art.parsed=parsed;if(parsed.search_query)art.search_query=String(parsed.search_query);if(Array.isArray(parsed.hashtags))art.hashtags=parsed.hashtags;
   // 여백 생기는 사진 → AI 채우기 (선택)
   let fillNote='';
@@ -3228,6 +3473,16 @@ function hotInit(){
   // 관심 분야는 저장하지 않음 — 새로 접속하면 항상 비어 있음(placeholder 표시). 예전 저장값도 제거
   const tp=$('hotTopic');tp.value='';localStorage.removeItem('hot_topic');
   ['hotSrcView','hotSrcCmt'].forEach(id=>{const el=$(id);const v=localStorage.getItem(id);if(v!==null)el.checked=v==='1';el.onchange=()=>localStorage.setItem(id,el.checked?'1':'0')});
+  // 🌏 나라 전환
+  document.querySelectorAll('#hotCcSeg button').forEach(b=>b.onclick=()=>{
+    const cc=b.dataset.cc;if(S.hotCountry===cc)return;
+    S.hotCountry=cc;localStorage.setItem('hot_country',cc);
+    S.hot.pool=[];S.hot.fetchedAt=0;S.hot.shown=new Set();S.hot.list=[];
+    document.getElementById('hotList').innerHTML='';document.getElementById('hotMoreBtn').style.display='none';
+    applyHotCountry();toast(`${HOT_CC[cc].name} 뉴스로 전환 — ${HOT_CC[cc].rankName}`);
+  });
+  const hl=$('hotLang');hl.value=localStorage.getItem('hot_lang')||'auto';hl.onchange=()=>localStorage.setItem('hot_lang',hl.value);
+  applyHotCountry();
   $('hotFindBtn').onclick=()=>findHot(false);
   $('hotMoreBtn').onclick=()=>findHot(true);
   // ⚡ 자동 생성
@@ -3258,8 +3513,8 @@ function hotInit(){
   };
   $('hotQBtn').onclick=doSearch;$('hotQ').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();doSearch()}};
   const doUrl=()=>{
-    const u=($('hotUrl').value||'').trim();const ref=artIdOf(u);
-    if(!ref){toast('네이버 뉴스 기사 URL이 아닙니다 (n.news.naver.com/article/...)');return}
+    const u=($('hotUrl').value||'').trim();const ref=hotRefOf(u);
+    if(!ref){toast('기사 URL 형식이 아닙니다 (https://... 전체 주소를 붙여넣으세요)');return}
     loadArticle(Object.assign({title:'',press:''},ref));
   };
   $('hotUrlBtn').onclick=doUrl;$('hotUrl').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();doUrl()}};
