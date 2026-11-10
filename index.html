@@ -92,7 +92,7 @@ button.w100{width:100%}
 .card{position:absolute;inset:0;width:1080px;height:var(--card-h);transform-origin:top left;transform:scale(var(--mcard-scale));overflow:hidden;background:#1a1a1a}
 .card .bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:1}
 .card .gr{position:absolute;left:0;right:0;bottom:0;pointer-events:none;z-index:2}
-.card .tt{position:absolute;left:60px;right:60px;word-break:keep-all;line-height:1.2;font-weight:900;color:#fff;font-family:'Pretendard','Noto Sans KR',sans-serif;z-index:3}
+.card .tt{position:absolute;left:60px;right:60px;word-break:keep-all;overflow-wrap:anywhere;line-height:1.2;font-weight:900;color:#fff;font-family:'Pretendard','Noto Sans KR',sans-serif;z-index:3}
 .card .grid-ov{position:absolute;inset:0;z-index:10;pointer-events:none;display:none}
 .card .grid-ov.on{display:block}
 .card .grid-ov .gl{position:absolute;background:rgba(255,255,255,.18)}
@@ -780,7 +780,7 @@ function splitHL(line,startInHL){const parts=[];let buf='';let hl=!!startInHL;fo
 function getWrappedLines(text,opts){
   const {fontSize,fontWeight,fontFamily="'Pretendard','Noto Sans KR',sans-serif",letterSpacing=0,maxWidth}=opts;
   const host=document.createElement('div');
-  host.style.cssText=`position:absolute;left:-99999px;top:0;width:${maxWidth}px;font-family:${fontFamily};font-size:${fontSize}px;font-weight:${fontWeight};letter-spacing:${letterSpacing}px;line-height:1.2;word-break:keep-all;white-space:normal;visibility:hidden;box-sizing:content-box;padding:0;margin:0;border:0;text-indent:0`;
+  host.style.cssText=`position:absolute;left:-99999px;top:0;width:${maxWidth}px;font-family:${fontFamily};font-size:${fontSize}px;font-weight:${fontWeight};letter-spacing:${letterSpacing}px;line-height:1.2;word-break:keep-all;overflow-wrap:anywhere;white-space:normal;visibility:hidden;box-sizing:content-box;padding:0;margin:0;border:0;text-indent:0`;
   document.body.appendChild(host);
   const out=[];
   const rawLines=(text||'').split('\n');
