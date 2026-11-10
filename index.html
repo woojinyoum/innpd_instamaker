@@ -166,6 +166,7 @@ input[type=color]{width:32px;height:26px;background:transparent;border:1px solid
 .hseg button{flex:1;background:transparent;border:1px solid transparent;color:var(--dim);padding:7px 4px;font-size:12px;display:flex;flex-direction:column;align-items:center;gap:2px;border-radius:6px}
 .hseg button small{font-size:9px;font-weight:500;opacity:.8}
 .hseg button.on{background:var(--acc);color:#fff}
+.madj{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:5px}.madj button{font-size:11px;padding:10px 4px;background:var(--panel2);border:1px solid var(--brd);color:var(--txt)}.madj button:active{background:var(--acc)}.madj.four{grid-template-columns:repeat(4,1fr)}
 .mkseg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}.mkseg button{background:var(--panel2);border:1px solid var(--brd);color:var(--dim);font-size:10px;padding:6px 4px}.mkseg button.on{background:var(--acc);border-color:var(--acc);color:#fff}
 #hotPsMaker .field{margin-bottom:6px}#hotPsMaker .field label{font-size:10px}#hotPsMaker .field label span{color:var(--acc);font-variant-numeric:tabular-nums}
 .hseg button:hover{box-shadow:none;border-color:var(--acc)}
@@ -469,7 +470,13 @@ input[type=color]{width:32px;height:26px;background:transparent;border:1px solid
         <div class="field"><label>강조 색상 <span style="color:var(--dim);font-size:9px">제목에서 {중괄호}로 감싼 부분</span></label><div class="row" style="align-items:center"><input type="color" id="thc" value="#ffcc00"/><input type="text" id="thx" value="#ffcc00" style="flex:2"/></div></div>
         <div class="field"><label>위치 (하단 px)</label><div class="sr"><input type="range" id="tb" min="0" max="1250" value="200"/><span class="v" id="tbv">200</span></div></div>
         <div id="mediaCropFields" style="display:none">
-          <div class="tip" style="font-size:11px;color:var(--dim);margin-bottom:6px;line-height:1.5">🖱️ <b>크롭 끄기</b>: 카드에서 사진을 <b>드래그하여 이동</b>, 모서리 핸들로 <b>크기 조절</b>.<br>✂️ <b>크롭 켜기</b>: 테두리 핸들을 드래그해 상하좌우 자유롭게 자르기.</div>
+          <div class="tip" style="font-size:11px;color:var(--dim);margin-bottom:6px;line-height:1.5">🖱️ <b>크롭 끄기</b>: 카드에서 사진을 <b>드래그하여 이동</b>, 모서리 핸들로 <b>크기 조절</b>. 📱 모바일은 아래 <b>🖐 빠른 조절</b> 버튼이 가장 쉽습니다.<br>✂️ <b>크롭 켜기</b>: 테두리 핸들을 드래그해 상하좌우 자유롭게 자르기.</div>
+          <div class="field"><label>🖐 빠른 조절 <span style="color:var(--dim);font-size:9px">버튼으로 사진 크기·위치를 바로 맞춤 (모바일 추천)</span></label>
+            <div class="madj"><button data-ma="cover">⛶ 꽉 채우기</button><button data-ma="fit">🖼 전체 보이기</button><button data-ma="center">⊕ 가운데</button></div>
+            <div class="madj"><button data-ma="zin">➕ 확대</button><button data-ma="zout">➖ 축소</button><button data-ma="reset">↺ 초기화</button></div>
+            <div class="madj four"><button data-ma="left">⬅ 왼쪽</button><button data-ma="right">➡ 오른쪽</button><button data-ma="up">⬆ 위</button><button data-ma="down">⬇ 아래</button></div>
+            <div class="tip" style="font-size:10px;margin-top:4px">📱 모바일에서는 카드 위 <b>🖐 사진 조절</b> 버튼을 켜면 한 손가락으로 이동, 두 손가락으로 확대·축소할 수 있습니다. 끝나면 다시 눌러 끄세요.</div>
+          </div>
           <button id="cropToggle" class="w100" style="margin-bottom:8px;background:var(--panel2)">✂️ 크롭 모드: 꺼짐</button>
           <fieldset style="border:1px solid var(--brd);border-radius:8px;padding:10px 12px 6px;margin:8px 0;background:rgba(255,255,255,.02)">
             <legend style="font-size:11px;color:var(--acc);padding:0 6px;font-weight:600;letter-spacing:.3px">🔍 확대 & 위치 이동</legend>
@@ -1387,46 +1394,67 @@ function getGuides(el){
   return {gv,gh};
 }
 /* Normal mode: drag media to move (mox/moy), drag corner handle to resize (mzoom). Magnetic center snap with crosshair. */
+const IS_TOUCH=matchMedia('(pointer:coarse)').matches; // 터치 기기 여부
+let MADJ=false; // 📱 터치 기기 사진 조절 모드 (켜져 있을 때만 카드 위 제스처가 사진을 움직임)
 function setupMoveResize(el,mediaEl,c,nw,nh){
   el.querySelectorAll('.media-handle,.media-hint').forEach(n=>n.remove());
+  const SCALE=()=>cardScaleOf(el);
+  const touchOK=()=>!IS_TOUCH||MADJ; // 터치 기기는 조절 모드일 때만 (꺼져 있으면 스크롤·카드 넘기기 정상 동작)
   const handle=document.createElement('div');handle.className='media-handle';
-  handle.style.cssText='position:absolute;width:52px;height:52px;background:#7c5cff;border:5px solid #fff;border-radius:50%;cursor:nwse-resize;z-index:13;box-shadow:0 3px 14px rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center';
-  handle.innerHTML='<span style="color:#fff;font-size:22px;line-height:1;transform:rotate(45deg)">⤢</span>';
+  handle.style.cssText='position:absolute;background:#7c5cff;border:5px solid #fff;border-radius:50%;cursor:nwse-resize;z-index:13;box-shadow:0 3px 14px rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;touch-action:none';
+  handle.innerHTML='<span style="color:#fff;line-height:1;transform:rotate(45deg)">⤢</span>';
   el.appendChild(handle);
-  const HW=52;
   const placeHandle=()=>{
+    const sc=SCALE()||0.4;const HW=Math.min(150,Math.max(52,Math.round(46/sc))); // 화면에서 항상 약 46px 크기로 보이게
+    handle.style.width=HW+'px';handle.style.height=HW+'px';handle.firstChild.style.fontSize=Math.round(HW*0.42)+'px';
     const r=mediaDisplayRect(c,nw,nh);const HH=H();
-    // Bottom-right corner of visible media, inset INSIDE so it sits on the image
     let hx=r.left+r.dispW-HW-6, hy=r.top+r.dispH-HW-6;
-    // Keep fully within the card so it's always visible
-    hx=Math.max(6,Math.min(1080-HW-6,hx));
-    hy=Math.max(6,Math.min(HH-HW-6,hy));
+    hx=Math.max(6,Math.min(1080-HW-6,hx));hy=Math.max(6,Math.min(HH-HW-6,hy));
     handle.style.left=hx+'px';handle.style.top=hy+'px';
   };
   placeHandle();
-  const SCALE=()=>cardScaleOf(el);
+  if(IS_TOUCH&&!MADJ)handle.style.display='none';
+  if(IS_TOUCH&&MADJ){const hint=document.createElement('div');hint.className='media-hint';hint.textContent='🖐 한 손가락: 이동 · 두 손가락: 확대/축소 · 모서리 핸들: 크기';hint.style.cssText='position:absolute;left:50%;top:24px;transform:translateX(-50%);background:rgba(124,92,255,.9);color:#fff;font-size:30px;padding:14px 26px;border-radius:40px;z-index:14;white-space:nowrap;pointer-events:none';el.appendChild(hint)}
   const SNAP=18; // snap threshold in card px
   mediaEl.style.cursor='grab';
-  mediaEl.addEventListener('mousedown',e=>{
-    if(e.target===handle)return;e.preventDefault();e.stopPropagation();
-    const sc=SCALE();const sX=e.clientX,sY=e.clientY;const oX=c.mox||0,oY=c.moy||0;
-    const {gv,gh}=getGuides(el);
-    const onMove=me=>{
-      let nx=Math.round(oX+(me.clientX-sX)/sc), ny=Math.round(oY+(me.clientY-sY)/sc);
-      // Magnetic snap to center (mox=0 / moy=0)
+  mediaEl.style.touchAction=touchOK()?'none':'';
+  // 터치 제스처가 카드 넘기기(스와이프)로 전달되지 않게
+  const stopT=e=>{if(touchOK())e.stopPropagation()};
+  mediaEl.addEventListener('touchstart',stopT,{passive:true});mediaEl.addEventListener('touchmove',stopT,{passive:true});
+  handle.addEventListener('touchstart',e=>e.stopPropagation(),{passive:true});handle.addEventListener('touchmove',e=>e.stopPropagation(),{passive:true});
+  const {gv,gh}=getGuides(el);
+  // 한 손가락/마우스 드래그: 이동 · 두 손가락: 핀치 확대/축소(+이동)
+  const pts=new Map();let st=null;
+  const dist=()=>{const a=[...pts.values()];return Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y)||1};
+  const begin=()=>{const a=[...pts.values()];st={sc:SCALE(),oX:c.mox||0,oY:c.moy||0,oZ:c.mzoom||100,x:a.length===1?a[0].x:(a[0].x+a[1].x)/2,y:a.length===1?a[0].y:(a[0].y+a[1].y)/2,d:a.length===2?dist():0}};
+  mediaEl.addEventListener('pointerdown',e=>{
+    if(e.target===handle)return;if(e.pointerType!=='mouse'&&!touchOK())return;
+    e.preventDefault();e.stopPropagation();try{mediaEl.setPointerCapture(e.pointerId)}catch(x){}
+    pts.set(e.pointerId,{x:e.clientX,y:e.clientY});begin();
+  });
+  mediaEl.addEventListener('pointermove',e=>{
+    if(!pts.has(e.pointerId)||!st)return;pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    const a=[...pts.values()];
+    if(a.length>=2){
+      c.mzoom=Math.max(10,Math.min(600,Math.round(st.oZ*dist()/st.d)));
+      const mx=(a[0].x+a[1].x)/2,my=(a[0].y+a[1].y)/2;c.mox=Math.round(st.oX+(mx-st.x)/st.sc);c.moy=Math.round(st.oY+(my-st.y)/st.sc);
+    }else{
+      let nx=Math.round(st.oX+(a[0].x-st.x)/st.sc),ny=Math.round(st.oY+(a[0].y-st.y)/st.sc);
       if(Math.abs(nx)<=SNAP){nx=0;gv.style.display='block'}else{gv.style.display='none'}
       if(Math.abs(ny)<=SNAP){ny=0;gh.style.display='block'}else{gh.style.display='none'}
-      c.mox=nx;c.moy=ny;applyMediaCrop(mediaEl,c,nw,nh);placeHandle();
-    };
-    const onUp=()=>{document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp);gv.style.display='none';gh.style.display='none';saveSnap();rEd()};
-    document.addEventListener('mousemove',onMove);document.addEventListener('mouseup',onUp);
+      c.mox=nx;c.moy=ny;
+    }
+    applyMediaCrop(mediaEl,c,nw,nh);placeHandle();
   });
-  handle.addEventListener('mousedown',e=>{
-    e.preventDefault();e.stopPropagation();
+  const endP=e=>{if(!pts.has(e.pointerId))return;pts.delete(e.pointerId);gv.style.display='none';gh.style.display='none';if(pts.size){begin()}else{st=null;saveSnap();rEd()}};
+  mediaEl.addEventListener('pointerup',endP);mediaEl.addEventListener('pointercancel',endP);
+  // 모서리 핸들 드래그: 크기 조절
+  handle.addEventListener('pointerdown',e=>{
+    e.preventDefault();e.stopPropagation();try{handle.setPointerCapture(e.pointerId)}catch(x){}
     const sc=SCALE();const sX=e.clientX;const oZ=c.mzoom||100;const startW=mediaDisplayRect(c,nw,nh).dispW;
     const onMove=me=>{const dx=(me.clientX-sX)/sc;const ratio=(startW+dx)/startW;c.mzoom=Math.max(10,Math.min(600,Math.round(oZ*ratio)));applyMediaCrop(mediaEl,c,nw,nh);placeHandle()};
-    const onUp=()=>{document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp);saveSnap();rEd()};
-    document.addEventListener('mousemove',onMove);document.addEventListener('mouseup',onUp);
+    const onUp=()=>{handle.removeEventListener('pointermove',onMove);handle.removeEventListener('pointerup',onUp);handle.removeEventListener('pointercancel',onUp);saveSnap();rEd()};
+    handle.addEventListener('pointermove',onMove);handle.addEventListener('pointerup',onUp);handle.addEventListener('pointercancel',onUp);
   });
 }
 
@@ -1434,10 +1462,11 @@ function setupMoveResize(el,mediaEl,c,nw,nh){
 function setupCropUI(el,c,nw,nh){
   el.querySelectorAll('.media-handle,.crop-ui,.media-hint').forEach(n=>n.remove());
   const HH=H();
+  const HSZ=Math.min(96,Math.max(34,Math.round(30/(cardScaleOf(el)||0.4)))); // 화면에서 약 30px 크기 핸들
   const fitScale=Math.min(1080/nw,HH/nh);
   const fw=nw*fitScale,fh=nh*fitScale,fx=(1080-fw)/2,fy=(HH-fh)/2;
   const layer=document.createElement('div');layer.className='crop-ui';
-  layer.style.cssText='position:absolute;inset:0;z-index:9';
+  layer.style.cssText='position:absolute;inset:0;z-index:9;touch-action:none';layer.addEventListener('touchstart',e=>e.stopPropagation(),{passive:true});layer.addEventListener('touchmove',e=>e.stopPropagation(),{passive:true});
   // Dim full card
   const dim=document.createElement('div');dim.style.cssText='position:absolute;inset:0;background:rgba(0,0,0,.55)';layer.appendChild(dim);
   // Crop rect (clear window) implemented with a transparent box + outline
@@ -1458,9 +1487,9 @@ function setupCropUI(el,c,nw,nh){
   const defs=[['n','50%','0','ns-resize'],['s','50%','100%','ns-resize'],['w','0','50%','ew-resize'],['e','100%','50%','ew-resize'],['nw','0','0','nwse-resize'],['ne','100%','0','nesw-resize'],['sw','0','100%','nesw-resize'],['se','100%','100%','nwse-resize']];
   defs.forEach(([dir,lx,ly,cur])=>{
     const h=document.createElement('div');
-    h.style.cssText=`position:absolute;left:${lx};top:${ly};width:34px;height:34px;margin:-17px 0 0 -17px;background:#7c5cff;border:3px solid #fff;border-radius:50%;cursor:${cur};box-shadow:0 2px 6px rgba(0,0,0,.5)`;
+    h.style.cssText=`position:absolute;left:${lx};top:${ly};width:${HSZ}px;height:${HSZ}px;margin:-${HSZ/2}px 0 0 -${HSZ/2}px;background:#7c5cff;border:3px solid #fff;border-radius:50%;cursor:${cur};box-shadow:0 2px 6px rgba(0,0,0,.5)`;
     rect.appendChild(h);
-    h.addEventListener('mousedown',e=>{
+    h.addEventListener('pointerdown',e=>{
       e.preventDefault();e.stopPropagation();
       const sc=SCALE();const sX=e.clientX,sY=e.clientY;
       const o={mct:c.mct||0,mcb:c.mcb||0,mcl:c.mcl||0,mcr:c.mcr||0};
@@ -1475,12 +1504,12 @@ function setupCropUI(el,c,nw,nh){
         c.mct=Math.round(mct);c.mcb=Math.round(mcb);c.mcl=Math.round(mcl);c.mcr=Math.round(mcr);
         place();syncCropSliders(c);
       };
-      const onUp=()=>{document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp);saveSnap();refreshCard()};
-      document.addEventListener('mousemove',onMove);document.addEventListener('mouseup',onUp);
+      const onUp=()=>{document.removeEventListener('pointermove',onMove);document.removeEventListener('pointerup',onUp);document.removeEventListener('pointercancel',onUp);saveSnap();refreshCard()};
+      document.addEventListener('pointermove',onMove);document.addEventListener('pointerup',onUp);document.addEventListener('pointercancel',onUp);
     });
   });
   // Drag whole rect to move crop window (shifts crop offsets keeping size). Magnetic center snap.
-  rect.addEventListener('mousedown',e=>{
+  rect.addEventListener('pointerdown',e=>{
     if(e.target!==rect)return;e.preventDefault();e.stopPropagation();
     const sc=SCALE();const sX=e.clientX,sY=e.clientY;
     const o={mct:c.mct||0,mcb:c.mcb||0,mcl:c.mcl||0,mcr:c.mcr||0};
@@ -1498,8 +1527,8 @@ function setupCropUI(el,c,nw,nh){
       c.mcl=Math.round(mcl);c.mcr=Math.round(mcr);c.mct=Math.round(mct);c.mcb=Math.round(mcb);
       place();syncCropSliders(c);
     };
-    const onUp=()=>{document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp);gv.style.display='none';gh.style.display='none';saveSnap();refreshCard()};
-    document.addEventListener('mousemove',onMove);document.addEventListener('mouseup',onUp);
+    const onUp=()=>{document.removeEventListener('pointermove',onMove);document.removeEventListener('pointerup',onUp);document.removeEventListener('pointercancel',onUp);gv.style.display='none';gh.style.display='none';saveSnap();refreshCard()};
+    document.addEventListener('pointermove',onMove);document.addEventListener('pointerup',onUp);document.addEventListener('pointercancel',onUp);
   });
   el.appendChild(layer);
 }
@@ -1736,6 +1765,8 @@ function render(){
       b.onclick=e=>{e.stopPropagation();const f=document.createElement('input');f.type='file';f.accept=accept;f.onchange=ev=>{const file=ev.target.files[0];if(!file)return;const r=new FileReader;r.onload=x=>{saveSnap();c.media=x.target.result;c.mediaType=type;c.img=null;c.mct=0;c.mcb=0;c.mcl=0;c.mcr=0;c.mzoom=100;c.mox=0;c.moy=0;refreshCard()};r.readAsDataURL(file)};f.click()};return b};
     btns.appendChild(mkBtn('이미지','image/png,image/jpeg,image/webp,image/gif,image/*','image'));
     btns.appendChild(mkBtn('동영상','video/*','video'));
+    if(IS_TOUCH&&c.media&&!S.cropMode){const ab=document.createElement('button');ab.textContent=MADJ?'🖐 조절 끝':'🖐 사진 조절';ab.style.cssText='padding:6px 12px;font-size:11px;border-radius:6px;background:'+(MADJ?'rgba(124,92,255,.9)':'rgba(0,0,0,.6)')+';border:1px solid rgba(255,255,255,.2);color:#fff;cursor:pointer;backdrop-filter:blur(4px);font-weight:700';
+      ab.onclick=e=>{e.stopPropagation();MADJ=!MADJ;render();toast(MADJ?'한 손가락: 이동 · 두 손가락: 확대/축소 · 끝나면 "조절 끝"':'사진 조절 끔')};btns.appendChild(ab)}
     // Grid toggle
     const gb=document.createElement('button');gb.textContent=S.grid?'▦ ON':'▦';
     gb.style.cssText='padding:6px 10px;font-size:11px;border-radius:6px;background:'+(S.grid?'rgba(124,92,255,.7)':'rgba(0,0,0,.6)')+';border:1px solid rgba(255,255,255,.2);color:#fff;cursor:pointer;backdrop-filter:blur(4px)';
@@ -1927,6 +1958,28 @@ const bC=(cid,xid,path)=>{document.getElementById(cid).oninput=e=>{document.getE
 bC('gc','gx','g.c');bR('gh','ghv','g.h','%');bR('go','gov','g.o','%');bR('gs','gsv','g.s','%');
 bR('tz','tzv','t.z');bC('tc','tx','t.c');bC('thc','thx','t.hc');bR('tb','tbv','t.b');
 ['mzoom','mox','moy','mvol'].forEach(id=>{const el=document.getElementById(id);if(el)el.oninput=e=>{const v=+e.target.value;document.getElementById(id+'V').textContent=v;up(c=>{c[id]=v})}});
+// 🖐 빠른 조절 (버튼): 꽉 채우기/전체 보이기/가운데/확대/축소/이동/초기화
+function mediaDims(c){return new Promise(res=>{if(!c.media)return res(null);if(c.mediaType==='video'){const v=document.createElement('video');v.preload='metadata';v.onloadedmetadata=()=>res({w:v.videoWidth,h:v.videoHeight});v.onerror=()=>res(null);v.src=c.media}else{const im=new Image();im.onload=()=>res({w:im.naturalWidth,h:im.naturalHeight});im.onerror=()=>res(null);im.src=c.media}})}
+async function mAdjust(action){
+  const c=cur();if(!c||!c.media){toast('이미지 없음');return}
+  const STEP=40,go=fn=>{saveSnap();fn(c);render();rEd()};
+  switch(action){
+    case 'zin':go(x=>x.mzoom=Math.min(600,(x.mzoom||100)+10));break;
+    case 'zout':go(x=>x.mzoom=Math.max(10,(x.mzoom||100)-10));break;
+    case 'left':go(x=>x.mox=(x.mox||0)-STEP);break;
+    case 'right':go(x=>x.mox=(x.mox||0)+STEP);break;
+    case 'up':go(x=>x.moy=(x.moy||0)-STEP);break;
+    case 'down':go(x=>x.moy=(x.moy||0)+STEP);break;
+    case 'center':go(x=>{x.mox=0;x.moy=0});toast('가운데 정렬');break;
+    case 'fit':go(x=>{x.mzoom=100;x.mox=0;x.moy=0});toast('사진 전체가 보이게 맞춤');break;
+    case 'reset':go(x=>{x.mzoom=100;x.mox=0;x.moy=0;x.mct=0;x.mcb=0;x.mcl=0;x.mcr=0});toast('원본 크기·위치·크롭 초기화');break;
+    case 'cover':{const d=await mediaDims(c);if(!d){toast('크기를 읽지 못했습니다');return}
+      const r=mediaDisplayRect(Object.assign({},c,{mzoom:100,mox:0,moy:0}),d.w,d.h);
+      const z=Math.min(600,Math.ceil(Math.max(1080/r.dispW,H()/r.dispH)*100));
+      go(x=>{x.mzoom=z;x.mox=0;x.moy=0});toast(`화면에 꽉 채움 (${z}%) — 위치는 ⬅➡⬆⬇ 또는 드래그로`);break}
+  }
+}
+document.querySelectorAll('[data-ma]').forEach(b=>b.onclick=()=>mAdjust(b.dataset.ma));
 // Reset media size/position/crop to original
 document.getElementById('mReset').onclick=()=>{const c=cur();if(!c||!c.media){toast('이미지 없음');return}up(cc=>{cc.mzoom=100;cc.mox=0;cc.moy=0;cc.mct=0;cc.mcb=0;cc.mcl=0;cc.mcr=0});rEd();toast('원본 크기·위치로 복귀');};
 // Crop mode toggle
