@@ -1828,11 +1828,13 @@ document.getElementById('eB').oninput=e=>up(c=>c.body=e.target.value);
 
 /* Logo */
 document.getElementById('logoUp').onclick=()=>document.getElementById('logoF').click();
-document.getElementById('logoF').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader;r.onload=ev=>{
+document.getElementById('logoF').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader;r.onload=async ev=>{
+  // 로고는 최대 800px로 줄여 저장 (카드에서 최대 300px로 그려지므로 충분, 프리셋 저장 용량 보호)
+  const srcSmall=await shrinkLogo(ev.target.result);
   // Upload propagates to ALL cards (use upLogo)
-  upLogo(c=>{c.logo.src=ev.target.result});
+  upLogo(c=>{c.logo.src=srcSmall});
   document.getElementById('logoControls').style.display='block';
-  toast('모든 카드에 로고 적용');
+  toast('모든 카드에 로고 적용 — 프리셋으로 저장하면 다음부터 자동으로 들어갑니다');
 };r.readAsDataURL(f)};
 document.getElementById('logoSize').oninput=e=>{const v=+e.target.value;document.getElementById('logoSizeV').textContent=v;upLogo(c=>c.logo.size=v)};
 document.getElementById('logoPad').oninput=e=>{const v=+e.target.value;document.getElementById('logoPadV').textContent=v;upLogo(c=>c.logo.pad=v)};
@@ -2471,15 +2473,16 @@ document.getElementById('tabHot').onclick=()=>{setMode('hot');if(typeof schedPre
 /* ===== Presets ===== */
 const PS_KEY='icnm_presets';
 function loadPresets(){try{return JSON.parse(localStorage.getItem(PS_KEY)||'{}')}catch{return{}}}
-function savePresets(p){localStorage.setItem(PS_KEY,JSON.stringify(p))}
+function savePresets(p){try{localStorage.setItem(PS_KEY,JSON.stringify(p));return true}catch(e){console.error('프리셋 저장 실패',e);toast('프리셋 저장 실패: 저장 공간 초과 — 안 쓰는 프리셋을 삭제하거나 로고 이미지를 더 작게 올려주세요');return false}}
+const psLabel=(n,p)=>n+(p&&p.logo&&p.logo.src?' 🖼':'');
 function refreshPSDropdown(){
   const sel=document.getElementById('psSel');const cur=sel.value;
   const ps=loadPresets();const names=Object.keys(ps).sort();
-  sel.innerHTML='<option value="">— 프리셋 선택 —</option>'+names.map(n=>`<option value="${n.replace(/"/g,'&quot;')}">${n}</option>`).join('');
+  sel.innerHTML='<option value="">— 프리셋 선택 —</option>'+names.map(n=>`<option value="${n.replace(/"/g,'&quot;')}">${psLabel(n,ps[n])}</option>`).join('');
   if(cur&&ps[cur])sel.value=cur;
   // 핫뉴스 자동 생성용 프리셋 드롭다운도 같은 목록으로
   const hs=document.getElementById('hotPsSel');
-  if(hs){const hc=hs.value||localStorage.getItem('hot_ps')||'';hs.innerHTML='<option value="">현재 카드 스타일 그대로</option>'+names.map(n=>`<option value="${n.replace(/"/g,'&quot;')}">${n}</option>`).join('');hs.value=ps[hc]?hc:''}
+  if(hs){const hc=hs.value||localStorage.getItem('hot_ps')||'';hs.innerHTML='<option value="">현재 카드 스타일 그대로</option>'+names.map(n=>`<option value="${n.replace(/"/g,'&quot;')}">${psLabel(n,ps[n])}</option>`).join('');hs.value=ps[hc]?hc:''}
 }
 function extractStyle(c){return{t:JSON.parse(JSON.stringify(c.t)),logo:{src:c.logo.src,size:c.logo.size,pad:c.logo.pad,pos:c.logo.pos,x:c.logo.x,y:c.logo.y,useXY:c.logo.useXY,op:c.logo.op},g:JSON.parse(JSON.stringify(c.g)),b:JSON.parse(JSON.stringify(c.b||{}))}}
 function applyStyle(c,style){
@@ -2488,11 +2491,13 @@ function applyStyle(c,style){
   if(style.g)Object.assign(c.g,style.g);
   if(style.b&&c.b)Object.assign(c.b,style.b);
 }
-document.getElementById('psSave').onclick=()=>{
+document.getElementById('psSave').onclick=async()=>{
   const cardNow=cur();if(!cardNow){toast('카드 없음');return}
   const name=document.getElementById('psName').value.trim();
   if(!name){toast('이름 입력');return}
-  const ps=loadPresets();ps[name]=extractStyle(cardNow);savePresets(ps);
+  const style=extractStyle(cardNow);if(style.logo&&style.logo.src)style.logo.src=await shrinkLogo(style.logo.src);
+  const ps=loadPresets();ps[name]=style;if(!savePresets(ps))return;
+  if(!localStorage.getItem('hot_ps'))localStorage.setItem('hot_ps',name); // 첫 프리셋은 기본 프리셋으로
   refreshPSDropdown();document.getElementById('psSel').value=name;
   document.getElementById('psName').value='';toast('프리셋 저장: '+name);
 };
@@ -2969,6 +2974,7 @@ async function loadArticle(it){
     // 이 카드가 표지였던 이전 기사의 장 카드들은 제거 (새 기사로 바뀌므로)
     if(c.hotArt&&c.hotTotal>1){const pid=c.hotArt.id;S.cards=S.cards.filter(x=>x===c||!(x.hotArt&&x.hotArt.id===pid&&x.hotSlide>0));S.idx=S.cards.indexOf(c)}
     c.hotSlide=0;c.hotTotal=1;
+    {const dp=hotPickedStyle();if(dp.name)applyStyle(c,dp.style)} // 선택한 프리셋(로고 포함) 적용
     c.title=art.title;c.body=art.text.slice(0,1500);resetFraming(c);c.hotArt=art;
     if(art.imgs.length){
       try{c.media=await imgToDataURL(art.imgs[0]);c.mediaType='image';c.img=null;art.bgIdx=0}
@@ -3421,7 +3427,7 @@ async function renderPresetPreview(){
 }
 function schedPreview(){clearTimeout(_prevT);_prevT=setTimeout(renderPresetPreview,180)}
 // 로고를 최대 512px로 줄여 저장 (프리셋 localStorage 용량 보호, 투명 유지)
-function shrinkLogo(dataUrl){return new Promise(res=>{const im=new Image();im.onload=()=>{const m=Math.max(im.naturalWidth,im.naturalHeight);if(m<=512)return res(dataUrl);const s=512/m;const cv=document.createElement('canvas');cv.width=Math.round(im.naturalWidth*s);cv.height=Math.round(im.naturalHeight*s);cv.getContext('2d').drawImage(im,0,0,cv.width,cv.height);res(cv.toDataURL('image/png'))};im.onerror=()=>res(dataUrl);im.src=dataUrl})}
+function shrinkLogo(dataUrl){return new Promise(res=>{const im=new Image();im.onload=()=>{const m=Math.max(im.naturalWidth,im.naturalHeight);if(m<=800)return res(dataUrl);const s=800/m;const cv=document.createElement('canvas');cv.width=Math.round(im.naturalWidth*s);cv.height=Math.round(im.naturalHeight*s);cv.getContext('2d').drawImage(im,0,0,cv.width,cv.height);res(cv.toDataURL('image/png'))};im.onerror=()=>res(dataUrl);im.src=dataUrl})}
 function mkFillInputs(){
   const $=id=>document.getElementById(id);const st=_mkStyle;
   const setR=(id,v)=>{$(id).value=v;$(id+'V').textContent=v};
@@ -3493,10 +3499,11 @@ function hotInit(){
   if(typeof refreshPSDropdown==='function')refreshPSDropdown();
   mkBind();
   if(!Object.keys(loadPresets()).length){mkOpen()} else {schedPreview()}
-  $('hotPsSave').onclick=()=>{
+  $('hotPsSave').onclick=async()=>{
     const c=cur();if(!c){toast('카드 없음');return}
     const name=(prompt('프리셋 이름 (제목 스타일·위치·로고·그라데이션이 저장됩니다)',hp.value||'핫뉴스 기본')||'').trim();if(!name)return;
-    const ps=loadPresets();ps[name]=extractStyle(c);savePresets(ps);
+    const style=extractStyle(c);if(style.logo&&style.logo.src)style.logo.src=await shrinkLogo(style.logo.src);
+    const ps=loadPresets();ps[name]=style;if(!savePresets(ps))return;
     localStorage.setItem('hot_ps',name);refreshPSDropdown();hp.value=name;
     const ps2=document.getElementById('psSel');if(ps2)ps2.value=name;
     schedPreview();toast('프리셋 저장: '+name+(c.logo&&c.logo.src?' (로고 포함)':' (로고 없음)'));
@@ -3528,7 +3535,11 @@ window.addEventListener('orientationchange',onResize);
 
 /* Init */
 applyMode();hotInit();
-S.cards=[mk()];S.idx=0;render();enableEditableV();
+S.cards=[mk()];S.idx=0;
+// 저장된 기본 프리셋(제목 스타일·로고·그라데이션)을 첫 카드에 바로 적용 → 매번 로고 업로드 불필요
+function defaultHotPreset(){const ps=loadPresets();const n=localStorage.getItem('hot_ps');if(n&&ps[n])return {name:n,style:ps[n]};const names=Object.keys(ps);if(names.length===1)return {name:names[0],style:ps[names[0]]};return null}
+(()=>{const dp=defaultHotPreset();if(dp){applyStyle(S.cards[0],dp.style);setTimeout(()=>toast(`프리셋 "${dp.name}" 적용${dp.style.logo&&dp.style.logo.src?' (로고 포함)':''}`),600)}})();
+render();enableEditableV();
 // Offer restore if a saved project exists
 idbGet('current').then(saved=>{
   if(saved&&saved.cards&&saved.cards.length&&!(saved.cards.length===1&&!saved.cards[0].media&&!saved.cards[0].img&&saved.cards[0].title==='제목')){
