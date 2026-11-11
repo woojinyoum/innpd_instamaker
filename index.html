@@ -989,10 +989,10 @@ ${lang!=='ko'?`
    - 3문단(쟁점·반전): 왜 논란·화제인지, 대립하는 입장이나 의외의 지점
    - 4문단(결과·전망): 현재 상태, 앞으로의 절차·예정·반응
    - 쉬운 구어체, 한 문장은 짧게, 사실·숫자·이름은 기사 그대로 정확히, 기사에 없는 내용·추측 금지. 기사가 짧으면 문단을 합쳐도 되지만 300자 이상은 쓸 것
-5) search_query: 이 사건의 다른 기사 사진을 찾기 위한 네이버 뉴스 검색어 (핵심 고유명사·키워드 2~4개, 공백 구분)
+${lang!=='ko'?`4-1) ko: 한국인 운영자가 내용을 알 수 있도록 {"title":"1위 제목 후보의 한국어 번역","summary":"기사 핵심을 한국어 4~6문장으로(누가·무엇·왜 화제인지·결과)","hashtags_ko":"해시태그의 한국어 뜻을 한 줄로"}\n`:''}5) search_query: 이 사건의 다른 기사 사진을 찾기 위한 네이버 뉴스 검색어 (핵심 고유명사·키워드 2~4개, 공백 구분)
 6) hashtags: 관련 해시태그 10개 (# 포함, 한국어 위주)
 JSON만 답변 (마크다운·설명 금지):
-{"candidates":[{"title":"제목(15~25자)","score":9,"reason":"짧은 이유"}],"body":"발단 문단\\n\\n전개 문단\\n\\n쟁점 문단\\n\\n결과 문단","search_query":"검색어","hashtags":["#태그"]}
+{"candidates":[{"title":"제목(15~25자)","score":9,"reason":"짧은 이유"}],"body":"발단 문단\\n\\n전개 문단\\n\\n쟁점 문단\\n\\n결과 문단","search_query":"검색어","hashtags":["#태그"]${lang!=='ko'?',"ko":{"title":"한국어 제목","summary":"한국어 요약","hashtags_ko":"해시태그 뜻"}':''}}
 
 규칙: 제목 이모지 금지, 강조어휘 최대 2개, 제목에서 가장 강조할 핵심 단어 1곳은 {중괄호}로 감싸기(강조색 적용용).
 중요: JSON 문자열 값 안에서 큰따옴표(")를 쓰지 마세요. 강조가 필요하면 작은따옴표(')나 홑화살괄호(〈 〉)를 쓰세요. 줄바꿈은 \\n으로.`}
@@ -2055,6 +2055,52 @@ document.getElementById('shdist').oninput=e=>{const v=+e.target.value;document.g
 })();
 
 /* Download */
+
+/* ===== 📲 모바일 저장 시트 ===== */
+const IS_MOBILE_DEV=/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)||(/Macintosh/.test(navigator.userAgent)&&navigator.maxTouchPoints>1);
+const fileOf=f=>new File([f.blob],f.name,{type:f.blob.type||(f.type==='video'?'video/mp4':f.type==='text'?'text/plain':'image/png')});
+async function downloadZipOrSingle(files){
+  if(files.length===1){const u=URL.createObjectURL(files[0].blob);dL(u,files[0].name);setTimeout(()=>URL.revokeObjectURL(u),3000);return}
+  const z=new JSZip;for(const f of files)z.file(f.name,f.blob);
+  const b=await z.generateAsync({type:'blob'});const u=URL.createObjectURL(b);dL(u,S.mode==='hot'?`hotnews_${todayStr()}.zip`:'cards.zip');setTimeout(()=>URL.revokeObjectURL(u),3000);
+}
+function showSaveSheet(files,memoFile){
+  document.querySelectorAll('.save-sheet').forEach(x=>x.remove());
+  const media=files.filter(f=>f!==memoFile);const nVid=media.filter(f=>f.type==='video').length,nImg=media.length-nVid;
+  const ov=document.createElement('div');ov.className='save-sheet';ov.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.72);display:flex;align-items:flex-end;justify-content:center';
+  const box=document.createElement('div');box.style.cssText='background:var(--panel);border:1px solid var(--brd);border-radius:18px 18px 0 0;padding:18px 16px calc(24px + env(safe-area-inset-bottom));width:100%;max-width:560px;color:var(--txt);font-size:13px;max-height:88vh;overflow:auto';
+  box.innerHTML=`<div style="font-weight:800;font-size:16px;margin-bottom:4px">📲 저장하기</div>
+    <div style="color:var(--dim);font-size:11px;line-height:1.6;margin-bottom:10px">${nImg?`사진 ${nImg}장`:''}${nImg&&nVid?' · ':''}${nVid?`영상 ${nVid}개`:''} 준비 완료.<br>아래 버튼을 누르면 휴대폰 공유 시트가 열립니다 → <b>"이미지 저장"</b> 또는 <b>"비디오 저장"</b>(iPhone) / <b>"갤러리"·"사진"</b>(Android)을 고르면 사진첩에 들어갑니다.</div>`;
+  const mkB=(label,primary)=>{const b=document.createElement('button');b.textContent=label;b.className=primary?'w100':'w100 gh';b.style.cssText='margin-top:8px;padding:13px;font-size:14px;font-weight:700';box.appendChild(b);return b};
+  const close=()=>ov.remove();
+  const canShareFiles=fs=>!!(navigator.share&&navigator.canShare&&navigator.canShare({files:fs}));
+  const shareOrZip=async fs=>{
+    try{
+      if(!canShareFiles(fs))throw Error('unsupported');
+      await navigator.share({files:fs,title:'Insta Card'});toast('공유 시트에서 저장을 선택하면 사진첩에 들어갑니다');return true;
+    }catch(e){
+      if(e&&e.name==='AbortError')return false;
+      console.warn('share 실패',e);toast('이 브라우저는 사진첩 저장(공유)을 지원하지 않아 ZIP으로 받습니다. 받은 파일은 "파일" 앱에서 열어 사진에 저장하세요');
+      await downloadZipOrSingle(files);return false;
+    }
+  };
+  // 전체 한 번에
+  const bAll=mkB(`📲 사진첩에 저장 (${media.length}개 한 번에)`,true);
+  bAll.onclick=async()=>{bAll.disabled=true;const ok=await shareOrZip(media.map(fileOf));bAll.disabled=false;if(ok&&media.length===1)close()};
+  // 한 장씩 (공유 시트에 파일이 너무 많을 때)
+  if(media.length>1){
+    let i=0;const bOne=mkB(`📲 한 개씩 저장 (1/${media.length})`);
+    bOne.onclick=async()=>{bOne.disabled=true;const ok=await shareOrZip([fileOf(media[i])]);bOne.disabled=false;if(ok){i++;if(i>=media.length){bOne.textContent='✅ 모두 저장했습니다';bOne.disabled=true}else bOne.textContent=`📲 다음 저장 (${i+1}/${media.length})`}};
+  }
+  // 메모장
+  if(memoFile){
+    const bMemo=mkB('📝 본문 메모장(.txt) 받기 · 한국어 요약 포함');
+    bMemo.onclick=async()=>{const f=fileOf(memoFile);if(canShareFiles([f])){try{await navigator.share({files:[f],title:memoFile.name});return}catch(e){if(e&&e.name==='AbortError')return}}const u=URL.createObjectURL(memoFile.blob);dL(u,memoFile.name);setTimeout(()=>URL.revokeObjectURL(u),3000);toast('메모장 다운로드 ("파일" 앱 또는 메모 앱으로 열기)')};
+  }
+  const bZip=mkB('📦 전부 ZIP 파일로 받기 (파일 앱에 저장)');bZip.onclick=()=>downloadZipOrSingle(files);
+  const bClose=mkB('닫기');bClose.onclick=close;bClose.style.fontWeight='500';
+  ov.appendChild(box);ov.onclick=e=>{if(e.target===ov)close()};document.body.appendChild(ov);
+}
 document.getElementById('dlBtn').onclick=async()=>{
   if(!S.cards.length){toast('카드 없음');return}
   sLoad('렌더링...',S.cards.length+'장');
@@ -2085,32 +2131,10 @@ document.getElementById('dlBtn').onclick=async()=>{
     // 핫뉴스: 카드별 본문(참고용)·제목 후보·해시태그를 주제별로 나눈 메모장(.txt) 동봉
     let memoFile=null;
     if(S.mode==='hot'){const memo=buildHotMemo();if(memo){memoFile={name:hotMemoName(),blob:new Blob(['\ufeff'+memo],{type:'text/plain;charset=utf-8'}),type:'text'};files.push(memoFile)}}
-    const isMobile=/iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    // 모바일: 사진첩 저장이 되는 네이티브 공유 시트 사용 (파일 공유 지원 시)
-    if(isMobile){
-      try{
-        const toFile=f=>new File([f.blob],f.name,{type:f.blob.type||(f.type==='video'?'video/mp4':f.type==='text'?'text/plain':'image/png')});
-        let shareFiles=files.map(toFile),memoApart=false;
-        if(memoFile&&navigator.canShare&&!navigator.canShare({files:shareFiles})){shareFiles=files.filter(f=>f!==memoFile).map(toFile);memoApart=true}
-        if(navigator.canShare&&navigator.canShare({files:shareFiles})){
-          await navigator.share({files:shareFiles,title:'Insta Card'});
-          if(memoApart){const u=URL.createObjectURL(memoFile.blob);dL(u,memoFile.name);setTimeout(()=>URL.revokeObjectURL(u),3000)}
-          toast('저장 완료! (사진에 저장을 선택하세요)');
-          return;
-        }
-      }catch(err){
-        if(err&&err.name==='AbortError'){toast('취소됨');return} // 사용자가 공유 시트 닫음
-        console.warn('share 실패, 일반 다운로드로 대체:',err);
-      }
-    }
-    // 데스크톱 또는 공유 미지원: 기존 다운로드
-    if(files.length===1){
-      const u=URL.createObjectURL(files[0].blob);dL(u,files[0].name);setTimeout(()=>URL.revokeObjectURL(u),3000);
-    }else{
-      const z=new JSZip;
-      for(const f of files) z.file(f.name,f.blob);
-      const b=await z.generateAsync({type:'blob'});const u=URL.createObjectURL(b);dL(u,S.mode==='hot'?`hotnews_${todayStr()}.zip`:'cards.zip');setTimeout(()=>URL.revokeObjectURL(u),3000);
-    }
+    // 모바일(폰·태블릿): 저장 시트 — 사진첩 저장은 iOS/Android 공유 시트를 통해서만 가능하고,
+    // 공유 시트는 "사용자가 버튼을 누른 직후"에만 열리므로 렌더가 끝난 뒤 버튼을 따로 보여준다
+    if(IS_MOBILE_DEV){showSaveSheet(files,memoFile);return}
+    await downloadZipOrSingle(files);
     toast('다운로드 완료!');
   }catch(e){hLoad();toast('오류: '+e.message);console.error(e)}
 };
@@ -3252,7 +3276,8 @@ function syncHotCard(){
 function buildHotMemo(){
   const cards=S.cards.filter(c=>c&&c.hotArt&&!c.hotSlide);if(!cards.length)return '';
   const line='═'.repeat(44),thin='─'.repeat(44);
-  let out=`📰 핫뉴스 카드 본문 메모 — ${todayStr()} (${cards.length}개)\n카드 순서대로 주제별로 나눠 정리했습니다. [본문 참고용]을 인스타 본문/캡션에 활용하세요.\n${line}\n\n`;
+  const cc=hotCC();
+  let out=`📰 핫뉴스 카드 본문 메모 — ${todayStr()} (${cards.length}개 · ${cc.name} 뉴스)\n카드 순서대로 주제별로 나눠 정리했습니다. [본문 참고용]을 인스타 본문/캡션에 활용하세요.${S.hotCountry!=='kr'?'\n외국어로 만든 카드는 각 항목의 [한국어로 보면]에 무슨 내용인지 한국어로 적었습니다.':''}\n${line}\n\n`;
   cards.forEach((c,i)=>{
     const a=c.hotArt;
     const cands=((a.parsed&&a.parsed.candidates)||[]).slice().sort((x,y)=>(y.score||0)-(x.score||0));
@@ -3261,6 +3286,8 @@ function buildHotMemo(){
     if(cands.length)out+=`• 제목 후보:\n`+cands.map((x,j)=>`   ${j+1}) ${stripBrace(x.title)}${x.score?' ('+x.score+'/10)':''}`).join('\n')+'\n';
     const grp=S.cards.filter(x=>x.hotArt&&x.hotArt.id===a.id&&x.hotSlide>0).sort((x,y)=>x.hotSlide-y.hotSlide);
     if(grp.length)out+=`\n[카드 구성 — ${grp.length+1}장]\n   1장: 제목 카드 (${stripBrace(c.title)})\n`+grp.map(x=>`   ${x.hotSlide+1}장: 기사 사진 ${x.hotSlide+1}`).join('\n')+'\n';
+    const ko=a.parsed&&a.parsed.ko;
+    if(ko&&(ko.title||ko.summary))out+=`\n[한국어로 보면]\n제목: ${stripBrace(ko.title||'-')}\n내용: ${(ko.summary||'-').trim()}${ko.hashtags_ko?'\n해시태그 뜻: '+ko.hashtags_ko:''}\n`;
     out+=`\n[본문 참고용]\n${(c.body||'-').trim()}\n`;
     if(a.hashtags&&a.hashtags.length)out+=`\n[해시태그]\n${a.hashtags.join(' ')}\n`;
     if(a.caption)out+=`\n[인스타 캡션]\n${a.caption.trim()}\n`;
