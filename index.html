@@ -166,6 +166,17 @@ input[type=color]{width:32px;height:26px;background:transparent;border:1px solid
 .hseg button{flex:1;background:transparent;border:1px solid transparent;color:var(--dim);padding:7px 4px;font-size:12px;display:flex;flex-direction:column;align-items:center;gap:2px;border-radius:6px}
 .hseg button small{font-size:9px;font-weight:500;opacity:.8}
 .hseg button.on{background:var(--acc);color:#fff}
+/* 🛍 쇼핑 모드: 카드 미리보기·편집 패널 숨기고 쇼핑 내용만 넓게 */
+body.mode-shop{overflow:auto}
+body.mode-shop .app{display:flex;flex-direction:column;height:auto;min-height:100vh;gap:10px}
+body.mode-shop .center{order:0;position:static;padding:0;box-shadow:none;overflow:visible;flex:0 0 auto}
+body.mode-shop .center > :not(#modeTabs){display:none!important}
+body.mode-shop #modeTabs{width:100%;max-width:900px;margin:0 auto 4px}
+body.mode-shop #rp{display:none!important}
+body.mode-shop aside.panel:not(#rp){order:1;width:100%;max-width:900px;margin:0 auto;overflow:visible;max-height:none}
+body.mode-shop #shopPanel h3{font-size:16px}
+body.mode-shop .shopItem{padding:11px 12px}
+body.mode-shop .shopItem .hk{font-size:14px}
 .shopItem{border:1px solid var(--brd);border-radius:10px;background:var(--panel2);padding:9px 10px;margin-bottom:8px}.shopItem .hk{width:100%;font-size:13px;font-weight:700;margin-bottom:5px}.shopItem .meta{font-size:11px;color:var(--dim);line-height:1.5}.shopItem .row{margin-top:6px}.shopItem input.lk{font-size:11px}.shopItem .n{display:inline-block;background:var(--acc);color:#fff;font-size:10px;font-weight:700;border-radius:5px;padding:1px 6px;margin-right:4px}
 .madj{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:5px}.madj button{font-size:11px;padding:10px 4px;background:var(--panel2);border:1px solid var(--brd);color:var(--txt)}.madj button:active{background:var(--acc)}.madj.four{grid-template-columns:repeat(4,1fr)}
 .mkseg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}.mkseg button{background:var(--panel2);border:1px solid var(--brd);color:var(--dim);font-size:10px;padding:6px 4px}.mkseg button.on{background:var(--acc);border-color:var(--acc);color:#fff}
@@ -313,6 +324,7 @@ input[type=color]{width:32px;height:26px;background:transparent;border:1px solid
 
     <div id="shopPanel" style="display:none">
     <h3>🛍 쇼핑 — 핫뉴스로 찾은 기사 속 팔만한 아이템</h3>
+    <div id="shopKeyNote" class="tip" style="display:none;font-size:10px;margin-bottom:6px">🔑 Claude Key 입력됨 · 키를 바꾸려면 게시물/핫뉴스 탭 맨 위 API 섹션에서 바꾸세요.</div>
     <div class="tip" style="font-size:11px;line-height:1.6;margin-bottom:8px">핫뉴스 탭에서 만든 기사들을 그대로 가져와, 기사마다 <b>쿠팡에서 팔 만한 아이템</b>과 <b>링크트리용 후킹 제목</b>을 뽑습니다.<br>쿠팡은 외부에서 상품을 자동으로 가져오는 것을 막고 있어, 아이템마다 <b>"쿠팡에서 검색 ↗"</b>으로 상품을 고른 뒤 파트너스 링크를 붙여넣으면 링크트리 목록이 완성됩니다.</div>
     <div class="field"><label>기사 소스</label>
       <div class="hseg" id="shopSrcSeg"><button data-src="hot" class="on">🔥 핫뉴스에서 찾은 기사<small id="shopSrcHotSub">기사 없음</small></button><button data-src="text">✍️ 직접 입력<small>제목·본문 붙여넣기</small></button></div>
@@ -727,6 +739,19 @@ function applyMode(){
     const sub=document.getElementById('tabHotSub');if(sub)sub.textContent=S.hotFmt==='reels'?'릴스 1080×1920':'게시물 1080×1350';
   }
   // 좌측 패널: 모드별 섹션 전환
+  document.body.classList.toggle('mode-shop',S.mode==='shop');
+  // 쇼핑 모드: 왼쪽 패널에서 쇼핑 패널 뒤의 섹션(제목 다시 뽑기·AI 이미지·보정·번역)은 숨김, 나올 때 원래대로
+  (()=>{const lp=document.querySelector('.app > aside.panel:not(#rp)'),sp0=document.getElementById('shopPanel');if(!lp||!sp0)return;
+    // 쇼핑 모드에서는 키가 이미 입력돼 있으면 맨 위 API 섹션(게시물 패널 앞)도 접어 쇼핑 내용이 바로 보이게
+    const pp0=document.getElementById('postPanel');const hideApi=S.mode==='shop'&&!!$k.value.trim();
+    let after=false,before=true;[...lp.children].forEach(el=>{
+      if(el===pp0)before=false;
+      if(el===sp0){after=true;return}
+      const hide=S.mode==='shop'&&(after||(before&&hideApi));
+      if(hide){if(el.dataset.shopHide==null){el.dataset.shopHide=el.style.display||'';el.style.display='none'}}
+      else if(el.dataset.shopHide!=null){el.style.display=el.dataset.shopHide;delete el.dataset.shopHide}
+    });
+    const kn=document.getElementById('shopKeyNote');if(kn)kn.style.display=hideApi?'':'none';})();
   const pp=document.getElementById('postPanel'),hp=document.getElementById('hotPanel'),sp=document.getElementById('shopPanel');
   if(pp)pp.style.display=S.mode==='post'?'':'none';
   if(hp)hp.style.display=S.mode==='hot'?'':'none';
