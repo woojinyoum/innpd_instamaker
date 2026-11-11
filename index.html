@@ -312,20 +312,26 @@ input[type=color]{width:32px;height:26px;background:transparent;border:1px solid
     </div>
 
     <div id="shopPanel" style="display:none">
-    <h3>🛍 쇼핑 — 뉴스 속 팔만한 아이템</h3>
-    <div class="tip" style="font-size:11px;line-height:1.6;margin-bottom:8px">핫뉴스에서 고른 기사(또는 직접 붙여넣은 글)를 읽고 <b>쿠팡에서 팔 만한 아이템</b>과 <b>링크트리용 후킹 제목</b>을 뽑습니다.<br>쿠팡은 외부에서 상품을 자동으로 가져오는 것을 막고 있어, 아이템마다 <b>"쿠팡에서 검색 ↗"</b>로 상품을 고른 뒤 쿠팡 파트너스 링크를 붙여넣으면 링크트리용 목록이 완성됩니다.</div>
+    <h3>🛍 쇼핑 — 핫뉴스로 찾은 기사 속 팔만한 아이템</h3>
+    <div class="tip" style="font-size:11px;line-height:1.6;margin-bottom:8px">핫뉴스 탭에서 만든 기사들을 그대로 가져와, 기사마다 <b>쿠팡에서 팔 만한 아이템</b>과 <b>링크트리용 후킹 제목</b>을 뽑습니다.<br>쿠팡은 외부에서 상품을 자동으로 가져오는 것을 막고 있어, 아이템마다 <b>"쿠팡에서 검색 ↗"</b>으로 상품을 고른 뒤 파트너스 링크를 붙여넣으면 링크트리 목록이 완성됩니다.</div>
     <div class="field"><label>기사 소스</label>
-      <div class="hseg" id="shopSrcSeg"><button data-src="hot" class="on">🔥 핫뉴스 기사<small id="shopSrcHotSub">선택된 기사 없음</small></button><button data-src="text">✍️ 직접 입력<small>제목·본문 붙여넣기</small></button></div>
+      <div class="hseg" id="shopSrcSeg"><button data-src="hot" class="on">🔥 핫뉴스에서 찾은 기사<small id="shopSrcHotSub">기사 없음</small></button><button data-src="text">✍️ 직접 입력<small>제목·본문 붙여넣기</small></button></div>
+    </div>
+    <div id="shopArtBox">
+      <div class="field"><label>아이템을 뽑을 기사 <span style="color:var(--dim);font-size:9px">체크한 기사만</span></label>
+        <div id="shopArtList"></div>
+        <div class="row" style="margin-top:4px"><button class="gh" id="shopArtAll" style="font-size:11px">✅ 전체 선택</button><button class="gh" id="shopArtNone" style="font-size:11px">⬜ 전체 해제</button></div>
+      </div>
     </div>
     <div id="shopTextBox" style="display:none">
       <div class="field"><label>제목</label><input type="text" id="shopT" placeholder="뉴스/게시물 제목"/></div>
       <div class="field"><label>본문</label><textarea id="shopB" rows="6" placeholder="기사 본문이나 게시물 내용을 붙여넣으세요"></textarea></div>
     </div>
     <div class="row" style="align-items:flex-end">
-      <div class="field" style="margin:0;flex:0 0 84px"><label>개수</label><select id="shopN"><option value="5">5개</option><option value="8" selected>8개</option><option value="10">10개</option></select></div>
+      <div class="field" style="margin:0;flex:0 0 110px"><label>기사당 아이템</label><select id="shopN"><option value="2">2개</option><option value="3" selected>3개</option><option value="5">5개</option><option value="8">8개</option></select></div>
       <div class="field" style="margin:0;flex:1"><label>추가 지침 (선택)</label><input type="text" id="shopNote" placeholder="예) 1~3만원대 위주, 건강식품 제외"/></div>
     </div>
-    <button class="w100" id="shopBtn" style="margin-top:8px">🛍 팔만한 아이템 찾기 + 링크트리 제목 뽑기</button>
+    <button class="w100" id="shopBtn" style="margin-top:8px">🛍 체크한 기사로 아이템 + 링크트리 제목 뽑기</button>
     <div id="shopStatus" class="tip" style="display:none;margin-top:8px"></div>
     <div id="shopList" style="margin-top:10px"></div>
     </div>
@@ -683,7 +689,7 @@ licCheck();
 /* ===== State ===== */
 // mode: 'post'(게시물) | 'hot'(핫뉴스). 예전 저장값 'reels'는 핫뉴스(릴스 형식)로 매핑
 const _mode0=localStorage.getItem('mode')||'post';
-const S={cards:[],idx:0,ko:null,grid:false,mode:_mode0==='reels'?'hot':_mode0,hotFmt:localStorage.getItem('hot_fmt')||'reels',hotCountry:localStorage.getItem('hot_country')||'kr',shop:{srcMode:'hot',src:null,items:[]},hot:{pool:[],fetchedAt:0,shown:new Set(),list:[],article:null,similar:[]},selOv:null,cropMode:false,ovAdjust:null};
+const S={cards:[],idx:0,ko:null,grid:false,mode:_mode0==='reels'?'hot':_mode0,hotFmt:localStorage.getItem('hot_fmt')||'reels',hotCountry:localStorage.getItem('hot_country')||'kr',shop:{srcMode:'hot',groups:[],sel:{}},hot:{pool:[],fetchedAt:0,shown:new Set(),list:[],article:null,similar:[]},selOv:null,cropMode:false,ovAdjust:null};
 let _ovLastClick={id:null,t:0};
 // Card height per mode
 // 카드 높이: 핫뉴스+릴스 형식만 1920, 그 외 1350
@@ -725,7 +731,7 @@ function applyMode(){
   if(pp)pp.style.display=S.mode==='post'?'':'none';
   if(hp)hp.style.display=S.mode==='hot'?'':'none';
   if(sp)sp.style.display=S.mode==='shop'?'':'none';
-  const ssub=document.getElementById('shopSrcHotSub');if(ssub)ssub.textContent=S.hot&&S.hot.article?(S.hot.article.title||'').slice(0,16)+'…':'선택된 기사 없음';
+  if(S.mode==='shop'&&typeof renderShopArtList==='function')renderShopArtList();
   document.querySelectorAll('#hotFmtSeg button').forEach(b=>b.classList.toggle('on',b.dataset.fmt===S.hotFmt));
   const ro=document.getElementById('hotReelsOpts');if(ro)ro.style.display=S.hotFmt==='reels'?'':'none';
   const fh=document.getElementById('aiFillH');if(fh)fh.textContent=H();
@@ -2677,7 +2683,7 @@ function showRestoreBanner(saved){
   const load=document.createElement('button');load.textContent='이어서 하기';load.style.cssText='padding:7px 14px;font-size:12px;background:var(--acc);border:none;color:#fff;border-radius:7px;cursor:pointer;font-weight:700';
   const ign=document.createElement('button');ign.textContent='새로 시작';ign.style.cssText='padding:7px 12px;font-size:12px;background:var(--panel2);border:1px solid var(--brd);color:var(--dim);border-radius:7px;cursor:pointer';
   load.onclick=()=>{
-    S.cards=saved.cards;S.mode=saved.mode==='reels'?'hot':(saved.mode||'post');if(saved.hotFmt)S.hotFmt=saved.hotFmt;if(saved.shop&&saved.shop.items)S.shop=Object.assign({srcMode:'hot',src:null,items:[]},saved.shop);if(saved.hotCountry&&HOT_CC[saved.hotCountry]){S.hotCountry=saved.hotCountry;localStorage.setItem('hot_country',S.hotCountry);applyHotCountry()}S.idx=Math.min(saved.idx||0,saved.cards.length-1);
+    S.cards=saved.cards;S.mode=saved.mode==='reels'?'hot':(saved.mode||'post');if(saved.hotFmt)S.hotFmt=saved.hotFmt;if(saved.shop&&saved.shop.groups)S.shop=Object.assign({srcMode:'hot',groups:[],sel:{}},saved.shop);if(saved.hotCountry&&HOT_CC[saved.hotCountry]){S.hotCountry=saved.hotCountry;localStorage.setItem('hot_country',S.hotCountry);applyHotCountry()}S.idx=Math.min(saved.idx||0,saved.cards.length-1);
     if(saved.hot&&saved.hot.article){S.hot.article=saved.hot.article;S.hot.similar=saved.hot.similar||[];if(typeof renderHotArticle==='function')renderHotArticle()}
     localStorage.setItem('mode',S.mode);localStorage.setItem('hot_fmt',S.hotFmt);applyMode();render();rEd();if(typeof syncHotCard==='function')syncHotCard();b.remove();toast('이전 작업 불러옴');
   };
@@ -3069,7 +3075,6 @@ async function loadArticle(it){
     const art=await hotFetchArticle(it);
     if(!art.text||art.text.length<80)throw Error('기사 본문을 읽지 못했습니다 (영상·포토 기사이거나 접근이 차단된 사이트). 다른 기사를 선택하세요');
     S.hot.article=art;S.hot.similar=[];
-    if(S.shop.src&&S.shop.src.artId===art.id&&S.shop.items.length)art.shop=S.shop.items;
     sStep(1);
     if(!S.cards.length){S.cards=[mk()];S.idx=0}
     let c=cur();saveSnap();
@@ -3144,7 +3149,7 @@ function renderHotArticle(){
   renderSimGrid();
   document.getElementById('hotSimBtn').onclick=findSimilar;
   const swb=document.getElementById('hotSwapBtn');if(swb)swb.onclick=()=>showReplaceOptions(S.idx);
-  const shb=document.getElementById('hotShopBtn');if(shb)shb.onclick=()=>{S.shop.srcMode='hot';setMode('shop');renderShop();runShop()};
+  const shb=document.getElementById('hotShopBtn');if(shb)shb.onclick=()=>{S.shop.srcMode='hot';S.shop.sel={};hotArticles().forEach(x=>S.shop.sel[x.id]=(x.id===a.id));setMode('shop');renderShop();runShop()};
   document.getElementById('hotAiBtn').onclick=()=>{if(!$oai.value.trim()){toast('OpenAI Key를 입력하세요 (좌측 API 섹션)');return}a.bgIdx=-1;a.simIdx=-1;markHotSel();runAIImage()};
   document.getElementById('hotUpBtn').onclick=()=>document.getElementById('hotUpF').click();
   document.getElementById('hotFitUp').onclick=()=>document.getElementById('hotUpF').click();
@@ -3606,55 +3611,93 @@ function shopLinktreeText(items){return items.map(it=>`${it.hook||it.name}\n${it
 function copyText(t,msg){const done=()=>toast(msg||'복사 완료');if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(done,()=>{const ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();done()})}else{const ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();done()}}
 async function runShop(){
   if(!$k.value.trim()){toast('Claude Key를 입력하세요 (좌측 API 섹션)');return}
-  const useHot=S.shop.srcMode!=='text';let srcObj;
-  if(useHot){const a=S.hot.article;if(!a){toast('핫뉴스 탭에서 기사를 먼저 고르세요 (또는 "직접 입력"을 선택)');return}srcObj={title:a.title,text:a.text,press:a.press,url:a.url,artId:a.id}}
-  else{const t=(document.getElementById('shopT').value||'').trim(),b=(document.getElementById('shopB').value||'').trim();if(!t&&!b){toast('제목이나 본문을 입력하세요');return}srcObj={title:t,text:b,press:'',url:'',artId:''}}
-  const n=+(document.getElementById('shopN').value||8),note=(document.getElementById('shopNote').value||'').trim();
-  sLoad('팔만한 아이템 고르는 중...',srcObj.title,['기사 분석...','쿠팡 아이템 선정...','링크트리 제목 작성...']);sStep(0);
-  try{
-    sStep(1);
-    const res=await api({sys:SHOP_SYS,content:[{type:'text',text:shopPrompt(srcObj,n,note)}],max:2600});
-    sStep(2);
-    const p=pj(res);
-    const items=(p.items||[]).filter(x=>x&&x.name).slice(0,n).map(x=>({name:String(x.name).trim(),keyword:String(x.keyword||x.name).trim(),hook:String(x.hook||x.name).replace(/[{}]/g,'').trim(),why:String(x.why||'').trim(),price:String(x.price||'').trim(),tip:String(x.tip||'').trim(),link:''}));
-    if(!items.length)throw Error('아이템을 뽑지 못했습니다. 다시 시도하세요');
-    S.shop.src=srcObj;S.shop.items=items;
-    if(useHot&&S.hot.article)S.hot.article.shop=items;
-    hLoad();renderShop();autoSave();toast(`아이템 ${items.length}개 + 링크트리 제목 완성!`);
-  }catch(e){hLoad();toast('오류: '+e.message);console.error(e)}
+  const n=+(document.getElementById('shopN').value||3),note=(document.getElementById('shopNote').value||'').trim();
+  let targets=[];
+  if(S.shop.srcMode==='text'){
+    const t=(document.getElementById('shopT').value||'').trim(),b=(document.getElementById('shopB').value||'').trim();
+    if(!t&&!b){toast('제목이나 본문을 입력하세요');return}
+    targets=[{id:'text/'+Date.now(),title:t||b.slice(0,30),text:b,press:'',url:'',art:null}];
+  }else{
+    const arts=hotArticles();if(!arts.length){toast('핫뉴스 탭에서 먼저 뉴스를 찾아 카드를 만드세요');return}
+    targets=arts.filter(a=>S.shop.sel[a.id]!==false).map(a=>({id:a.id,title:a.title,text:a.text,press:a.press,url:a.url,art:a}));
+    if(!targets.length){toast('아이템을 뽑을 기사를 하나 이상 체크하세요');return}
+  }
+  sLoad('팔만한 아이템 고르는 중...',`기사 ${targets.length}개 · 기사당 ${n}개`,targets.map((t,i)=>`${i+1}. ${(t.title||'').slice(0,22)}`));
+  const groups=[];let fails=0;
+  for(let i=0;i<targets.length;i++){
+    const t=targets[i];sStep(i);document.getElementById('lsu').textContent=`${i+1}/${targets.length} · ${t.title}`;
+    try{
+      const res=await api({sys:SHOP_SYS,content:[{type:'text',text:shopPrompt(t,n,note)}],max:2600});
+      const p=pj(res);
+      const items=(p.items||[]).filter(x=>x&&x.name).slice(0,n).map(x=>({name:String(x.name).trim(),keyword:String(x.keyword||x.name).trim(),hook:String(x.hook||x.name).replace(/[{}]/g,'').trim(),why:String(x.why||'').trim(),price:String(x.price||'').trim(),tip:String(x.tip||'').trim(),link:''}));
+      if(!items.length)throw Error('아이템 없음');
+      const g={artId:t.id,title:t.title,url:t.url,press:t.press,items};groups.push(g);if(t.art)t.art.shop=items;
+    }catch(e){fails++;console.warn('쇼핑 실패',t.title,e)}
+  }
+  hLoad();
+  if(!groups.length){toast('아이템을 뽑지 못했습니다. 다시 시도하세요');return}
+  // 같은 기사 결과는 교체, 나머지는 유지
+  const keep=(S.shop.groups||[]).filter(g=>!groups.some(x=>x.artId===g.artId));
+  S.shop.groups=[...groups,...keep];
+  renderShop();autoSave();
+  toast(`기사 ${groups.length}개 → 아이템 ${groups.reduce((s,g)=>s+g.items.length,0)}개 + 링크트리 제목 완성${fails?` (실패 ${fails})`:''}`);
+}
+// 핫뉴스 탭에서 만든 기사들 (표지 카드 기준)
+function hotArticles(){const seen=new Set(),out=[];S.cards.forEach(c=>{const a=c.hotArt;if(a&&!c.hotSlide&&!seen.has(a.id)){seen.add(a.id);out.push(a)}});return out}
+function renderShopArtList(){
+  const box=document.getElementById('shopArtList');if(!box)return;
+  const arts=hotArticles();box.innerHTML='';
+  const sub=document.getElementById('shopSrcHotSub');if(sub)sub.textContent=arts.length?`기사 ${arts.length}개`:'기사 없음';
+  if(!arts.length){box.innerHTML='<div class="tip" style="font-size:10px">핫뉴스 탭에서 "핫한 뉴스 찾기" 또는 "자동 생성"으로 카드를 만들면 여기에 기사가 나타납니다.</div>';return}
+  arts.forEach((a,i)=>{
+    const done=(S.shop.groups||[]).find(g=>g.artId===a.id);
+    const l=document.createElement('label');l.className='hchk';l.style.cssText='display:flex;align-items:flex-start;gap:6px;margin-bottom:4px;font-size:11px;line-height:1.4';
+    const cb=document.createElement('input');cb.type='checkbox';cb.checked=S.shop.sel[a.id]!==false;cb.style.marginTop='2px';cb.onchange=()=>{S.shop.sel[a.id]=cb.checked;autoSave()};
+    const sp=document.createElement('span');sp.innerHTML=`<b>${i+1}.</b> ${hEsc(a.title)}<span style="color:var(--dim)"> · ${hEsc(a.press||'')}${done?' · 🛍 '+done.items.length+'개 완료':''}</span>`;
+    l.appendChild(cb);l.appendChild(sp);box.appendChild(l);
+  });
 }
 function renderShop(){
   const box=document.getElementById('shopList');if(!box)return;
   document.querySelectorAll('#shopSrcSeg button').forEach(b=>b.classList.toggle('on',b.dataset.src===(S.shop.srcMode||'hot')));
-  const tb=document.getElementById('shopTextBox');if(tb)tb.style.display=S.shop.srcMode==='text'?'':'none';
-  const items=S.shop.items||[];box.innerHTML='';
-  if(!items.length){box.innerHTML='<div class="tip">아직 뽑은 아이템이 없습니다. 핫뉴스에서 기사를 고르거나 글을 붙여넣고 버튼을 누르세요.</div>';return}
-  const src=S.shop.src||{};
+  const tb=document.getElementById('shopTextBox'),ab=document.getElementById('shopArtBox');
+  if(tb)tb.style.display=S.shop.srcMode==='text'?'':'none';if(ab)ab.style.display=S.shop.srcMode==='text'?'none':'';
+  renderShopArtList();
+  const groups=S.shop.groups||[];box.innerHTML='';
+  if(!groups.length){box.innerHTML='<div class="tip">아직 뽑은 아이템이 없습니다. 위에서 기사를 체크하고 버튼을 누르세요.</div>';return}
+  const total=groups.reduce((s,g)=>s+g.items.length,0);
   const head=document.createElement('div');head.className='hbox';
-  head.innerHTML=`<h4>🛍 "${hEsc((src.title||'').slice(0,40))}" 속 아이템 ${items.length}개</h4>
-    <div class="tip" style="font-size:10px;margin-bottom:6px">① 아이템마다 <b>쿠팡에서 검색 ↗</b> → 상품 선택 → 쿠팡 파트너스에서 링크 생성 → 아래 칸에 붙여넣기 ② <b>링크트리용 복사</b>로 한 번에 옮기기. 제목·검색어는 직접 고쳐도 됩니다.</div>
-    <div class="row"><button id="shopCopyLT">📋 링크트리용 복사 (제목+링크)</button><button class="gh" id="shopCopyAll">📋 상세 목록 복사</button></div>
-    <div class="row" style="margin-top:6px"><button class="gh" id="shopMemo">📝 메모장(.txt) 받기</button><button class="gh" id="shopAgain">🔄 다시 뽑기</button></div>`;
+  head.innerHTML=`<h4>🛍 기사 ${groups.length}개 · 아이템 ${total}개</h4>
+    <div class="tip" style="font-size:10px;margin-bottom:6px">① 아이템마다 <b>쿠팡에서 검색 ↗</b> → 상품 선택 → 쿠팡 파트너스에서 링크 생성 → 링크 칸에 붙여넣기 ② <b>링크트리용 복사</b>로 한 번에 옮기기. 제목·검색어는 직접 고쳐도 됩니다.</div>
+    <div class="row"><button id="shopCopyLT">📋 링크트리용 전체 복사</button><button class="gh" id="shopCopyAll">📋 상세 목록 복사</button></div>
+    <div class="row" style="margin-top:6px"><button class="gh" id="shopMemo">📝 메모장(.txt) 받기</button><button class="gh" id="shopClear">🗑 결과 비우기</button></div>`;
   box.appendChild(head);
-  items.forEach((it,i)=>{
-    const d=document.createElement('div');d.className='shopItem';
-    d.innerHTML=`<div><span class="n">${i+1}</span><input class="hk" data-k="hook" value="${hEsc(it.hook)}" placeholder="링크트리 제목"/></div>
-      <div class="meta">🛒 <b>${hEsc(it.name)}</b>${it.price?' · '+hEsc(it.price):''}${it.why?'<br>💡 '+hEsc(it.why):''}${it.tip?'<br>🔎 '+hEsc(it.tip):''}</div>
-      <div class="row" style="align-items:center"><input type="text" data-k="keyword" value="${hEsc(it.keyword)}" placeholder="쿠팡 검색어" style="font-size:11px"/><a class="cpgo" href="${cpSearchUrl(it.keyword)}" target="_blank" rel="noopener" style="flex:0 0 auto;font-size:11px;padding:7px 10px;border-radius:7px;background:var(--acc);color:#fff;text-decoration:none;font-weight:700">🔎 쿠팡에서 검색 ↗</a></div>
-      <div class="row" style="align-items:center"><input type="text" class="lk" data-k="link" value="${hEsc(it.link||'')}" placeholder="쿠팡 파트너스 링크 붙여넣기 (비우면 검색 링크 사용)"/><button class="gh cp1" style="flex:0 0 auto;font-size:11px">📋</button><button class="gh rm" style="flex:0 0 auto;font-size:11px">🗑</button></div>`;
-    d.querySelectorAll('input[data-k]').forEach(inp=>inp.oninput=e=>{it[inp.dataset.k]=e.target.value;if(inp.dataset.k==='keyword')d.querySelector('.cpgo').href=cpSearchUrl(e.target.value);autoSave()});
-    d.querySelector('.cp1').onclick=()=>copyText(`${it.hook||it.name}\n${it.link||cpSearchUrl(it.keyword)}`,'제목+링크 복사');
-    d.querySelector('.rm').onclick=()=>{items.splice(i,1);if(S.hot.article&&S.hot.article.shop===items){}renderShop();autoSave()};
-    box.appendChild(d);
+  groups.forEach((g,gi)=>{
+    const gh=document.createElement('div');gh.style.cssText='font-size:11px;font-weight:700;color:var(--acc);margin:10px 0 6px;line-height:1.4';
+    gh.innerHTML=`📰 ${hEsc(g.title)} <span style="color:var(--dim);font-weight:500">· ${hEsc(g.press||'')}</span>`;box.appendChild(gh);
+    g.items.forEach((it,i)=>{
+      const d=document.createElement('div');d.className='shopItem';
+      d.innerHTML=`<div><span class="n">${gi+1}-${i+1}</span><input class="hk" data-k="hook" value="${hEsc(it.hook)}" placeholder="링크트리 제목"/></div>
+        <div class="meta">🛒 <b>${hEsc(it.name)}</b>${it.price?' · '+hEsc(it.price):''}${it.why?'<br>💡 '+hEsc(it.why):''}${it.tip?'<br>🔎 '+hEsc(it.tip):''}</div>
+        <div class="row" style="align-items:center"><input type="text" data-k="keyword" value="${hEsc(it.keyword)}" placeholder="쿠팡 검색어" style="font-size:11px"/><a class="cpgo" href="${cpSearchUrl(it.keyword)}" target="_blank" rel="noopener" style="flex:0 0 auto;font-size:11px;padding:7px 10px;border-radius:7px;background:var(--acc);color:#fff;text-decoration:none;font-weight:700">🔎 쿠팡에서 검색 ↗</a></div>
+        <div class="row" style="align-items:center"><input type="text" class="lk" data-k="link" value="${hEsc(it.link||'')}" placeholder="쿠팡 파트너스 링크 붙여넣기 (비우면 검색 링크 사용)"/><button class="gh cp1" style="flex:0 0 auto;font-size:11px">📋</button><button class="gh rm" style="flex:0 0 auto;font-size:11px">🗑</button></div>`;
+      d.querySelectorAll('input[data-k]').forEach(inp=>inp.oninput=e=>{it[inp.dataset.k]=e.target.value;if(inp.dataset.k==='keyword')d.querySelector('.cpgo').href=cpSearchUrl(e.target.value);autoSave()});
+      d.querySelector('.cp1').onclick=()=>copyText(`${it.hook||it.name}\n${it.link||cpSearchUrl(it.keyword)}`,'제목+링크 복사');
+      d.querySelector('.rm').onclick=()=>{g.items.splice(i,1);if(!g.items.length)S.shop.groups=S.shop.groups.filter(x=>x!==g);renderShop();autoSave()};
+      box.appendChild(d);
+    });
   });
-  document.getElementById('shopCopyLT').onclick=()=>copyText(shopLinktreeText(items),'링크트리용 목록 복사 완료 — 링크트리에 붙여넣으세요');
-  document.getElementById('shopCopyAll').onclick=()=>copyText(`🛍 "${src.title||''}" 쇼핑 아이템\n\n`+shopLinesOf(items),'상세 목록 복사 완료');
-  document.getElementById('shopMemo').onclick=()=>{const t=`🛍 쇼핑 아이템 · 링크트리 — ${todayStr()}\n기사: ${src.title||''}${src.url?'\n원문: '+src.url:''}\n${'═'.repeat(44)}\n\n`+shopLinesOf(items)+'\n';const b=new Blob(['﻿'+t.replace(/\r?\n/g,'\r\n')],{type:'text/plain;charset=utf-8'});const u=URL.createObjectURL(b);dL(u,`쇼핑아이템_${todayStr()}.txt`);setTimeout(()=>URL.revokeObjectURL(u),3000)};
-  document.getElementById('shopAgain').onclick=runShop;
+  const allItems=()=>groups.flatMap(g=>g.items);
+  document.getElementById('shopCopyLT').onclick=()=>copyText(groups.map(g=>`# ${g.title}\n`+shopLinktreeText(g.items)).join('\n\n'),'링크트리용 목록 복사 완료 — 링크트리에 붙여넣으세요');
+  document.getElementById('shopCopyAll').onclick=()=>copyText(groups.map(g=>`🛍 "${g.title}"\n`+shopLinesOf(g.items)).join('\n\n'),'상세 목록 복사 완료');
+  document.getElementById('shopMemo').onclick=()=>{const t=`🛍 쇼핑 아이템 · 링크트리 — ${todayStr()}\n${'═'.repeat(44)}\n\n`+groups.map((g,i)=>`【${i+1}】 ${g.title}${g.url?'\n원문: '+g.url:''}\n${'─'.repeat(44)}\n`+shopLinesOf(g.items)).join('\n\n')+'\n';const b=new Blob(['﻿'+t.replace(/\r?\n/g,'\r\n')],{type:'text/plain;charset=utf-8'});const u=URL.createObjectURL(b);dL(u,`쇼핑아이템_${todayStr()}.txt`);setTimeout(()=>URL.revokeObjectURL(u),3000)};
+  document.getElementById('shopClear').onclick=()=>{if(!confirm('뽑은 쇼핑 아이템을 모두 지울까요?'))return;S.shop.groups=[];hotArticles().forEach(a=>{delete a.shop});renderShop();autoSave()};
 }
 function shopInit(){
   document.querySelectorAll('#shopSrcSeg button').forEach(b=>b.onclick=()=>{S.shop.srcMode=b.dataset.src;renderShop()});
   document.getElementById('shopBtn').onclick=runShop;
+  document.getElementById('shopArtAll').onclick=()=>{hotArticles().forEach(a=>S.shop.sel[a.id]=true);renderShopArtList()};
+  document.getElementById('shopArtNone').onclick=()=>{hotArticles().forEach(a=>S.shop.sel[a.id]=false);renderShopArtList()};
 }
 
 /* --- 초기화: 버튼 바인딩 --- */
