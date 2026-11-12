@@ -308,7 +308,7 @@ body.mode-shop .shopItem .hk{font-size:14px}
         <div class="row"><div class="field"><label>그라데이션 높이 <span id="mkGhV">60</span>%</label><input type="range" id="mkGh" min="0" max="100" value="60"/></div><div class="field"><label>그라데이션 진하기 <span id="mkGoV">95</span></label><input type="range" id="mkGo" min="0" max="100" value="95"/></div></div>
         <div class="row" style="margin-top:4px"><button id="mkSave">💾 프리셋 저장 + 지금 카드에 적용</button><button class="gh" id="mkCancel" style="flex:0 0 auto">닫기</button></div>
       </div>
-      <label class="hchk" style="margin-top:8px"><input type="checkbox" id="hotAutoShop" checked/>🛍 쇼핑 제안도 같이 (기사마다 쿠팡 상품 링크 + 링크트리 제목 → 쇼핑 탭)</label>
+      <label class="hchk" style="margin-top:8px"><input type="checkbox" id="hotAutoShop"/>🛍 쇼핑 제안도 같이 만들기 (원할 때만 · 기사마다 쿠팡 상품 링크 + 링크트리 제목, Claude 웹 검색 비용 추가 · 나중에 쇼핑 탭에서 따로 해도 됨)</label>
       <label class="hchk" style="margin-top:8px"><input type="checkbox" id="hotAutoFill"/>📐 사진 여백을 AI로 꽉 채우기 (OpenAI 비용 · 장당 1회, 끄면 블러 배경으로 채움)</label>
       <button class="w100" id="hotAutoBtn" style="margin-top:8px">⚡ 핫뉴스 <span id="hotAutoNLbl">6</span>개 자동 생성</button>
       <div id="hotAutoStatus" style="display:none;margin-top:8px;font-size:10px;line-height:1.6;color:var(--dim);max-height:150px;overflow:auto;padding:6px 8px;background:var(--panel2);border-radius:6px;white-space:pre-wrap"></div>
@@ -3572,6 +3572,8 @@ async function autoHot(){
       }
       log(`🛍 쇼핑 제안: 기사 ${okS}개 완료 → 상단 "🛍 쇼핑" 탭에서 상품 링크·링크트리 제목 확인`);
       if(typeof renderShop==='function')renderShop();
+    }else{
+      log(`🛍 쇼핑 제안은 만들지 않았습니다 → 원하면 상단 "🛍 쇼핑" 탭에서 "기사 ${made.length}개로 쇼핑 제안 만들기"`);
     }
     const noPic=cards.filter(c=>!c.media).length;
     log(`🎉 완료: 뉴스 ${made.length}개 · 카드 ${cards.length}장${cards.length>made.length?` (사진 여러 장 기사 ${cards.filter(c=>c.hotTotal>1&&!c.hotSlide).length}개 포함)`:''}${fails?` · 건너뜀 ${fails}`:''}${noPic?` · 사진 없는 카드 ${noPic}장은 배경을 직접 고르세요`:''}`);
@@ -3752,8 +3754,13 @@ function renderShop(){
   const total=groups.reduce((s,g)=>s+g.items.length,0),withUrl=groups.reduce((s,g)=>s+g.items.filter(x=>x.url||x.link).length,0);
   const st=document.getElementById('shopSummaryTxt'),opts=document.getElementById('shopOpts');
   if(!groups.length){
-    if(st)st.innerHTML=hotArticles().length?`핫뉴스 기사 ${hotArticles().length}개가 있습니다. 아래 <b>⚙️ 직접 뽑기</b>를 열어 "상품 링크 + 링크트리 제목 뽑기"를 누르세요.`:'아직 제안이 없습니다. 핫뉴스 탭에서 자동 생성하면(🛍 쇼핑 제안 체크) 기사마다 상품 링크와 링크트리 제목이 여기 쌓입니다.';
-    if(opts)opts.open=true;return;
+    const na=hotArticles().length;
+    if(st){
+      if(na){st.innerHTML=`핫뉴스에서 만든 기사 <b>${na}개</b>가 있습니다. 원하면 아래 버튼으로 기사마다 쿠팡 상품 링크와 링크트리 제목을 뽑습니다. <span style="color:var(--dim);font-size:11px">(Claude 웹 검색 비용이 듭니다 · 기사 선택·개수는 ⚙️ 설정에서)</span><div class="row" style="margin-top:8px"><button id="shopGoBtn">🛍 기사 ${na}개로 쇼핑 제안 만들기</button></div>`;
+        const gb=document.getElementById('shopGoBtn');if(gb)gb.onclick=()=>{S.shop.srcMode='hot';runShop()};}
+      else st.innerHTML='아직 기사가 없습니다. 핫뉴스 탭에서 뉴스를 찾아 카드를 만든 뒤, 원하면 여기서 쇼핑 제안을 만들 수 있습니다.';
+    }
+    if(opts)opts.open=false;return;
   }
   if(st)st.innerHTML=`<b>기사 ${groups.length}개 · 아이템 ${total}개 · 상품 링크 ${withUrl}개</b><br><span style="color:var(--dim);font-size:11px">아이템의 <b>링크트리에 넣을 링크</b> 칸에 쿠팡 파트너스 링크를 붙여넣으면(비우면 상품 링크 사용) 아래 "링크트리용 전체 복사"로 한 번에 옮길 수 있습니다.</span>`;
   if(opts&&opts.open===undefined)opts.open=false;
@@ -3820,6 +3827,7 @@ function hotInit(){
   const an=$('hotAutoN');an.value=localStorage.getItem('hot_auto_n')||'6';if(!an.value)an.value='6';
   const syncN=()=>{$('hotAutoNLbl').textContent=an.value;localStorage.setItem('hot_auto_n',an.value)};an.onchange=syncN;syncN();
   const af=$('hotAutoFill');af.checked=localStorage.getItem('hot_auto_fill')==='1';af.onchange=()=>localStorage.setItem('hot_auto_fill',af.checked?'1':'0');
+  const ash=$('hotAutoShop');ash.checked=localStorage.getItem('hot_auto_shop')==='1';ash.onchange=()=>localStorage.setItem('hot_auto_shop',ash.checked?'1':'0');
   const hp=$('hotPsSel');hp.onchange=()=>{localStorage.setItem('hot_ps',hp.value);schedPreview();toast(hp.value?`자동 생성 스타일: ${hp.value}`:'자동 생성 스타일: 현재 카드 그대로')};
   if(typeof refreshPSDropdown==='function')refreshPSDropdown();
   mkBind();
