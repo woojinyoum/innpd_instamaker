@@ -51,6 +51,7 @@ git push
   - 배경 사진: 기사 사진 / 유사 기사 사진(네이버 뉴스 검색 썸네일) / AI 생성(OpenAI) / 직접 업로드. 외부 이미지는 `images.weserv.nl` 프록시로 받아 data URL화(캔버스 내보내기 가능)
   - 부가: 키워드 검색·기사 URL 직접 입력, 인스타 캡션+해시태그 생성(복사), 번역 버튼 그대로 사용 가능
   - 릴스 형식 다운로드 시 정지 이미지 카드도 MP4로 렌더(`renderStillVideoCard`, 무음 오디오 트랙 포함)
+  - 릴스 전환: 기사 사진이 2장 이상이면 `prepReelFrames`가 추가 사진을 `c.reelFrames`(화면 채움 data URL)로 준비하고, `renderStillVideoCard(c,secs,kb,{frames,transition,sfx})`가 사진당 secs초씩 이어 붙여 경계마다 크로스페이드/슬라이드/줌(`mix`는 번갈아) 전환 + `sfx/whoosh-*.mp3`(Epidemic Sound 라이선스 음원) 효과음을 Web Audio로 녹음 트랙에 예약. 옵션 `#hotReelMulti`/`#hotReelTr`/`#hotReelSfx`(localStorage hot_reel_*).
   - ⚡ 자동 생성(`autoHot`): 랭킹 수집 → 주제 N개 선별 → 기사별 카드 생성(프리셋 스타일 `applyStyle` 일괄 적용, 대표 사진, 후킹 제목·기승전결 요약 `hotTitlePrompt`) → 각 카드에 `c.hotArt` 연결(카드 이동 시 `syncHotCard`가 기사 패널·제목 후보 동기화)
   - 여러 장은 기사 사진이 2장 이상일 때만(게시물 형식): 1장 제목 카드 + 나머지 사진 카드(`makePhotoCards`, 제목·그라데이션 없음, `fitPhotoToCard`로 블러 배경 채움 또는 AI 채우기). `c.hotSlide`/`c.hotTotal`, 교체는 `hotGroupIdx`로 그룹 통째, 목록·메모장은 표지(`!c.hotSlide`) 기준
   - 다운로드 ZIP(`hotnews_YYYY-MM-DD.zip`)에 본문 메모장 `본문메모_YYYY-MM-DD.txt` 동봉(`buildHotMemo`: 카드별 제목·출처·원문·제목 후보·본문(참고용)·해시태그·캡션, UTF-8 BOM + CRLF)
