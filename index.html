@@ -926,7 +926,18 @@ const drop=(dId,tId,pId,fId,cb)=>{const d=document.getElementById(dId),f=documen
 drop('d1','d1t','d1p','f1',u=>img1=u);drop('d2','d2t','d2p','f2',u=>img2=u);
 
 /* Claude API */
-const api=async({sys,content,max=2000})=>{const k=$k.value.trim();if(!k)throw Error('API 키');const payload={model:$m.value,max_tokens:max,system:sys,messages:[{role:'user',content}]};console.log('%c[API 전송]','color:#0ea5e9;font-weight:bold',{model:payload.model,system:sys,userContent:content});const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':k,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify(payload)});if(!r.ok){const t=await r.text();throw Error(`API ${r.status}: ${t.slice(0,200)}`)}const data=await r.json();console.log('%c[API 응답]','color:#22c55e',data);const blocks=data.content||[];const textBlock=blocks.find(b=>b&&b.type==='text'&&typeof b.text==='string');const text=textBlock?textBlock.text:(blocks.map(b=>b&&b.text).filter(Boolean).join('\n'));if(!text)throw Error('응답에 텍스트가 없습니다'+(data.stop_reason?' (stop: '+data.stop_reason+')':''));return text};
+// Claude API 오류 → 바로 이해되는 안내 문구
+function friendlyApiError(status,text){
+  const t=String(text||'');
+  if(/credit balance is too low|insufficient_quota|purchase credits/i.test(t))return 'Claude API 크레딧이 부족합니다 → console.anthropic.com → Plans & Billing 에서 충전한 뒤 다시 시도하세요';
+  if(status===401||/invalid x-api-key|authentication_error/i.test(t))return 'Claude API 키가 잘못되었거나 만료되었습니다 → 좌측 API 섹션에서 키를 다시 입력하세요';
+  if(status===429||/rate_limit/i.test(t))return 'Claude API 요청 한도 초과 → 1분 정도 기다렸다가 다시 시도하세요';
+  if(status===529||/overloaded/i.test(t))return 'Claude API가 혼잡합니다 → 잠시 후 다시 시도하세요';
+  if(status===404||/not_found_error/i.test(t))return '선택한 모델을 사용할 수 없습니다 → 좌측 "모델"에서 다른 모델을 고르세요';
+  return `API ${status}: ${t.slice(0,200)}`;
+}
+const isFatalApiError=msg=>/크레딧이 부족|키가 잘못|요청 한도 초과|모델을 사용할 수 없/.test(String(msg||''));
+const api=async({sys,content,max=2000})=>{const k=$k.value.trim();if(!k)throw Error('API 키');const payload={model:$m.value,max_tokens:max,system:sys,messages:[{role:'user',content}]};console.log('%c[API 전송]','color:#0ea5e9;font-weight:bold',{model:payload.model,system:sys,userContent:content});const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':k,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify(payload)});if(!r.ok){const t=await r.text();throw Error(friendlyApiError(r.status,t))}const data=await r.json();console.log('%c[API 응답]','color:#22c55e',data);const blocks=data.content||[];const textBlock=blocks.find(b=>b&&b.type==='text'&&typeof b.text==='string');const text=textBlock?textBlock.text:(blocks.map(b=>b&&b.text).filter(Boolean).join('\n'));if(!text)throw Error('응답에 텍스트가 없습니다'+(data.stop_reason?' (stop: '+data.stop_reason+')':''));return text};
 // 서버 도구(웹 검색 등) 포함 호출: stop_reason이 pause_turn이면 응답을 붙여 이어서 요청
 const apiTools=async({sys,content,tools,max=4000,maxTurns=4})=>{
   const k=$k.value.trim();if(!k)throw Error('API 키');
@@ -935,7 +946,7 @@ const apiTools=async({sys,content,tools,max=4000,maxTurns=4})=>{
     const payload={model:$m.value,max_tokens:max,system:sys,messages,tools};
     console.log('%c[API+tools 전송]','color:#0ea5e9;font-weight:bold',{model:payload.model,tools:tools.map(t=>t.type)});
     const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':k,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify(payload)});
-    if(!r.ok){const t=await r.text();throw Error(`API ${r.status}: ${t.slice(0,200)}`)}
+    if(!r.ok){const t=await r.text();throw Error(friendlyApiError(r.status,t))}
     const data=await r.json();const blocks=data.content||[];
     console.log('%c[API+tools 응답]','color:#22c55e',{stop:data.stop_reason,blocks:blocks.map(b=>b.type)});
     text=blocks.filter(b=>b&&b.type==='text'&&typeof b.text==='string').map(b=>b.text).join('\n');
@@ -3028,7 +3039,7 @@ JSON만 답변: {"picks":[{"id":"oid/aid","why":"한 줄 이유(15자 내)"}]}`;
     const res=await api({sys,content:[{type:'text',text:txt}],max:1200});
     const p=pj(res);const byId=new Map(cand.map(it=>[it.id,it]));
     (p.picks||[]).forEach(x=>{const it=byId.get(String(x.id||'').trim());if(it&&!picks.includes(it)){it.why=x.why||'';picks.push(it)}});
-  }catch(e){console.warn('주제 선별 실패 → 휴리스틱',e);toast('AI 선별 실패, 랭킹 순으로 표시');}
+  }catch(e){console.warn('주제 선별 실패 → 휴리스틱',e);if(isFatalApiError(e.message))throw e;toast('AI 선별 실패, 랭킹 순으로 표시');}
   for(const it of cand){if(picks.length>=n)break;if(!picks.includes(it))picks.push(it)}
   return picks.slice(0,n);
 }
@@ -3656,7 +3667,9 @@ async function autoHot(){
         const {c,extra,fillNote}=await buildHotCard(it,style,{fill:wantFill,note,progress:s=>{document.getElementById('lsu').textContent=`${k}/${n} · ${s}`}});
         cards.push(c,...extra);made.push(it);
         log(`✅ ${k}. ${stripBrace(c.title)}${c.media?'':' · 사진 없음'}${fillNote}`);
-      }catch(e){fails++;log(`⏭ 건너뜀: ${it.title} — ${e.message}`);console.warn(e)}
+      }catch(e){
+        if(isFatalApiError(e.message)){log('❌ 중단: '+e.message);throw Error(e.message)}
+        fails++;log(`⏭ 건너뜀: ${it.title} — ${e.message}`);console.warn(e)}
     }
     if(!cards.length)throw Error('카드를 하나도 만들지 못했습니다. 잠시 후 다시 시도하세요');
     sStep(2);
@@ -3829,7 +3842,7 @@ async function runShop(){
       const items=await shopForArticle(t,n,note,useS);
       if(t.art)t.art.shop=items;else{S.shop.textGroups=S.shop.textGroups||[];S.shop.textGroups.unshift({artId:t.id,title:t.title,press:'',url:'',items})}
       ok++;
-    }catch(e){fails++;console.warn('쇼핑 실패',t.title,e)}
+    }catch(e){if(isFatalApiError(e.message)){hLoad();toast('❌ '+e.message);return}fails++;console.warn('쇼핑 실패',t.title,e)}
   }
   hLoad();
   if(!ok){toast('아이템을 뽑지 못했습니다. 다시 시도하세요');return}
