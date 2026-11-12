@@ -351,6 +351,19 @@ body.mode-shop .shopItem .hk{font-size:14px}
         <button class="w100" id="shopBtn" style="margin-top:8px">🛍 체크한 기사로 상품 링크 + 링크트리 제목 뽑기</button>
       </div>
     </details>
+    <details id="cpOpts" style="margin-bottom:8px">
+      <summary style="font-size:12px;font-weight:700;cursor:pointer;color:var(--acc)">🔗 쿠팡 파트너스 자동 링크 <span id="cpOptsState" style="font-weight:500;color:var(--dim)"></span></summary>
+      <div style="padding:8px 2px 0">
+        <div class="tip" style="font-size:10px;line-height:1.6;margin-bottom:8px">파트너스에 <b>로그인만</b> 되어 있으면 브라우저 보안 때문에 이 앱이 그 로그인을 쓸 수 없습니다. 대신 파트너스가 제공하는 <b>API 키</b>로 상품 링크를 파트너스 링크(link.coupang.com/a/…)로 자동 변환합니다. 한 번만 설정하면 이후엔 자동입니다.<br>
+        ① <a href="https://partners.coupang.com/#affiliate/ws/link" target="_blank" rel="noopener" style="color:var(--acc)">쿠팡 파트너스 ↗</a> → 링크 생성 → <b>API 키 발급</b>(Access Key · Secret Key) &nbsp; ② 쿠팡 API는 브라우저 직접 호출이 막혀 있어 <b>무료 중계 서버</b>가 하나 필요합니다. 아래 "중계 서버 코드 복사" → <a href="https://dash.cloudflare.com" target="_blank" rel="noopener" style="color:var(--acc)">Cloudflare ↗</a> Workers & Pages → Create Worker → Edit code에 붙여넣고 Deploy → 주소(…workers.dev)를 아래 칸에 &nbsp; ③ 저장 후 "연결 테스트"</div>
+        <div class="field"><label>Access Key</label><input type="text" id="cpAk" placeholder="쿠팡 파트너스 Access Key" autocomplete="off"/></div>
+        <div class="field"><label>Secret Key</label><input type="password" id="cpSk" placeholder="쿠팡 파트너스 Secret Key" autocomplete="off"/></div>
+        <div class="field"><label>중계 서버(프록시) URL</label><input type="text" id="cpProxy" placeholder="https://이름.계정.workers.dev"/></div>
+        <div class="field"><label>subId (선택 · 성과 구분용)</label><input type="text" id="cpSub" placeholder="예) instanews"/></div>
+        <div class="row"><button class="gh" id="cpCodeBtn" style="font-size:11px">📋 중계 서버 코드 복사</button><button class="gh" id="cpTestBtn" style="font-size:11px">🔌 연결 테스트</button></div>
+        <label class="hchk" style="margin-top:8px"><input type="checkbox" id="cpAuto" checked/>🔗 쇼핑 제안을 만들 때 파트너스 링크도 자동으로 붙이기</label>
+      </div>
+    </details>
     <div id="shopStatus" class="tip" style="display:none;margin-top:8px"></div>
     <div id="shopList" style="margin-top:4px"></div>
     </div>
@@ -3685,6 +3698,7 @@ async function shopForArticle(src,n,note,useSearch){
     return {name:String(x.name).trim(),product:String(x.product||'').trim(),keyword:String(x.keyword||x.name).trim(),hook:String(x.hook||x.name).replace(/[{}]/g,'').trim(),why:String(x.why||'').trim(),price:String(x.price||'').trim(),tip:String(x.tip||'').trim(),url:m?m[0]:'',link:''};
   });
   if(!items.length)throw Error('아이템 없음');
+  if(cpAutoOn()){try{await cpAttachLinks(items)}catch(e){console.warn('파트너스 링크 변환 실패',e);toast('파트너스 링크 변환 실패: '+e.message)}}
   return items;
 }
 function shopLinesOf(items,ind){
@@ -3749,17 +3763,18 @@ function renderShop(){
   if(tb)tb.style.display=S.shop.srcMode==='text'?'':'none';if(ab)ab.style.display=S.shop.srcMode==='text'?'none':'';
   renderShopArtList();
   const groups=shopGroups();box.innerHTML='';
-  const total=groups.reduce((s,g)=>s+g.items.length,0),withUrl=groups.reduce((s,g)=>s+g.items.filter(x=>x.url||x.link).length,0);
+  const total=groups.reduce((s,g)=>s+g.items.length,0),withUrl=groups.reduce((s,g)=>s+g.items.filter(x=>x.url||x.link).length,0),withAff=groups.reduce((s,g)=>s+g.items.filter(x=>x.link&&/link\.coupang\.com/.test(x.link)).length,0);
   const st=document.getElementById('shopSummaryTxt'),opts=document.getElementById('shopOpts');
   if(!groups.length){
     if(st)st.innerHTML=hotArticles().length?`핫뉴스 기사 ${hotArticles().length}개가 있습니다. 아래 <b>⚙️ 직접 뽑기</b>를 열어 "상품 링크 + 링크트리 제목 뽑기"를 누르세요.`:'아직 제안이 없습니다. 핫뉴스 탭에서 자동 생성하면(🛍 쇼핑 제안 체크) 기사마다 상품 링크와 링크트리 제목이 여기 쌓입니다.';
     if(opts)opts.open=true;return;
   }
-  if(st)st.innerHTML=`<b>기사 ${groups.length}개 · 아이템 ${total}개 · 상품 링크 ${withUrl}개</b><br><span style="color:var(--dim);font-size:11px">아이템의 <b>링크트리에 넣을 링크</b> 칸에 쿠팡 파트너스 링크를 붙여넣으면(비우면 상품 링크 사용) 아래 "링크트리용 전체 복사"로 한 번에 옮길 수 있습니다.</span>`;
+  if(st)st.innerHTML=`<b>기사 ${groups.length}개 · 아이템 ${total}개 · 상품 링크 ${withUrl}개 · 파트너스 링크 ${withAff}개</b><br><span style="color:var(--dim);font-size:11px">${cpReady()?'파트너스 링크는 자동으로 붙습니다. 빠진 게 있으면 "🔗 파트너스 링크 만들기"를 누르세요.':'아래 <b>🔗 쿠팡 파트너스 자동 링크</b>를 설정하면 상품 링크가 파트너스 링크로 자동 변환됩니다. 설정 전엔 <b>링크트리에 넣을 링크</b> 칸에 직접 붙여넣으세요.'} 그다음 "링크트리용 전체 복사"로 한 번에 옮기면 됩니다.</span>`;
   if(opts&&opts.open===undefined)opts.open=false;
   const head=document.createElement('div');head.className='row';head.style.marginBottom='8px';
-  head.innerHTML=`<button id="shopCopyLT">📋 링크트리용 전체 복사</button><button class="gh" id="shopCopyAll">📋 상세 목록</button><button class="gh" id="shopMemo">📝 메모장</button><button class="gh" id="shopClear" style="flex:0 0 auto">🗑</button>`;
+  head.innerHTML=`<button id="shopCopyLT">📋 링크트리용 전체 복사</button><button class="gh" id="shopCpAll">🔗 파트너스 링크 만들기</button><button class="gh" id="shopCopyAll">📋 상세 목록</button><button class="gh" id="shopMemo">📝 메모장</button><button class="gh" id="shopClear" style="flex:0 0 auto">🗑</button>`;
   box.appendChild(head);
+  head.querySelector('#shopCpAll').onclick=cpAttachAll;
   groups.forEach((g,gi)=>{
     const gh=document.createElement('div');gh.className='hbox';gh.style.cssText='margin:10px 0 6px;padding:8px 10px';
     gh.innerHTML=`<div style="font-size:12px;font-weight:800;line-height:1.4">📰 ${hEsc(g.title)}</div><div style="font-size:10px;color:var(--dim);margin-top:2px">${hEsc(g.press||'')}${g.url?' · <a href="'+hEsc(g.url)+'" target="_blank" rel="noopener" style="color:var(--acc);text-decoration:none">원문 ↗</a>':''} · 아이템 ${g.items.length}개 <button class="gh gre" style="font-size:10px;padding:3px 8px;margin-left:6px">🔄 이 기사만 다시</button></div>`;
@@ -3768,10 +3783,10 @@ function renderShop(){
     g.items.forEach((it,i)=>{
       const d=document.createElement('div');d.className='shopItem';
       d.innerHTML=`<div class="row" style="align-items:center"><span class="n">${gi+1}-${i+1}</span><input class="hk" data-k="hook" value="${hEsc(it.hook)}" placeholder="링크트리 제목" title="링크트리에 올릴 제목 (수정 가능)"/></div>
-        <div class="meta">🛒 <b>${hEsc(it.product||it.name)}</b>${it.price?' · '+hEsc(it.price):''}${it.why?'<br>💡 '+hEsc(it.why):''}${it.tip?' <span style="opacity:.8">· '+hEsc(it.tip)+'</span>':''}</div>
+        <div class="meta">🛒 <b>${hEsc(it.product||it.name)}</b>${it.price?' · '+hEsc(it.price):''}${it.link&&/link\.coupang\.com/.test(it.link)?' <span style="color:#22c55e;font-weight:700">✅ 파트너스 링크</span>':''}${it.why?'<br>💡 '+hEsc(it.why):''}${it.tip?' <span style="opacity:.8">· '+hEsc(it.tip)+'</span>':''}</div>
         <div class="row" style="align-items:center">${it.url?`<a class="cpprod" href="${hEsc(it.url)}" target="_blank" rel="noopener" style="font-size:11px;padding:8px 10px;border-radius:7px;background:var(--acc);color:#fff;text-decoration:none;font-weight:700;text-align:center">🛒 쿠팡 상품 보기 ↗</a>`:''}<a class="cpgo" href="${cpSearchUrl(it.keyword)}" target="_blank" rel="noopener" style="font-size:11px;padding:8px 10px;border-radius:7px;background:var(--panel);border:1px solid var(--brd);color:var(--txt);text-decoration:none;text-align:center">🔎 쿠팡에서 검색${it.url?'':' (상품 고르기)'} ↗</a></div>
         <div class="row" style="align-items:center"><input type="text" class="lk" data-k="link" value="${hEsc(it.link||'')}" placeholder="${it.url?'링크트리에 넣을 링크 — 비우면 위 상품 링크 사용 · 파트너스 링크 붙여넣기 권장':'링크트리에 넣을 링크 — 비우면 검색 링크 사용 · 파트너스 링크 붙여넣기'}"/><button class="gh cp1" style="flex:0 0 auto;font-size:11px" title="제목+링크 복사">📋</button><button class="gh rm" style="flex:0 0 auto;font-size:11px" title="아이템 제거">🗑</button></div>`;
-      d.querySelectorAll('input[data-k]').forEach(inp=>inp.oninput=e=>{it[inp.dataset.k]=e.target.value;autoSave()});
+      d.querySelectorAll('input[data-k]').forEach(inp=>inp.oninput=e=>{it[inp.dataset.k]=e.target.value;if(inp.dataset.k==='link')it.linkAuto=false;autoSave()});
       d.querySelector('.cp1').onclick=()=>copyText(`${it.hook||it.name}\n${linkOf(it)}`,'제목+링크 복사');
       d.querySelector('.rm').onclick=()=>{g.items.splice(i,1);if(!g.items.length&&!g.art)S.shop.textGroups=(S.shop.textGroups||[]).filter(x=>x!==g);renderShop();autoSave()};
       box.appendChild(d);
@@ -3782,6 +3797,76 @@ function renderShop(){
   document.getElementById('shopMemo').onclick=()=>{const t=`🛍 쇼핑 제안 · 링크트리 — ${todayStr()}\n${'═'.repeat(44)}\n\n`+groups.map((g,i)=>`【${i+1}】 ${g.title}${g.url?'\n원문: '+g.url:''}\n${'─'.repeat(44)}\n`+shopLinesOf(g.items)).join('\n\n')+'\n';const b=new Blob(['﻿'+t.replace(/\r?\n/g,'\r\n')],{type:'text/plain;charset=utf-8'});const u=URL.createObjectURL(b);dL(u,`쇼핑제안_${todayStr()}.txt`);setTimeout(()=>URL.revokeObjectURL(u),3000)};
   document.getElementById('shopClear').onclick=()=>{if(!confirm('쇼핑 제안을 모두 지울까요?'))return;hotArticles().forEach(a=>{delete a.shop});S.shop.textGroups=[];renderShop();autoSave()};
 }
+
+/* ===== 🔗 쿠팡 파트너스 Open API: 상품 URL → 파트너스 딥링크 =====
+   서명(HMAC-SHA256)은 브라우저에서 생성, 중계 프록시(proxy/cloudflare-worker.js)가 api-gateway.coupang.com 에 전달 */
+const CP_DEEPLINK_PATH='/v2/providers/affiliate_open_api/apis/openapi/v1/deeplink';
+const CP_WORKER_CODE='/**\n * 쿠팡 파트너스 API 중계 프록시 (Cloudflare Worker)\n * ------------------------------------------------------------\n * 브라우저(GitHub Pages)에서는 api-gateway.coupang.com 을 직접 호출할 수 없어(CORS 차단)\n * 이 작은 중계 서버가 요청을 그대로 쿠팡에 전달하고 응답을 돌려줍니다.\n *  - 서명(HMAC)은 앱(브라우저)에서 만들어 Authorization 헤더로 보내므로\n *    이 서버에는 Access Key / Secret Key 가 저장되지 않습니다.\n *  - 파트너스 Open API 경로(/v2/providers/affiliate_open_api/...)만 전달합니다.\n *\n * 설치 (약 3분, 무료):\n *  1) https://dash.cloudflare.com 가입/로그인 → 왼쪽 메뉴 "Workers & Pages" → "Create" → "Create Worker"\n *  2) 이름을 정하고 Deploy → "Edit code" 를 눌러 기본 코드를 전부 지우고 이 파일 내용을 붙여넣기 → Deploy\n *  3) 화면에 보이는 주소(https://이름.계정.workers.dev)를 복사해 앱의 쇼핑 탭 → "쿠팡 파트너스 자동 링크" → 프록시 URL 칸에 붙여넣기\n */\nexport default {\n  async fetch(request) {\n    const cors = {\n      \'Access-Control-Allow-Origin\': \'*\',\n      \'Access-Control-Allow-Methods\': \'POST, OPTIONS\',\n      \'Access-Control-Allow-Headers\': \'Content-Type, Authorization, X-Target-Path\',\n      \'Access-Control-Max-Age\': \'86400\',\n    };\n    if (request.method === \'OPTIONS\') return new Response(null, { status: 204, headers: cors });\n    if (request.method === \'GET\') return new Response(JSON.stringify({ ok: true, service: \'coupang-partners-proxy\' }), { headers: { ...cors, \'Content-Type\': \'application/json\' } });\n    if (request.method !== \'POST\') return new Response(\'POST only\', { status: 405, headers: cors });\n\n    const path = request.headers.get(\'X-Target-Path\') || \'/v2/providers/affiliate_open_api/apis/openapi/v1/deeplink\';\n    if (!path.startsWith(\'/v2/providers/affiliate_open_api/\')) return new Response(\'bad path\', { status: 400, headers: cors });\n    const auth = request.headers.get(\'Authorization\') || \'\';\n    if (!auth.startsWith(\'CEA \')) return new Response(\'missing CEA authorization\', { status: 400, headers: cors });\n\n    const body = await request.text();\n    let upstream;\n    try {\n      upstream = await fetch(\'https://api-gateway.coupang.com\' + path, {\n        method: \'POST\',\n        headers: { \'Authorization\': auth, \'Content-Type\': \'application/json;charset=UTF-8\' },\n        body,\n      });\n    } catch (e) {\n      return new Response(JSON.stringify({ rCode: \'-1\', rMessage: \'upstream error: \' + (e && e.message) }), { status: 502, headers: { ...cors, \'Content-Type\': \'application/json\' } });\n    }\n    const text = await upstream.text();\n    return new Response(text, { status: upstream.status, headers: { ...cors, \'Content-Type\': \'application/json\' } });\n  },\n};\n';
+const cpCfg=()=>({ak:(localStorage.getItem('cp_ak')||'').trim(),sk:(localStorage.getItem('cp_sk')||'').trim(),proxy:(localStorage.getItem('cp_proxy')||'').trim().replace(/\/+$/,''),sub:(localStorage.getItem('cp_sub')||'').trim()});
+const cpReady=()=>{const c=cpCfg();return !!(c.ak&&c.sk&&c.proxy)};
+// 쿠팡 서명: signed-date(UTC yyMMddTHHmmssZ) + method + path + query → HMAC-SHA256(hex)
+async function cpSign(method,path,query,ak,sk,now){
+  const d=now||new Date();const p=n=>String(n).padStart(2,'0');
+  const dt=String(d.getUTCFullYear()).slice(2)+p(d.getUTCMonth()+1)+p(d.getUTCDate())+'T'+p(d.getUTCHours())+p(d.getUTCMinutes())+p(d.getUTCSeconds())+'Z';
+  const msg=dt+method+path+(query||'');
+  const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(sk),{name:'HMAC',hash:'SHA-256'},false,['sign']);
+  const sig=[...new Uint8Array(await crypto.subtle.sign('HMAC',key,new TextEncoder().encode(msg)))].map(b=>b.toString(16).padStart(2,'0')).join('');
+  return `CEA algorithm=HmacSHA256, access-key=${ak}, signed-date=${dt}, signature=${sig}`;
+}
+// 상품 URL 배열 → [{originalUrl,shortenUrl,landingUrl}]
+async function cpDeeplink(urls){
+  const c=cpCfg();if(!cpReady())throw Error('파트너스 API 키와 중계 서버 URL을 먼저 설정하세요 (쇼핑 탭 → 🔗 쿠팡 파트너스 자동 링크)');
+  const auth=await cpSign('POST',CP_DEEPLINK_PATH,'',c.ak,c.sk);
+  const body={coupangUrls:urls};if(c.sub)body.subId=c.sub;
+  const ctrl=new AbortController();const tm=setTimeout(()=>ctrl.abort(),25000);
+  let r;try{r=await fetch(c.proxy,{method:'POST',headers:{'Content-Type':'application/json','Authorization':auth,'X-Target-Path':CP_DEEPLINK_PATH},body:JSON.stringify(body),signal:ctrl.signal})}
+  catch(e){clearTimeout(tm);throw Error(e&&e.name==='AbortError'?'중계 서버 응답 시간 초과':'중계 서버에 연결할 수 없습니다 (URL 확인)')}
+  clearTimeout(tm);
+  const t=await r.text();let j;try{j=JSON.parse(t)}catch(e){throw Error('중계 서버 응답이 JSON이 아닙니다: '+t.slice(0,80))}
+  if(String(j.rCode)!=='0'||!Array.isArray(j.data)){const m=j.rMessage||j.message||t.slice(0,120);throw Error(/signature|Unauthorized|401|invalid/i.test(m)?'쿠팡 인증 실패 — Access/Secret Key를 확인하세요 ('+m+')':'쿠팡 API 오류: '+m)}
+  return j.data;
+}
+const cpProdId=u=>{const m=String(u||'').match(/\/vp\/products\/(\d+)/);return m?m[1]:''};
+// 쇼핑 아이템들에 파트너스 링크 붙이기 (url 있고 link 비어 있거나 자동 생성된 것만)
+async function cpAttachLinks(items,opts){
+  opts=opts||{};const targets=items.filter(it=>it.url&&CP_PROD_RE.test(it.url)&&(!it.link||it.linkAuto));
+  if(!targets.length)return 0;
+  let done=0;
+  for(let i=0;i<targets.length;i+=20){
+    const chunk=targets.slice(i,i+20);
+    const data=await cpDeeplink(chunk.map(it=>it.url));
+    chunk.forEach(it=>{
+      const id=cpProdId(it.url);
+      const hit=data.find(d=>d.originalUrl===it.url)||data.find(d=>cpProdId(d.originalUrl)===id)||data.find(d=>String(d.originalUrl||'').includes(id));
+      if(hit&&(hit.shortenUrl||hit.landingUrl)){it.link=hit.shortenUrl||hit.landingUrl;it.linkAuto=true;done++}
+    });
+  }
+  return done;
+}
+async function cpAttachAll(){
+  if(!cpReady()){document.getElementById('cpOpts').open=true;toast('파트너스 API 키와 중계 서버 URL을 먼저 설정하세요');return}
+  const groups=shopGroups();const all=groups.flatMap(g=>g.items);
+  const n=all.filter(it=>it.url&&(!it.link||it.linkAuto)).length;if(!n){toast('변환할 상품 링크가 없습니다 (상품 링크가 있는 아이템만 변환됩니다)');return}
+  sLoad('파트너스 링크 만드는 중...',`상품 ${n}개`);
+  try{const done=await cpAttachLinks(all);hLoad();renderShop();autoSave();toast(`파트너스 링크 ${done}/${n}개 생성 완료`)}
+  catch(e){hLoad();toast('오류: '+e.message);console.error(e)}
+}
+function cpInit(){
+  const $=id=>document.getElementById(id);
+  const bind=(id,key,pw)=>{const el=$(id);el.value=localStorage.getItem(key)||'';el.oninput=()=>{localStorage.setItem(key,el.value.trim());cpState()}};
+  bind('cpAk','cp_ak');bind('cpSk','cp_sk');bind('cpProxy','cp_proxy');bind('cpSub','cp_sub');
+  const au=$('cpAuto');au.checked=localStorage.getItem('cp_auto')!=='0';au.onchange=()=>localStorage.setItem('cp_auto',au.checked?'1':'0');
+  $('cpCodeBtn').onclick=()=>copyText(CP_WORKER_CODE,'중계 서버 코드 복사 완료 — Cloudflare Worker 편집기에 붙여넣고 Deploy 하세요');
+  $('cpTestBtn').onclick=async()=>{
+    if(!cpReady()){toast('Access Key · Secret Key · 중계 서버 URL을 모두 입력하세요');return}
+    sLoad('연결 테스트 중...','쿠팡 파트너스 API');
+    try{const d=await cpDeeplink(['https://www.coupang.com/vp/products/184614775']);hLoad();toast('✅ 연결 성공! 예시 링크: '+((d[0]&&(d[0].shortenUrl||d[0].landingUrl))||'(응답 확인)'));}
+    catch(e){hLoad();toast('❌ '+e.message)}
+  };
+  cpState();
+}
+function cpState(){const el=document.getElementById('cpOptsState');if(el)el.textContent=cpReady()?'· 설정됨 ✅ (자동 변환 켜짐)':'· 미설정 — 설정하면 파트너스 링크가 자동으로 붙습니다'}
+const cpAutoOn=()=>cpReady()&&(localStorage.getItem('cp_auto')!=='0');
 function shopInit(){
   document.querySelectorAll('#shopSrcSeg button').forEach(b=>b.onclick=()=>{S.shop.srcMode=b.dataset.src;renderShop()});
   document.getElementById('shopBtn').onclick=runShop;
@@ -3859,7 +3944,7 @@ window.addEventListener('resize',onResize);
 window.addEventListener('orientationchange',onResize);
 
 /* Init */
-applyMode();hotInit();shopInit();renderShop();
+applyMode();hotInit();shopInit();cpInit();renderShop();
 S.cards=[mk()];S.idx=0;
 // 저장된 기본 프리셋(제목 스타일·로고·그라데이션)을 첫 카드에 바로 적용 → 매번 로고 업로드 불필요
 function defaultHotPreset(){const ps=loadPresets();const n=localStorage.getItem('hot_ps');if(n&&ps[n])return {name:n,style:ps[n]};const names=Object.keys(ps);if(names.length===1)return {name:names[0],style:ps[names[0]]};return null}

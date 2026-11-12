@@ -60,6 +60,7 @@ git push
 - **라이선스 게이트**: Supabase로 키 검증 + 기기 2개 제한 (SB_URL/SB_KEY는 공개 anon 키)
 - **편집**: 제목 스타일(폰트/색/강조/테두리/그림자/배경박스), 로고, 오버레이(원형/테두리/내부 패닝), 그라데이션, 크롭/확대/이동
 - **🛍 쇼핑 탭** (`#shopPanel`, `S.mode==='shop'`, JS `/* ===== 🛍 쇼핑 제안`): 핫뉴스 자동 생성 끝에(`#hotAutoShop`) 기사마다 `shopForArticle` → Claude `web_search_20260209`(allowed_domains coupang.com, `apiTools`가 pause_turn 이어가기)로 실제 쿠팡 상품 URL(`CP_PROD_RE` 검증) + 링크트리 후킹 제목. 검색 끄면 검색 링크만. 쿠팡 페이지 직접 수집·파트너스 API는 브라우저에서 불가. 결과는 `art.shop`(메모장 수록) / 직접 입력은 `S.shop.textGroups`; 쇼핑 모드는 `body.mode-shop`으로 카드·편집 패널 숨김.
+- **🔗 쿠팡 파트너스 자동 링크**: 파트너스 Open API 딥링크(`POST /v2/providers/affiliate_open_api/apis/openapi/v1/deeplink`). 서명(`cpSign`: signed-date yyMMddTHHmmssZ(UTC)+method+path+query → HMAC-SHA256 hex, `CEA algorithm=HmacSHA256, access-key=…, signed-date=…, signature=…`)은 브라우저 WebCrypto로 생성하고, CORS 때문에 `proxy/cloudflare-worker.js`(Cloudflare Worker, 키 미저장·경로 제한)가 api-gateway.coupang.com 에 전달. 키·프록시 URL은 localStorage(`cp_ak`/`cp_sk`/`cp_proxy`/`cp_sub`), `cpAttachLinks`가 상품 URL → `shortenUrl`(link.coupang.com/a/…)로 `it.link` 채움(`linkAuto`). 쇼핑 제안 생성 시 자동(`cp_auto`), 수동은 "🔗 파트너스 링크 만들기".
 - **출력**: PNG(canvas), MP4(MediaRecorder — 동영상 카드 또는 핫뉴스 릴스 형식), 모바일은 Web Share로 사진첩 저장
 - **자동 저장**: IndexedDB에 작업 복원
 - **프리셋**: 제목스타일/로고/그라데이션 저장·불러오기 (localStorage)
