@@ -255,7 +255,7 @@ body.mode-shop .shopItem .hk{font-size:14px}
       <label class="hchk" style="flex:1;margin-bottom:0;padding:8px"><input type="checkbox" id="hotKb" checked/>천천히 확대 효과</label>
     </div>
     <div id="hotReelTrOpts" style="margin-bottom:8px;padding:8px;border:1px dashed var(--brd);border-radius:8px">
-      <label class="hchk" style="margin-bottom:6px"><input type="checkbox" id="hotReelMulti" checked/>🎬 기사 사진이 여러 장이면 한 영상에서 사진이 넘어가게 (사진당 위 길이만큼)</label>
+      <label class="hchk" style="margin-bottom:6px"><input type="checkbox" id="hotReelMulti" checked/>🎬 기사 사진이 여러 장이면 한 영상에서 사진이 넘어가게 (2장 9초 · 3장 12초 · 4장 14초, 1장은 위 길이)</label>
       <div class="row" style="align-items:flex-end">
         <div class="field" style="margin:0"><label>전환 효과</label><select id="hotReelTr"><option value="fade">크로스페이드 (부드럽게)</option><option value="slide">슬라이드 (옆으로)</option><option value="zoom">줌 (확대되며)</option><option value="mix">섞어서 (랜덤)</option></select></div>
         <label class="hchk" style="flex:1;margin-bottom:0;padding:8px"><input type="checkbox" id="hotReelSfx" checked/>🔊 전환 효과음 (whoosh)</label>
@@ -705,8 +705,8 @@ document.getElementById('licBtn').onclick=async()=>{
   }
 };
 document.getElementById('licInput').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('licBtn').click()});
-document.getElementById('licLogout').onclick=()=>{
-  if(!confirm('로그아웃 하시겠습니까?'))return;
+document.getElementById('licLogout').onclick=async()=>{
+  if(!await uiConfirm('로그아웃 하시겠습니까?','로그아웃'))return;
   localStorage.removeItem('lic_key');location.reload();
 };
 
@@ -834,6 +834,28 @@ const toast=m=>{const t=document.getElementById('toast');t.textContent=m;t.class
 const sLoad=(s,u,steps)=>{document.getElementById('ls').textContent=s;document.getElementById('lsu').textContent=u||'';const l=document.getElementById('lss');l.innerHTML='';(steps||[]).forEach(x=>{const d=document.createElement('div');d.className='si';d.innerHTML=`<i>&#9675;</i>${x}`;l.appendChild(d)});document.getElementById('ov').classList.add('on')};
 const sStep=i=>{document.querySelectorAll('#lss .si').forEach((s,j)=>{s.className='si';if(j<i){s.classList.add('dn');s.querySelector('i').textContent='\u2713'}if(j===i)s.classList.add('ac')})};
 const hLoad=()=>document.getElementById('ov').classList.remove('on');
+/* 브라우저 기본 confirm/prompt 대신 앱 안 대화상자 (브라우저가 대화상자를 차단해도 동작) */
+function uiDialog(msg,opt){
+  opt=opt||{};
+  return new Promise(res=>{
+    const ov=document.createElement('div');ov.style.cssText='position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:16px';
+    const box=document.createElement('div');box.style.cssText='background:var(--panel);border:1px solid var(--brd);border-radius:14px;padding:18px 16px;width:100%;max-width:420px;color:var(--txt);font-size:13px;line-height:1.6;box-shadow:0 10px 40px rgba(0,0,0,.5)';
+    const m=document.createElement('div');m.style.whiteSpace='pre-wrap';m.textContent=msg;box.appendChild(m);
+    let inp=null;if(opt.input){inp=document.createElement('input');inp.type='text';inp.value=opt.value||'';inp.placeholder=opt.placeholder||'';inp.style.cssText='width:100%;margin-top:10px';box.appendChild(inp)}
+    const row=document.createElement('div');row.className='row';row.style.marginTop='14px';
+    const ok=document.createElement('button');ok.textContent=opt.okText||'확인';const no=document.createElement('button');no.className='gh';no.textContent=opt.cancelText||'취소';
+    row.appendChild(no);row.appendChild(ok);box.appendChild(row);ov.appendChild(box);document.body.appendChild(ov);
+    const close=v=>{ov.remove();res(v)};
+    ok.onclick=()=>close(opt.input?(inp.value||''):true);no.onclick=()=>close(opt.input?null:false);
+    ov.onclick=e=>{if(e.target===ov)close(opt.input?null:false)};
+    if(inp){inp.focus();inp.select();inp.onkeydown=e=>{if(e.key==='Enter')ok.click();if(e.key==='Escape')no.click()}}else ok.focus();
+  });
+}
+const uiConfirm=(msg,okText)=>uiDialog(msg,{okText});
+const uiPrompt=(msg,value)=>uiDialog(msg,{input:true,value});
+// 예기치 않은 오류를 화면에 보여줌 (아무 반응 없이 멈추는 것 방지)
+window.addEventListener('error',e=>{try{hLoad();toast('⚠️ 오류: '+(e.message||'알 수 없는 오류'))}catch(x){}});
+window.addEventListener('unhandledrejection',e=>{try{hLoad();const r=e.reason;toast('⚠️ 오류: '+((r&&r.message)||String(r)))}catch(x){}});
 const rgba=(h,a)=>{const n=h.replace('#','');return`rgba(${parseInt(n.substring(0,2),16)},${parseInt(n.substring(2,4),16)},${parseInt(n.substring(4,6),16)},${a})`};
 // Normalize full-width / alt brackets to {} so highlight regex works after translation
 const normBraces=s=>(s||'').replace(/[｛「『【〔《〈❴⟨⦃]/g,'{').replace(/[｝」』】〕》〉❵⟩⦄]/g,'}');
@@ -1875,7 +1897,8 @@ function slideTO(){$track.style.transform=`translateX(${-S.idx*PV_W}px)`}
 function updateUI(){
   const n=S.cards.length;
   const curC0=S.cards[S.idx];const nf=(S.mode==='hot'&&S.hotFmt==='reels'&&curC0&&curC0.reelFrames&&(document.getElementById('hotReelMulti')||{checked:true}).checked)?curC0.reelFrames.length+1:1;
-  const fmt=S.mode==='hot'?(S.hotFmt==='reels'?` · 🎬 릴스 MP4 ${(document.getElementById('hotSecs')||{}).value||7}초${nf>1?`×${nf}장 (전환)`:''}`:' · 📰 게시물 PNG'):'';
+  const secs0=+((document.getElementById('hotSecs')||{}).value||7);
+  const fmt=S.mode==='hot'?(S.hotFmt==='reels'?` · 🎬 릴스 MP4 ${nf>1?`${reelTotalSecs(nf,secs0)}초 (사진 ${nf}장 전환, ${String(reelTotalSecs(nf,secs0)/nf).replace(/\.0$/,'')}초씩)`:secs0+'초'}`:' · 📰 게시물 PNG'):'';
   document.getElementById('meta').textContent=n?`카드 ${S.idx+1} / ${n} · 1080x${H()}${fmt}`:'';
   document.getElementById('rmBtn').style.display=n>1?'':'none';
   document.querySelectorAll('#pgs .p').forEach((b,i)=>{b.classList.toggle('on',i===S.idx)});
@@ -2210,7 +2233,7 @@ document.getElementById('dlBtn').onclick=async()=>{
         const kb=!!(document.getElementById('hotKb')||{}).checked;
         const multi=(document.getElementById('hotReelMulti')||{checked:true}).checked&&c.reelFrames&&c.reelFrames.length;
         const frames=multi?c.reelFrames:[];
-        sLoad('릴스 영상 렌더링...',`카드 ${i+1} · ${secs}초${frames.length?`×${frames.length+1}장 (전환 효과)`:''}`);
+        sLoad('릴스 영상 렌더링...',`카드 ${i+1} · ${frames.length?`${reelTotalSecs(frames.length+1,secs)}초 (사진 ${frames.length+1}장 전환)`:secs+'초'}`);
         const blob=await renderStillVideoCard(c,secs,kb,{frames,transition:(document.getElementById('hotReelTr')||{}).value||'fade',sfx:(document.getElementById('hotReelSfx')||{checked:true}).checked});
         files.push({name:`reels-${i+1}.${/webm/.test(blob.type)?'webm':'mp4'}`,blob,type:'video'});
       }else{
@@ -2423,6 +2446,9 @@ async function loadSfx(aCtx,f){
   const buf=await aCtx.decodeAudioData(await r.arrayBuffer());_sfxCache[f]=buf;return buf;
 }
 const easeIO=p=>p<0.5?2*p*p:1-Math.pow(-2*p+2,2)/2;
+// 릴스 총 길이 규칙: 1장=설정 길이(기본 7초), 2장=9초(4.5초씩), 3장=12초(4초씩), 4장=14초, 그 이상 3.5초씩
+const REEL_TOTAL={2:9,3:12,4:14};
+const reelTotalSecs=(n,secs)=>n<=1?secs:(REEL_TOTAL[n]||Math.round(n*3.5));
 /* 정지 이미지 카드 → N초 MP4 (핫뉴스 릴스용).
    opts.frames: 추가 사진(data URL) — 있으면 사진당 secs초씩 이어 붙이고 경계마다 전환(fade/slide/zoom/mix) + 효과음 */
 async function renderStillVideoCard(c,secs,kenBurns,opts){
@@ -2442,7 +2468,7 @@ async function renderStillVideoCard(c,secs,kenBurns,opts){
   const r=img?mediaDisplayRect(c,img.naturalWidth,img.naturalHeight):null;
   // 사진 목록: 0 = 카드 배경(사용자 위치·크기 반영), 1.. = 추가 사진(꽉 채움)
   const photos=[img,...extra];const n=Math.max(1,photos.length);
-  const segMs=secs*1000,T=Math.min(700,segMs*0.4),dur=segMs*n;
+  const total=reelTotalSecs(n,secs);const segMs=total*1000/n,T=Math.min(700,segMs*0.4),dur=segMs*n;
   const pick=k=>{const s=opts.transition||'fade';if(s!=='mix')return s;return ['fade','slide','zoom'][k%3]};
   const drawPhoto=(i,kbP,alpha,fx)=>{
     const im=photos[i];if(!im)return;
@@ -2729,9 +2755,9 @@ document.getElementById('psLoad').onclick=()=>{
   else{const c=cur();if(c)applyStyle(c,ps[name])}
   render();toast(all?'전체 카드에 적용':'현재 카드에 적용');
 };
-document.getElementById('psDel').onclick=()=>{
+document.getElementById('psDel').onclick=async()=>{
   const name=document.getElementById('psSel').value;if(!name){toast('삭제할 프리셋 선택');return}
-  if(!confirm(`"${name}" 프리셋 삭제?`))return;
+  if(!await uiConfirm(`"${name}" 프리셋을 삭제할까요?`,'삭제'))return;
   const ps=loadPresets();delete ps[name];savePresets(ps);
   refreshPSDropdown();toast('삭제됨');
 };
@@ -2760,9 +2786,9 @@ document.getElementById('gpsLoad').onclick=()=>{
   if(all){S.cards.forEach(c=>Object.assign(c.g,ps[name]))}else{const c=cur();if(c)Object.assign(c.g,ps[name])}
   render();rEd();toast(all?'전체 카드 그라데이션 적용':'현재 카드 적용');
 };
-document.getElementById('gpsDel').onclick=()=>{
+document.getElementById('gpsDel').onclick=async()=>{
   const name=document.getElementById('gpsSel').value;if(!name){toast('선택');return}
-  if(!confirm(`"${name}" 삭제?`))return;
+  if(!await uiConfirm(`"${name}" 삭제할까요?`,'삭제'))return;
   const ps=loadGPS();delete ps[name];saveGPS(ps);refreshGPSDropdown();toast('삭제됨');
 };
 refreshGPSDropdown();
@@ -3609,7 +3635,7 @@ async function autoHot(){
   const wantFill=document.getElementById('hotAutoFill').checked;
   if(wantFill&&!$oai.value.trim()){toast('AI 채우기를 쓰려면 OpenAI Key가 필요합니다 (체크를 끄거나 키 입력)');return}
   const nonEmpty=S.cards.some(c=>c.media||c.img||(c.title&&c.title!=='제목'));
-  if(nonEmpty&&!confirm(`지금 카드 ${S.cards.length}장을 지우고 핫뉴스 ${n}장을 새로 만들까요?\n(제목·위치·로고 스타일: ${psName||'현재 카드 스타일'})`))return;
+  if(nonEmpty&&!await uiConfirm(`지금 카드 ${S.cards.length}장을 지우고 핫뉴스 ${n}개를 새로 만들까요?\n(제목·위치·로고 스타일: ${psName||'현재 카드 스타일'})`,'새로 만들기'))return;
   const stBox=document.getElementById('hotAutoStatus');const lines=[];
   const log=s=>{lines.push(s);stBox.style.display='block';stBox.textContent=lines.join('\n');stBox.scrollTop=stBox.scrollHeight};
   const steps=['랭킹 수집·주제 선별','기사별 카드 생성','마무리'];
@@ -3867,7 +3893,7 @@ function renderShop(){
   document.getElementById('shopCopyLT').onclick=()=>copyText(groups.map(g=>`# ${g.title}\n`+shopLinktreeText(g.items)).join('\n\n'),'링크트리용 목록 복사 완료 — 링크트리에 붙여넣으세요');
   document.getElementById('shopCopyAll').onclick=()=>copyText(groups.map(g=>`🛍 "${g.title}"\n`+shopLinesOf(g.items)).join('\n\n'),'상세 목록 복사 완료');
   document.getElementById('shopMemo').onclick=()=>{const t=`🛍 쇼핑 제안 · 링크트리 — ${todayStr()}\n${'═'.repeat(44)}\n\n`+groups.map((g,i)=>`【${i+1}】 ${g.title}${g.url?'\n원문: '+g.url:''}\n${'─'.repeat(44)}\n`+shopLinesOf(g.items)).join('\n\n')+'\n';const b=new Blob(['﻿'+t.replace(/\r?\n/g,'\r\n')],{type:'text/plain;charset=utf-8'});const u=URL.createObjectURL(b);dL(u,`쇼핑제안_${todayStr()}.txt`);setTimeout(()=>URL.revokeObjectURL(u),3000)};
-  document.getElementById('shopClear').onclick=()=>{if(!confirm('쇼핑 제안을 모두 지울까요?'))return;hotArticles().forEach(a=>{delete a.shop});S.shop.textGroups=[];renderShop();autoSave()};
+  document.getElementById('shopClear').onclick=async()=>{if(!await uiConfirm('쇼핑 제안을 모두 지울까요?','지우기'))return;hotArticles().forEach(a=>{delete a.shop});S.shop.textGroups=[];renderShop();autoSave()};
 }
 function shopInit(){
   document.querySelectorAll('#shopSrcSeg button').forEach(b=>b.onclick=()=>{S.shop.srcMode=b.dataset.src;renderShop()});
@@ -3917,7 +3943,7 @@ function hotInit(){
   if(!Object.keys(loadPresets()).length){mkOpen()} else {schedPreview()}
   $('hotPsSave').onclick=async()=>{
     const c=cur();if(!c){toast('카드 없음');return}
-    const name=(prompt('프리셋 이름 (제목 스타일·위치·로고·그라데이션이 저장됩니다)',hp.value||'핫뉴스 기본')||'').trim();if(!name)return;
+    const name=((await uiPrompt('프리셋 이름 (제목 스타일·위치·로고·그라데이션이 저장됩니다)',hp.value||'핫뉴스 기본'))||'').trim();if(!name)return;
     const style=extractStyle(c);if(style.logo&&style.logo.src)style.logo.src=await shrinkLogo(style.logo.src);
     const ps=loadPresets();ps[name]=style;if(!savePresets(ps))return;
     localStorage.setItem('hot_ps',name);refreshPSDropdown();hp.value=name;
