@@ -177,6 +177,8 @@ body.mode-shop aside.panel:not(#rp){order:1;width:100%;max-width:900px;margin:0 
 body.mode-shop #shopPanel h3{font-size:16px}
 body.mode-shop .shopItem{padding:11px 12px}
 body.mode-shop .shopItem .hk{font-size:14px}
+.tchips{display:flex;flex-wrap:wrap;gap:5px;margin:4px 0 8px}.tchips button{background:var(--panel2);border:1px solid var(--brd);color:var(--txt);font-size:11px;padding:6px 10px;border-radius:16px;font-weight:600}.tchips button.on{background:var(--acc);border-color:var(--acc);color:#fff}
+.trItem{border:1px solid var(--brd);border-radius:12px;background:var(--panel2);padding:10px 12px;margin-bottom:8px}.trItem .tt{font-size:14px;font-weight:800;line-height:1.4}.trItem .sig{font-size:11px;color:var(--dim);line-height:1.6;margin-top:4px}.trItem .ig{display:flex;flex-direction:column;gap:4px;margin-top:6px}.trItem .ig button{text-align:left;font-size:12px;background:var(--panel);border:1px dashed var(--brd);color:var(--txt);font-weight:600;padding:7px 9px}.trItem .rk{display:inline-block;background:linear-gradient(135deg,#ff6a3d,#ff2d55);color:#fff;font-size:11px;font-weight:800;border-radius:6px;padding:2px 7px;margin-right:6px}
 .shopItem{border:1px solid var(--brd);border-radius:10px;background:var(--panel2);padding:9px 10px;margin-bottom:8px}.shopItem .hk{width:100%;font-size:13px;font-weight:700;margin-bottom:5px}.shopItem .meta{font-size:11px;color:var(--dim);line-height:1.5}.shopItem .row{margin-top:6px}.shopItem input.lk{font-size:11px}.shopItem .n{display:inline-block;flex:0 0 auto!important;background:var(--acc);color:#fff;font-size:10px;font-weight:700;border-radius:5px;padding:3px 7px;margin-right:4px;white-space:nowrap}
 .madj{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:5px}.madj button{font-size:11px;padding:10px 4px;background:var(--panel2);border:1px solid var(--brd);color:var(--txt)}.madj button:active{background:var(--acc)}.madj.four{grid-template-columns:repeat(4,1fr)}
 .mkseg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}.mkseg button{background:var(--panel2);border:1px solid var(--brd);color:var(--dim);font-size:10px;padding:6px 4px}.mkseg button.on{background:var(--acc);border-color:var(--acc);color:#fff}
@@ -333,7 +335,22 @@ body.mode-shop .shopItem .hk{font-size:14px}
     </div>
 
     <div id="shopPanel" style="display:none">
-    <h3>🛍 쇼핑 제안 — 핫뉴스 기사별 상품 링크 + 링크트리 제목</h3>
+    <h3>🛍 쇼핑</h3>
+    <div class="hbox" id="trendBox" style="margin-bottom:8px">
+      <h4 style="font-size:14px">🔥 지금 잘 팔리는 템 찾기</h4>
+      <div style="font-size:11px;color:var(--dim);line-height:1.6;margin-bottom:6px">쿠팡에서 <b>지금 판매 중이고 리뷰가 많은</b> 인기 상품을 찾아, 왜 지금 팔리는지와 인스타 후킹 제목·링크트리 제목까지 만들어 줍니다. 뉴스가 없어도 됩니다.</div>
+      <div style="font-size:11px;font-weight:700;margin-top:4px">📅 이번 달 잘 팔리는 시즌 키워드</div>
+      <div class="tchips" id="trendSeason"></div>
+      <div style="font-size:11px;font-weight:700">🗂 카테고리</div>
+      <div class="tchips" id="trendCats"></div>
+      <div class="row" style="align-items:flex-end">
+        <div class="field" style="margin:0;flex:1"><label>또는 직접 키워드</label><input type="text" id="trendKw" placeholder="예) 전기요, 수능 선물, 캠핑 의자"/></div>
+        <div class="field" style="margin:0;flex:0 0 78px"><label>개수</label><select id="trendN"><option value="5">5개</option><option value="8" selected>8개</option><option value="10">10개</option></select></div>
+      </div>
+      <button class="w100" id="trendBtn" style="margin-top:8px;font-size:14px;padding:11px">🔥 잘 팔리는 템 찾기</button>
+    </div>
+    <div id="trendList" style="margin-bottom:10px"></div>
+    <h4 style="font-size:13px;margin:6px 0">📰 핫뉴스 기사별 쇼핑 제안</h4>
     <div id="shopKeyNote" class="tip" style="display:none;font-size:10px;margin-bottom:6px">🔑 Claude Key 입력됨 · 키를 바꾸려면 게시물/핫뉴스 탭 맨 위 API 섹션에서 바꾸세요.</div>
     <div id="shopSummary" class="hbox" style="margin-bottom:8px"><div style="font-size:12px;line-height:1.6" id="shopSummaryTxt">아직 제안이 없습니다. 핫뉴스 탭에서 자동 생성하면(🛍 쇼핑 제안 체크) 기사마다 상품 링크와 링크트리 제목이 여기 쌓입니다.</div></div>
     <details id="shopOpts" style="margin-bottom:8px">
@@ -717,7 +734,7 @@ licCheck();
 /* ===== State ===== */
 // mode: 'post'(게시물) | 'hot'(핫뉴스). 예전 저장값 'reels'는 핫뉴스(릴스 형식)로 매핑
 const _mode0=localStorage.getItem('mode')||'post';
-const S={cards:[],idx:0,ko:null,grid:false,mode:_mode0==='reels'?'hot':_mode0,hotFmt:localStorage.getItem('hot_fmt')||'reels',hotCountry:localStorage.getItem('hot_country')||'kr',shop:{srcMode:'hot',textGroups:[],sel:{}},hot:{pool:[],fetchedAt:0,shown:new Set(),list:[],article:null,similar:[]},selOv:null,cropMode:false,ovAdjust:null};
+const S={cards:[],idx:0,ko:null,grid:false,mode:_mode0==='reels'?'hot':_mode0,hotFmt:localStorage.getItem('hot_fmt')||'reels',hotCountry:localStorage.getItem('hot_country')||'kr',shop:{srcMode:'hot',textGroups:[],sel:{},trend:null},hot:{pool:[],fetchedAt:0,shown:new Set(),list:[],article:null,similar:[]},selOv:null,cropMode:false,ovAdjust:null};
 let _ovLastClick={id:null,t:0};
 // Card height per mode
 // 카드 높이: 핫뉴스+릴스 형식만 1920, 그 외 1350
@@ -2775,7 +2792,7 @@ function enableEditableV(){
 function setMode(m){if(S.mode===m)return;S.mode=m;localStorage.setItem('mode',m);const hk=document.getElementById('hkResult');if(hk)hk.style.display='none';applyMode();render()}
 document.getElementById('tabPost').onclick=()=>setMode('post');
 document.getElementById('tabHot').onclick=()=>{setMode('hot');if(typeof schedPreview==='function')schedPreview()};
-document.getElementById('tabShop').onclick=()=>{setMode('shop');if(typeof renderShop==='function')renderShop()};
+document.getElementById('tabShop').onclick=()=>{setMode('shop');if(typeof renderShop==='function')renderShop();if(typeof renderTrend==='function'){renderTrendChips();renderTrend()}};
 
 /* ===== Presets ===== */
 const PS_KEY='icnm_presets';
@@ -2883,7 +2900,7 @@ function showRestoreBanner(saved){
   const load=document.createElement('button');load.textContent='이어서 하기';load.style.cssText='padding:7px 14px;font-size:12px;background:var(--acc);border:none;color:#fff;border-radius:7px;cursor:pointer;font-weight:700';
   const ign=document.createElement('button');ign.textContent='새로 시작';ign.style.cssText='padding:7px 12px;font-size:12px;background:var(--panel2);border:1px solid var(--brd);color:var(--dim);border-radius:7px;cursor:pointer';
   load.onclick=()=>{
-    S.cards=saved.cards;S.mode=saved.mode==='reels'?'hot':(saved.mode||'post');if(saved.hotFmt)S.hotFmt=saved.hotFmt;if(saved.shop)S.shop=Object.assign({srcMode:'hot',textGroups:[],sel:{}},saved.shop);if(saved.hotCountry&&HOT_CC[saved.hotCountry]){S.hotCountry=saved.hotCountry;localStorage.setItem('hot_country',S.hotCountry);applyHotCountry()}S.idx=Math.min(saved.idx||0,saved.cards.length-1);
+    S.cards=saved.cards;S.mode=saved.mode==='reels'?'hot':(saved.mode||'post');if(saved.hotFmt)S.hotFmt=saved.hotFmt;if(saved.shop)S.shop=Object.assign({srcMode:'hot',textGroups:[],sel:{},trend:null},saved.shop);if(saved.hotCountry&&HOT_CC[saved.hotCountry]){S.hotCountry=saved.hotCountry;localStorage.setItem('hot_country',S.hotCountry);applyHotCountry()}S.idx=Math.min(saved.idx||0,saved.cards.length-1);
     if(saved.hot&&saved.hot.article){S.hot.article=saved.hot.article;S.hot.similar=saved.hot.similar||[];if(typeof renderHotArticle==='function')renderHotArticle()}
     localStorage.setItem('mode',S.mode);localStorage.setItem('hot_fmt',S.hotFmt);applyMode();render();rEd();if(typeof syncHotCard==='function')syncHotCard();b.remove();toast('이전 작업 불러옴');
   };
@@ -3996,9 +4013,121 @@ function renderShop(){
   document.getElementById('shopMemo').onclick=()=>{const t=`🛍 쇼핑 제안 · 링크트리 — ${todayStr()}\n${'═'.repeat(44)}\n\n`+groups.map((g,i)=>`【${i+1}】 ${g.title}${g.url?'\n원문: '+g.url:''}\n${'─'.repeat(44)}\n`+shopLinesOf(g.items)).join('\n\n')+'\n';const b=new Blob(['﻿'+t.replace(/\r?\n/g,'\r\n')],{type:'text/plain;charset=utf-8'});const u=URL.createObjectURL(b);dL(u,`쇼핑제안_${todayStr()}.txt`);setTimeout(()=>URL.revokeObjectURL(u),3000)};
   document.getElementById('shopClear').onclick=async()=>{if(!await uiConfirm('쇼핑 제안을 모두 지울까요?','지우기'))return;hotArticles().forEach(a=>{delete a.shop});S.shop.textGroups=[];renderShop();autoSave()};
 }
+
+/* ===== 🔥 지금 잘 팔리는 템 찾기 =====
+   시즌 키워드는 달력 기준(토큰 0), 상품 발굴은 Claude 웹 검색(쿠팡 도메인) → 판매 중 검증(verifyCpItems) */
+const TREND_CATS=['전체 베스트','생활·주방','뷰티','패션잡화','디지털·가전','식품','건강·운동','육아','반려동물','캠핑·여행','인테리어','문구·취미'];
+const SEASON_KW={
+  1:['설 선물세트','새해 다이어리','다이어트 식품','방한 내의','가습기'],
+  2:['졸업 선물','입학 준비물','발렌타인 초콜릿','봄 신상 가방','새학기 책상'],
+  3:['새학기 필통','미세먼지 마스크','공기청정기 필터','봄 니트','화이트데이 선물'],
+  4:['벚꽃 피크닉','캠핑 의자','자외선 차단제','바람막이','봄 원피스'],
+  5:['어버이날 선물','어린이날 장난감','스승의날 선물','선풍기','캠핑 텐트'],
+  6:['장마 제습기','장화','여름 이불','휴대용 선풍기','다이어트 도시락'],
+  7:['물놀이 용품','쿨매트','휴가 캐리어','모기 퇴치','아이스박스'],
+  8:['개학 준비물','휴가 선크림','에어컨 청소','쿨토시','수박 칼'],
+  9:['추석 선물세트','가을 캠핑','환절기 영양제','가을 자켓','명절 주방용품'],
+  10:['할로윈 소품','가을 등산','전기장판','니트 가디건','핫팩'],
+  11:['수능 선물','김장 용품','전기요·온수매트','블랙프라이데이 특가','방한 장갑','가습기'],
+  12:['크리스마스 선물','연말 홈파티','캐롤 조명','방한 부츠','다이어리'],
+};
+function seasonCtx(){const d=new Date();const m=d.getMonth()+1;return {month:m,date:`${d.getFullYear()}년 ${m}월 ${d.getDate()}일`,kws:SEASON_KW[m]||[]}}
+function trendPrompt(scope,n){
+  const s=seasonCtx();
+  return `오늘은 ${s.date}입니다. 한국 쿠팡에서 지금 실제로 잘 팔리고 있는 상품 ${n}개를 찾아 주세요.
+범위: ${scope}
+참고(이번 달 시즌 키워드): ${s.kws.join(', ')}
+
+진행:
+1) web_search로 "쿠팡 ${scope} 베스트", "쿠팡 ${scope} 리뷰 많은 로켓배송" 같은 검색을 2~4번 하세요.
+2) 검색 결과에서 리뷰가 많고, 가격이 보이고, 품절·일시품절·판매종료 표시가 없는 쿠팡 상품 페이지(coupang.com/vp/products/)만 고르세요. 같은 종류 상품 중복 금지, 가격대 다양하게.
+3) 지금 시즌·이슈에 맞는 상품을 우선하세요. 의약품·건강기능식품 효능 주장, 성인·도박·금융 상품 제외.
+
+각 상품 필드:
+- product: 검색 결과에 나온 실제 상품명 (짧게 정리)
+- url: 검색 결과에 나온 그대로의 쿠팡 상품 URL. 지어내지 말고, 판매 중인지 확신이 없으면 빈 문자열
+- status: 판매중 또는 확인불가
+- price: 결과에 보이는 가격 (없으면 빈 문자열)
+- reviews: 결과에 보이는 리뷰 수 (예: 리뷰 1.2만, 없으면 빈 문자열)
+- signal: 왜 지금 잘 팔리는지 한 줄 (시즌·트렌드·가성비 등, 20자 내외)
+- angle: 인스타 콘텐츠로 만들 각도 한 줄 (예: 자취생 겨울 필수템 비교)
+- insta: 인스타 카드/릴스 첫 장 후킹 제목 2개 (각 15~25자, 이모지 금지, 과장 금지)
+- hook: 링크트리에 올릴 후킹 제목 18~32자 (이모지는 맨 앞 1개만)
+- keyword: 쿠팡 검색어 2~4단어
+
+JSON만 답변 (마크다운·설명 금지):
+{"items":[{"product":"","url":"","status":"","price":"","reviews":"","signal":"","angle":"","insta":["",""],"hook":"","keyword":""}]}
+중요: JSON 문자열 값 안에서 큰따옴표(")를 쓰지 마세요.`;
+}
+async function runTrend(scopeArg){
+  if(!$k.value.trim()){toast('Claude Key를 입력하세요 (게시물/핫뉴스 탭 맨 위 API 섹션)');return}
+  const kw=(document.getElementById('trendKw').value||'').trim();
+  const scope=scopeArg||kw||(S.shop.trendCat&&S.shop.trendCat!=='전체 베스트'?S.shop.trendCat:'전체 인기 상품');
+  const n=+(document.getElementById('trendN').value||8);
+  sLoad('잘 팔리는 템 찾는 중...',`${scope} · ${n}개`,['쿠팡 인기 상품 검색...','판매 중 확인...','후킹 제목 작성...']);sStep(0);
+  const tok0=tokSnap();
+  try{
+    const mdl=saveOn()?MODEL_SHOP:undefined;
+    const tools=[{type:WS_TOOL(mdl),name:'web_search',max_uses:4,allowed_domains:['coupang.com']}];
+    const res=await apiTools({sys:SHOP_SYS,content:[{type:'text',text:trendPrompt(scope,n)}],tools,max:3200,maxTurns:2,model:mdl,effort:'low'});
+    sStep(1);
+    const p=pj(res.text);
+    const items=(p.items||[]).filter(x=>x&&x.product).slice(0,n).map(x=>{const m=String(x.url||'').match(CP_PROD_RE);return {name:String(x.product).trim(),product:String(x.product).trim(),url:m?m[0]:'',price:String(x.price||'').trim(),reviews:String(x.reviews||'').trim(),signal:String(x.signal||'').trim(),angle:String(x.angle||'').trim(),insta:(Array.isArray(x.insta)?x.insta:[x.insta]).filter(Boolean).map(t=>String(t).replace(/[{}]/g,'').trim()).slice(0,2),hook:String(x.hook||x.product).replace(/[{}]/g,'').trim(),keyword:String(x.keyword||x.product).trim(),why:String(x.signal||'').trim(),tip:String(x.reviews||'').trim(),link:''}});
+    if(!items.length)throw Error('상품을 찾지 못했습니다. 다른 카테고리나 키워드로 시도하세요');
+    verifyCpItems(items,(p.items||[]).filter(x=>x&&x.product).slice(0,n),res.raw);
+    sStep(2);
+    S.shop.trend={scope,items,at:Date.now(),tok:tokDiff(tok0)};
+    hLoad();renderTrend();autoSave();
+    toast(`${scope}: 잘 팔리는 템 ${items.length}개 · 판매 중 확인 ${items.filter(i=>i.url).length}개`);
+  }catch(e){hLoad();toast('❌ '+e.message);console.error(e)}
+}
+function renderTrendChips(){
+  const sb=document.getElementById('trendSeason'),cb=document.getElementById('trendCats');if(!sb||!cb)return;
+  const s=seasonCtx();sb.innerHTML='';cb.innerHTML='';
+  s.kws.forEach(k=>{const b=document.createElement('button');b.textContent=k;b.onclick=()=>{document.getElementById('trendKw').value=k;runTrend(k)};sb.appendChild(b)});
+  TREND_CATS.forEach(c=>{const b=document.createElement('button');b.textContent=c;b.className=(S.shop.trendCat||'전체 베스트')===c?'on':'';b.onclick=()=>{S.shop.trendCat=c;document.getElementById('trendKw').value='';renderTrendChips()};cb.appendChild(b)});
+}
+function trendToCard(it){
+  setMode('hot');
+  const c=mk();const dp=hotPickedStyle();if(dp&&dp.style)applyStyle(c,dp.style);
+  c.title=(it.insta&&it.insta[0])||it.hook;c.body=`${it.product}${it.price?' · '+it.price:''}\n${it.signal}\n${it.angle}`;c.trendItem=it;
+  saveSnap();S.cards.push(c);S.idx=S.cards.length-1;render();
+  toast('카드로 만들었어요 — 상품 사진은 카드의 "이미지" 버튼으로 첨부하세요');
+}
+function trendToLinktree(items,scope){
+  S.shop.textGroups=S.shop.textGroups||[];
+  const title='🔥 잘 팔리는 템 · '+scope;
+  let g=S.shop.textGroups.find(x=>x.title===title);
+  if(!g){g={artId:'trend/'+Date.now(),title,press:todayStr(),url:'',items:[]};S.shop.textGroups.unshift(g)}
+  items.forEach(it=>{if(!g.items.some(x=>x.product===it.product))g.items.push(it)});
+  renderShop();autoSave();toast(`링크트리 목록에 ${items.length}개 담음 — 아래 "링크트리용 전체 복사"로 옮기세요`);
+}
+function renderTrend(){
+  const box=document.getElementById('trendList');if(!box)return;box.innerHTML='';
+  const t=S.shop.trend;if(!t||!t.items||!t.items.length)return;
+  const head=document.createElement('div');head.className='row';head.style.cssText='align-items:center;margin-bottom:8px';
+  head.innerHTML=`<div style="flex:1;font-size:13px;font-weight:800">🔥 ${hEsc(t.scope)} · ${t.items.length}개 <span style="font-weight:500;font-size:10px;color:var(--dim)">${new Date(t.at).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})} 기준${t.tok?' · '+hEsc(t.tok):''}</span></div><button class="gh" id="trendAllLT" style="flex:0 0 auto;font-size:11px">➕ 전부 링크트리에 담기</button>`;
+  box.appendChild(head);
+  head.querySelector('#trendAllLT').onclick=()=>trendToLinktree(t.items,t.scope);
+  t.items.forEach((it,i)=>{
+    const d=document.createElement('div');d.className='trItem';
+    d.innerHTML=`<div class="tt"><span class="rk">${i+1}</span>${hEsc(it.product)}</div>
+      <div class="sig">${it.price?'💰 <b>'+hEsc(it.price)+'</b> ':''}${it.reviews?'· ⭐ '+hEsc(it.reviews)+' ':''}${it.url&&it.saleChecked?'· <span style="color:#22c55e;font-weight:700">✅ 판매 중</span>':'· <span>판매 확인 안 됨 → 검색 링크</span>'}<br>📈 ${hEsc(it.signal)}${it.angle?'<br>🎬 '+hEsc(it.angle):''}</div>
+      <div class="ig">${(it.insta||[]).map(s=>`<button class="igb" title="눌러서 복사">📋 ${hEsc(s)}</button>`).join('')}<button class="igb lt" title="링크트리 제목 · 눌러서 복사">🔗 ${hEsc(it.hook)}</button></div>
+      <div class="row" style="margin-top:6px">${it.url?`<a href="${hEsc(it.url)}" target="_blank" rel="noopener" style="font-size:11px;padding:8px 10px;border-radius:7px;background:var(--acc);color:#fff;text-decoration:none;font-weight:700;text-align:center">🛒 쿠팡 상품 보기 ↗</a>`:''}<a href="${cpSearchUrl(it.keyword)}" target="_blank" rel="noopener" style="font-size:11px;padding:8px 10px;border-radius:7px;background:var(--panel);border:1px solid var(--brd);color:var(--txt);text-decoration:none;text-align:center">🔎 쿠팡 검색 ↗</a></div>
+      <div class="row" style="margin-top:6px"><button class="gh tc" style="font-size:11px">🎴 이 템으로 카드 만들기</button><button class="gh tl" style="font-size:11px">➕ 링크트리에 담기</button></div>`;
+    d.querySelectorAll('.igb').forEach(b=>b.onclick=()=>copyText(b.classList.contains('lt')?`${it.hook}\n${linkOf(it)}`:b.textContent.replace(/^📋\s*/,''),b.classList.contains('lt')?'링크트리 제목+링크 복사':'인스타 제목 복사'));
+    d.querySelector('.tc').onclick=()=>trendToCard(it);
+    d.querySelector('.tl').onclick=()=>trendToLinktree([it],t.scope);
+    box.appendChild(d);
+  });
+}
 function shopInit(){
   document.querySelectorAll('#shopSrcSeg button').forEach(b=>b.onclick=()=>{S.shop.srcMode=b.dataset.src;renderShop()});
   document.getElementById('shopBtn').onclick=runShop;
+  document.getElementById('trendBtn').onclick=()=>runTrend();
+  document.getElementById('trendKw').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();runTrend()}};
+  renderTrendChips();renderTrend();
   document.getElementById('shopArtAll').onclick=()=>{hotArticles().forEach(a=>S.shop.sel[a.id]=true);renderShopArtList()};
   document.getElementById('shopArtNone').onclick=()=>{hotArticles().forEach(a=>S.shop.sel[a.id]=false);renderShopArtList()};
   const ss=document.getElementById('shopSearch');ss.checked=localStorage.getItem('shop_search')!=='0';ss.onchange=()=>localStorage.setItem('shop_search',ss.checked?'1':'0');
