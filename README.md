@@ -63,6 +63,7 @@ git push
 - **🛍 쇼핑 탭** (`#shopPanel`, `S.mode==='shop'`, JS `/* ===== 🛍 쇼핑 제안`): 핫뉴스 자동 생성 끝에(`#hotAutoShop`) 기사마다 `shopForArticle` → Claude `web_search_20260209`(allowed_domains coupang.com, `apiTools`가 pause_turn 이어가기)로 실제 쿠팡 상품 URL(`CP_PROD_RE` 검증) + 링크트리 후킹 제목. 검색 끄면 검색 링크만. 쿠팡 페이지 직접 수집·파트너스 API는 브라우저에서 불가. 결과는 `art.shop`(메모장 수록) / 직접 입력은 `S.shop.textGroups`; 쇼핑 모드는 `body.mode-shop`으로 카드·편집 패널 숨김.
 - **토큰 절약**: `api()`/`apiTools()`가 모델별 옵션(`modelBody`: `output_config.effort`, Haiku 5.5는 thinking disabled, Opus 5.5·Sonnet 5.5·Fable 5.1은 `fallbacks:'default'` + beta `server-side-fallback-2026-07-01`)을 붙이고, 거부되면 옵션 없이 재시도. 절약 모드(`#saveMode`)면 주제 선별은 `MODEL_LITE`(Haiku 5.5), 쇼핑은 `MODEL_SHOP`(Sonnet 5.5). 주제 후보 70개·번호 형식, 제목 입력 본문 2200자, 쇼핑 1200자·아이템당 검색 1회. 사용량은 `TOK`에 누적, 자동 생성 끝에 로그.
 - **🔥 지금 잘 팔리는 템 찾기**(쇼핑 탭 맨 위, `runTrend`): 이번 달 시즌 키워드 칩(`SEASON_KW`, 토큰 0)·카테고리(`TREND_CATS`)·직접 키워드 → Claude 웹 검색(쿠팡 도메인, max_uses 4)으로 리뷰 많고 판매 중인 상품 + 왜 지금 팔리는지·콘텐츠 각도·인스타 제목 2개·링크트리 제목. `verifyCpItems`로 판매 중 검증. 결과 `S.shop.trend`, "이 템으로 카드 만들기"(`trendToCard`), "링크트리에 담기"(`trendToLinktree` → `S.shop.textGroups`).
+- **🤖 AI 추천**(`runTrend(null,{ai:true})`, `trendAiPrompt`): 카테고리 없이 시즌 키워드+전체 인기 검색(max_uses 5)으로 후보를 모아 수요·시즌·가격·콘텐츠·신뢰 각 0~5점(25점 만점) 매겨 TOP N. 판매 중 확인된 상품 먼저, 그다음 점수순.
 - **쇼핑 판매 중 검증**(`verifyCpItems`): 상품 URL이 검색 결과 블록에 실제로 있어야 하고, 결과 제목에 품절·판매종료가 없고, 결과가 약 10개월 이내이며, Claude가 판매중으로 표시한 것만 남김. 아니면 쿠팡 검색 링크로 대체.
 - **출력**: PNG(canvas), MP4(MediaRecorder — 동영상 카드 또는 핫뉴스 릴스 형식), 모바일은 Web Share로 사진첩 저장
 - **자동 저장**: IndexedDB에 작업 복원

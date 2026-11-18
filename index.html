@@ -178,7 +178,8 @@ body.mode-shop #shopPanel h3{font-size:16px}
 body.mode-shop .shopItem{padding:11px 12px}
 body.mode-shop .shopItem .hk{font-size:14px}
 .tchips{display:flex;flex-wrap:wrap;gap:5px;margin:4px 0 8px}.tchips button{background:var(--panel2);border:1px solid var(--brd);color:var(--txt);font-size:11px;padding:6px 10px;border-radius:16px;font-weight:600}.tchips button.on{background:var(--acc);border-color:var(--acc);color:#fff}
-.trItem{border:1px solid var(--brd);border-radius:12px;background:var(--panel2);padding:10px 12px;margin-bottom:8px}.trItem .tt{font-size:14px;font-weight:800;line-height:1.4}.trItem .sig{font-size:11px;color:var(--dim);line-height:1.6;margin-top:4px}.trItem .ig{display:flex;flex-direction:column;gap:4px;margin-top:6px}.trItem .ig button{text-align:left;font-size:12px;background:var(--panel);border:1px dashed var(--brd);color:var(--txt);font-weight:600;padding:7px 9px}.trItem .rk{display:inline-block;background:linear-gradient(135deg,#ff6a3d,#ff2d55);color:#fff;font-size:11px;font-weight:800;border-radius:6px;padding:2px 7px;margin-right:6px}
+.trItem{border:1px solid var(--brd);border-radius:12px;background:var(--panel2);padding:10px 12px;margin-bottom:8px}.trItem .tt{font-size:14px;font-weight:800;line-height:1.4}.trItem .sig{font-size:11px;color:var(--dim);line-height:1.6;margin-top:4px}.trItem .ig{display:flex;flex-direction:column;gap:4px;margin-top:6px}.trItem .ig button{text-align:left;font-size:12px;background:var(--panel);border:1px dashed var(--brd);color:var(--txt);font-weight:600;padding:7px 9px}.trItem .sc{display:inline-block;background:#22c55e;color:#fff;font-size:11px;font-weight:800;border-radius:6px;padding:2px 7px;margin-left:6px;vertical-align:middle}.trItem .bars{display:flex;gap:6px;flex-wrap:wrap;font-size:10px;color:var(--dim);margin-top:4px}.trItem .bars i{font-style:normal;background:var(--panel);border:1px solid var(--brd);border-radius:5px;padding:1px 5px}
+.trItem .rk{display:inline-block;background:linear-gradient(135deg,#ff6a3d,#ff2d55);color:#fff;font-size:11px;font-weight:800;border-radius:6px;padding:2px 7px;margin-right:6px}
 .shopItem{border:1px solid var(--brd);border-radius:10px;background:var(--panel2);padding:9px 10px;margin-bottom:8px}.shopItem .hk{width:100%;font-size:13px;font-weight:700;margin-bottom:5px}.shopItem .meta{font-size:11px;color:var(--dim);line-height:1.5}.shopItem .row{margin-top:6px}.shopItem input.lk{font-size:11px}.shopItem .n{display:inline-block;flex:0 0 auto!important;background:var(--acc);color:#fff;font-size:10px;font-weight:700;border-radius:5px;padding:3px 7px;margin-right:4px;white-space:nowrap}
 .madj{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:5px}.madj button{font-size:11px;padding:10px 4px;background:var(--panel2);border:1px solid var(--brd);color:var(--txt)}.madj button:active{background:var(--acc)}.madj.four{grid-template-columns:repeat(4,1fr)}
 .mkseg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}.mkseg button{background:var(--panel2);border:1px solid var(--brd);color:var(--dim);font-size:10px;padding:6px 4px}.mkseg button.on{background:var(--acc);border-color:var(--acc);color:#fff}
@@ -339,6 +340,9 @@ body.mode-shop .shopItem .hk{font-size:14px}
     <div class="hbox" id="trendBox" style="margin-bottom:8px">
       <h4 style="font-size:14px">🔥 지금 잘 팔리는 템 찾기</h4>
       <div style="font-size:11px;color:var(--dim);line-height:1.6;margin-bottom:6px">쿠팡에서 <b>지금 판매 중이고 리뷰가 많은</b> 인기 상품을 찾아, 왜 지금 팔리는지와 인스타 후킹 제목·링크트리 제목까지 만들어 줍니다. 뉴스가 없어도 됩니다.</div>
+      <button class="w100" id="trendAiBtn" style="font-size:15px;padding:13px;background:linear-gradient(135deg,#ff6a3d,#7c5cff)">🤖 AI가 지금 올리기 좋은 템 골라주기</button>
+      <div style="font-size:10px;color:var(--dim);line-height:1.6;margin:6px 0 10px">지금 판매 중인 쿠팡 상품을 <b>수요·시즌·가격·콘텐츠화·신뢰</b> 5가지로 점수(25점 만점) 매겨 높은 순으로 골라 줍니다. 카테고리를 고를 필요 없어요.</div>
+      <div style="font-size:11px;font-weight:700;color:var(--dim);margin-bottom:4px">── 또는 직접 고르기 ──</div>
       <div style="font-size:11px;font-weight:700;margin-top:4px">📅 이번 달 잘 팔리는 시즌 키워드</div>
       <div class="tchips" id="trendSeason"></div>
       <div style="font-size:11px;font-weight:700">🗂 카테고리</div>
@@ -4059,22 +4063,47 @@ JSON만 답변 (마크다운·설명 금지):
 {"items":[{"product":"","url":"","status":"","price":"","reviews":"","signal":"","angle":"","insta":["",""],"hook":"","keyword":""}]}
 중요: JSON 문자열 값 안에서 큰따옴표(")를 쓰지 마세요.`;
 }
-async function runTrend(scopeArg){
+function trendAiPrompt(n){
+  const s=seasonCtx();
+  return `오늘은 ${s.date}입니다. 한국 쿠팡에서 지금 판매 중인 상품 중, 인스타그램 콘텐츠(카드뉴스·릴스)로 올려 쿠팡 파트너스 수익을 내기에 가장 좋은 상품 ${n}개를 직접 골라 주세요.
+이번 달 시즌 키워드: ${s.kws.join(', ')}
+
+진행:
+1) web_search를 3~5번 하세요: 시즌 키워드 중 유망한 2~3개 + "쿠팡 로켓배송 인기 베스트" 같은 전체 인기 검색.
+2) 검색 결과에서 가격이 보이고 품절·일시품절·판매종료 표시가 없는 쿠팡 상품 페이지(coupang.com/vp/products/)만 후보로.
+3) 후보마다 5개 기준을 0~5점으로 매기세요:
+   - demand: 리뷰 수·판매 신호 (많이 팔리는가)
+   - season: 지금 시즌·이슈와 맞는가
+   - price: 1만~5만원대가 충동구매와 수수료 균형이 가장 좋음 (너무 싸거나 비싸면 감점)
+   - content: 사진·비교·전후·사용 장면으로 인스타에서 보여주기 쉬운가
+   - trust: 평점·로켓배송·알려진 브랜드
+4) 총점 높은 순으로 ${n}개. 같은 카테고리가 몰리지 않게. 의약품·건강기능식품 효능 주장, 성인·도박·금융 상품 제외.
+
+각 상품 필드: product(실제 상품명 짧게), url(검색 결과 그대로, 지어내지 말 것, 판매 중 확신 없으면 빈 문자열), status(판매중 또는 확인불가), price, reviews, scores({"demand":0,"season":0,"price":0,"content":0,"trust":0}), pick(왜 이걸 골랐는지 한 줄 25자 내외), signal(왜 지금 팔리는지 한 줄), angle(인스타 콘텐츠 각도 한 줄), insta(인스타 후킹 제목 2개, 각 15~25자, 이모지·과장 금지), hook(링크트리 제목 18~32자, 이모지는 맨 앞 1개만), keyword(쿠팡 검색어 2~4단어)
+
+JSON만 답변 (마크다운·설명 금지):
+{"items":[{"product":"","url":"","status":"","price":"","reviews":"","scores":{"demand":0,"season":0,"price":0,"content":0,"trust":0},"pick":"","signal":"","angle":"","insta":["",""],"hook":"","keyword":""}]}
+중요: JSON 문자열 값 안에서 큰따옴표(")를 쓰지 마세요.`;
+}
+async function runTrend(scopeArg,opt){
+  opt=opt||{};
   if(!$k.value.trim()){toast('Claude Key를 입력하세요 (게시물/핫뉴스 탭 맨 위 API 섹션)');return}
   const kw=(document.getElementById('trendKw').value||'').trim();
-  const scope=scopeArg||kw||(S.shop.trendCat&&S.shop.trendCat!=='전체 베스트'?S.shop.trendCat:'전체 인기 상품');
+  const scope=opt.ai?'🤖 AI 추천 TOP':(scopeArg||kw||(S.shop.trendCat&&S.shop.trendCat!=='전체 베스트'?S.shop.trendCat:'전체 인기 상품'));
   const n=+(document.getElementById('trendN').value||8);
-  sLoad('잘 팔리는 템 찾는 중...',`${scope} · ${n}개`,['쿠팡 인기 상품 검색...','판매 중 확인...','후킹 제목 작성...']);sStep(0);
+  sLoad(opt.ai?'AI가 지금 최적 템 고르는 중...':'잘 팔리는 템 찾는 중...',`${scope} · ${n}개`,opt.ai?['시즌·인기 상품 검색...','5가지 기준 점수 매기기...','판매 중 확인·제목 작성...']:['쿠팡 인기 상품 검색...','판매 중 확인...','후킹 제목 작성...']);sStep(0);
   const tok0=tokSnap();
   try{
     const mdl=saveOn()?MODEL_SHOP:undefined;
-    const tools=[{type:WS_TOOL(mdl),name:'web_search',max_uses:4,allowed_domains:['coupang.com']}];
-    const res=await apiTools({sys:SHOP_SYS,content:[{type:'text',text:trendPrompt(scope,n)}],tools,max:3200,maxTurns:2,model:mdl,effort:'low'});
+    const tools=[{type:WS_TOOL(mdl),name:'web_search',max_uses:opt.ai?5:4,allowed_domains:['coupang.com']}];
+    const res=await apiTools({sys:SHOP_SYS,content:[{type:'text',text:opt.ai?trendAiPrompt(n):trendPrompt(scope,n)}],tools,max:opt.ai?3800:3200,maxTurns:2,model:mdl,effort:'low'});
     sStep(1);
     const p=pj(res.text);
-    const items=(p.items||[]).filter(x=>x&&x.product).slice(0,n).map(x=>{const m=String(x.url||'').match(CP_PROD_RE);return {name:String(x.product).trim(),product:String(x.product).trim(),url:m?m[0]:'',price:String(x.price||'').trim(),reviews:String(x.reviews||'').trim(),signal:String(x.signal||'').trim(),angle:String(x.angle||'').trim(),insta:(Array.isArray(x.insta)?x.insta:[x.insta]).filter(Boolean).map(t=>String(t).replace(/[{}]/g,'').trim()).slice(0,2),hook:String(x.hook||x.product).replace(/[{}]/g,'').trim(),keyword:String(x.keyword||x.product).trim(),why:String(x.signal||'').trim(),tip:String(x.reviews||'').trim(),link:''}});
+    const rawList=(p.items||[]).filter(x=>x&&x.product);
+    const items=rawList.slice(0,n).map(x=>{const m=String(x.url||'').match(CP_PROD_RE);const sc=x.scores&&typeof x.scores==='object'?x.scores:null;const total=sc?['demand','season','price','content','trust'].reduce((s,k)=>s+Math.max(0,Math.min(5,+sc[k]||0)),0):null;return {score:total,scores:sc,pick:String(x.pick||'').trim(),name:String(x.product).trim(),product:String(x.product).trim(),url:m?m[0]:'',price:String(x.price||'').trim(),reviews:String(x.reviews||'').trim(),signal:String(x.signal||'').trim(),angle:String(x.angle||'').trim(),insta:(Array.isArray(x.insta)?x.insta:[x.insta]).filter(Boolean).map(t=>String(t).replace(/[{}]/g,'').trim()).slice(0,2),hook:String(x.hook||x.product).replace(/[{}]/g,'').trim(),keyword:String(x.keyword||x.product).trim(),why:String(x.signal||'').trim(),tip:String(x.reviews||'').trim(),link:''}});
     if(!items.length)throw Error('상품을 찾지 못했습니다. 다른 카테고리나 키워드로 시도하세요');
-    verifyCpItems(items,(p.items||[]).filter(x=>x&&x.product).slice(0,n),res.raw);
+    verifyCpItems(items,rawList.slice(0,n),res.raw);
+    if(opt.ai)items.sort((a,b)=>(!!b.saleChecked-!!a.saleChecked)||((b.score||0)-(a.score||0))); // 판매 중 확인된 상품 먼저, 그다음 점수순
     sStep(2);
     S.shop.trend={scope,items,at:Date.now(),tok:tokDiff(tok0)};
     hLoad();renderTrend();autoSave();
@@ -4111,7 +4140,10 @@ function renderTrend(){
   head.querySelector('#trendAllLT').onclick=()=>trendToLinktree(t.items,t.scope);
   t.items.forEach((it,i)=>{
     const d=document.createElement('div');d.className='trItem';
-    d.innerHTML=`<div class="tt"><span class="rk">${i+1}</span>${hEsc(it.product)}</div>
+    const SCN={demand:'수요',season:'시즌',price:'가격',content:'콘텐츠',trust:'신뢰'};
+    d.innerHTML=`<div class="tt"><span class="rk">${i+1}</span>${hEsc(it.product)}${it.score!=null?`<span class="sc">🏆 ${it.score}/25</span>`:''}</div>
+      ${it.pick?`<div style="font-size:12px;font-weight:700;color:var(--acc);margin-top:4px">💡 ${hEsc(it.pick)}</div>`:''}
+      ${it.scores?`<div class="bars">${Object.keys(SCN).map(k=>`<i>${SCN[k]} ${Math.max(0,Math.min(5,+it.scores[k]||0))}</i>`).join('')}</div>`:''}
       <div class="sig">${it.price?'💰 <b>'+hEsc(it.price)+'</b> ':''}${it.reviews?'· ⭐ '+hEsc(it.reviews)+' ':''}${it.url&&it.saleChecked?'· <span style="color:#22c55e;font-weight:700">✅ 판매 중</span>':'· <span>판매 확인 안 됨 → 검색 링크</span>'}<br>📈 ${hEsc(it.signal)}${it.angle?'<br>🎬 '+hEsc(it.angle):''}</div>
       <div class="ig">${(it.insta||[]).map(s=>`<button class="igb" title="눌러서 복사">📋 ${hEsc(s)}</button>`).join('')}<button class="igb lt" title="링크트리 제목 · 눌러서 복사">🔗 ${hEsc(it.hook)}</button></div>
       <div class="row" style="margin-top:6px">${it.url?`<a href="${hEsc(it.url)}" target="_blank" rel="noopener" style="font-size:11px;padding:8px 10px;border-radius:7px;background:var(--acc);color:#fff;text-decoration:none;font-weight:700;text-align:center">🛒 쿠팡 상품 보기 ↗</a>`:''}<a href="${cpSearchUrl(it.keyword)}" target="_blank" rel="noopener" style="font-size:11px;padding:8px 10px;border-radius:7px;background:var(--panel);border:1px solid var(--brd);color:var(--txt);text-decoration:none;text-align:center">🔎 쿠팡 검색 ↗</a></div>
@@ -4126,6 +4158,7 @@ function shopInit(){
   document.querySelectorAll('#shopSrcSeg button').forEach(b=>b.onclick=()=>{S.shop.srcMode=b.dataset.src;renderShop()});
   document.getElementById('shopBtn').onclick=runShop;
   document.getElementById('trendBtn').onclick=()=>runTrend();
+  document.getElementById('trendAiBtn').onclick=()=>runTrend(null,{ai:true});
   document.getElementById('trendKw').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();runTrend()}};
   renderTrendChips();renderTrend();
   document.getElementById('shopArtAll').onclick=()=>{hotArticles().forEach(a=>S.shop.sel[a.id]=true);renderShopArtList()};
