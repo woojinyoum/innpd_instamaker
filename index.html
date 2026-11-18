@@ -228,7 +228,8 @@ body.mode-shop .shopItem .hk{font-size:14px}
   <aside class="panel">
     <h3>API</h3>
     <div class="field"><label>Claude Key <label id="lockLabel" style="display:inline;cursor:pointer;margin-left:6px;color:var(--acc)"><input type="checkbox" id="lockApi" style="display:none"/><span id="lockIcon">🔓 잠금</span></label></label><input type="password" id="apiKey" placeholder="sk-ant-..."/></div>
-    <div class="field"><label>모델</label><select id="model"><option value="claude-fable-5-1">Fable 5.1 (최신)</option><option value="claude-fable-5">Fable 5</option><option value="claude-opus-4-8">Opus 4.8</option><option value="claude-opus-4-7">Opus 4.7</option><option value="claude-opus-4-6">Opus 4.6</option><option value="claude-sonnet-4-6" selected>Sonnet 4.6</option><option value="claude-haiku-4-5-20251001">Haiku 4.5</option></select></div>
+    <div class="field"><label>모델 (제목·요약에 사용)</label><select id="model"><option value="claude-sonnet-5-5" selected>Sonnet 5.5 (추천 · 가성비)</option><option value="claude-opus-5-5">Opus 5.5 (고품질)</option><option value="claude-haiku-5-5">Haiku 5.5 (가장 저렴)</option><option value="claude-fable-5-1">Fable 5.1 (최고가)</option><optgroup label="이전 모델"><option value="claude-opus-4-8">Opus 4.8</option><option value="claude-opus-4-7">Opus 4.7</option><option value="claude-opus-4-6">Opus 4.6</option><option value="claude-sonnet-4-6">Sonnet 4.6</option><option value="claude-fable-5">Fable 5</option><option value="claude-haiku-4-5-20251001">Haiku 4.5</option></optgroup></select></div>
+    <label class="hchk" style="margin-bottom:8px;line-height:1.4"><input type="checkbox" id="saveMode" checked/>💰 토큰 절약 모드 — 뉴스 고르기는 Haiku 5.5, 쇼핑 검색은 Sonnet 5.5로 처리 (제목·요약은 위 모델)</label>
     <div class="field"><label>OpenAI Key (이미지 생성용) <label id="lockLabel2" style="display:inline;cursor:pointer;margin-left:6px;color:var(--acc)"><input type="checkbox" id="lockOai" style="display:none"/><span id="lockIcon2">🔓 잠금</span></label></label><input type="password" id="oaiKey" placeholder="sk-..."/></div>
     <div class="field"><label>지침 (분석 & 번역 공통, 선택)</label><textarea id="trPrompt" placeholder="예) 제목은 숫자 포함, 본문은 존댓말, 전문용어 유지 등" style="width:100%;min-height:70px;background:var(--bg);border:1px solid var(--brd);color:var(--txt);border-radius:7px;padding:8px;font-size:12px;font-family:inherit;resize:vertical"></textarea></div>
     <div class="sep"></div>
@@ -355,7 +356,7 @@ body.mode-shop .shopItem .hk{font-size:14px}
           <div class="field" style="margin:0;flex:0 0 110px"><label>기사당 아이템</label><select id="shopN"><option value="2">2개</option><option value="3" selected>3개</option><option value="5">5개</option></select></div>
           <div class="field" style="margin:0;flex:1"><label>추가 지침 (선택)</label><input type="text" id="shopNote" placeholder="예) 1~3만원대 위주, 건강식품 제외"/></div>
         </div>
-        <label class="hchk" style="margin-top:8px"><input type="checkbox" id="shopSearch" checked/>🔎 웹 검색으로 실제 쿠팡 상품 링크 찾기 (Claude 웹 검색 · 검색 1회당 약 $0.01, 끄면 검색 링크만)</label>
+        <label class="hchk" style="margin-top:8px"><input type="checkbox" id="shopSearch" checked/>🔎 웹 검색으로 지금 판매 중인 쿠팡 상품 링크 찾기 (아이템당 검색 1회 · 확인 안 되면 쿠팡 검색 링크 · 끄면 검색 링크만)</label>
         <button class="w100" id="shopBtn" style="margin-top:8px">🛍 체크한 기사로 상품 링크 + 링크트리 제목 뽑기</button>
       </div>
     </details>
@@ -812,7 +813,8 @@ const mk=()=>({id:crypto.randomUUID(),img:null,media:null,mediaType:null,mvy:0,m
 
 /* Persist */
 const $k=document.getElementById('apiKey');$k.value=localStorage.getItem('ak')||'';$k.onchange=()=>localStorage.setItem('ak',$k.value);
-const $m=document.getElementById('model');$m.value=localStorage.getItem('am')||'claude-sonnet-4-6';$m.onchange=()=>localStorage.setItem('am',$m.value);
+const $m=document.getElementById('model');$m.value=localStorage.getItem('am')||'claude-sonnet-5-5';if(!$m.value)$m.value='claude-sonnet-5-5';$m.onchange=()=>localStorage.setItem('am',$m.value);
+{const sm=document.getElementById('saveMode');if(sm){sm.checked=localStorage.getItem('save_mode')!=='0';sm.onchange=()=>localStorage.setItem('save_mode',sm.checked?'1':'0')}}
 const $tp=document.getElementById('trPrompt');$tp.value=localStorage.getItem('tr_prompt')||'';$tp.oninput=()=>localStorage.setItem('tr_prompt',$tp.value);
 const $oai=document.getElementById('oaiKey');$oai.value=localStorage.getItem('oai')||'';$oai.onchange=()=>localStorage.setItem('oai',$oai.value);
 
@@ -937,27 +939,76 @@ function friendlyApiError(status,text){
   return `API ${status}: ${t.slice(0,200)}`;
 }
 const isFatalApiError=msg=>/크레딧이 부족|키가 잘못|요청 한도 초과|모델을 사용할 수 없/.test(String(msg||''));
-const api=async({sys,content,max=2000})=>{const k=$k.value.trim();if(!k)throw Error('API 키');const payload={model:$m.value,max_tokens:max,system:sys,messages:[{role:'user',content}]};console.log('%c[API 전송]','color:#0ea5e9;font-weight:bold',{model:payload.model,system:sys,userContent:content});const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':k,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify(payload)});if(!r.ok){const t=await r.text();throw Error(friendlyApiError(r.status,t))}const data=await r.json();console.log('%c[API 응답]','color:#22c55e',data);const blocks=data.content||[];const textBlock=blocks.find(b=>b&&b.type==='text'&&typeof b.text==='string');const text=textBlock?textBlock.text:(blocks.map(b=>b&&b.text).filter(Boolean).join('\n'));if(!text)throw Error('응답에 텍스트가 없습니다'+(data.stop_reason?' (stop: '+data.stop_reason+')':''));return text};
-// 서버 도구(웹 검색 등) 포함 호출: stop_reason이 pause_turn이면 응답을 붙여 이어서 요청
-const apiTools=async({sys,content,tools,max=4000,maxTurns=4})=>{
+// ── 모델별 요청 옵션 (토큰 절약) ──
+const MODEL_LITE='claude-haiku-5-5',MODEL_SHOP='claude-sonnet-5-5';
+const saveOn=()=>{const el=document.getElementById('saveMode');return el?el.checked:true};
+const FALLBACK_RE=/opus-5-5|sonnet-5-5|fable-5-1|fable-5-2/;
+function modelBody(model,effort){
+  const b={};const m=model||'';
+  // effort: Haiku 4.5·Sonnet 4.5 등 구형은 미지원
+  if(effort&&!/haiku-4-5|sonnet-4-5|sonnet-3|opus-3|haiku-3/.test(m))b.output_config={effort};
+  if(/haiku-5-5/.test(m))b.thinking={type:'disabled'}; // Haiku 5.5: 생각 끄기(low~high에서 허용)
+  if(FALLBACK_RE.test(m))b.fallbacks='default';         // 안전 분류기 거절 시 서버가 다른 모델로 자동 재시도
+  return b;
+}
+function apiHeaders(k,model){const h={'Content-Type':'application/json','x-api-key':k,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'};if(FALLBACK_RE.test(model||''))h['anthropic-beta']='server-side-fallback-2026-07-01';return h}
+// 이번 세션 토큰 사용량 (실행 끝에 로그로 표시)
+const TOK={in:0,out:0,search:0};
+function addUsage(u){if(!u)return;TOK.in+=(u.input_tokens||0)+(u.cache_read_input_tokens||0)+(u.cache_creation_input_tokens||0);TOK.out+=u.output_tokens||0;TOK.search+=((u.server_tool_use||{}).web_search_requests)||0}
+const tokSnap=()=>({in:TOK.in,out:TOK.out,search:TOK.search});
+const tokDiff=a=>`입력 ${(TOK.in-a.in).toLocaleString()} · 출력 ${(TOK.out-a.out).toLocaleString()} 토큰${TOK.search-a.search?` · 웹검색 ${TOK.search-a.search}회`:''}`;
+// 공통 요청: 옵션 거부(400)면 옵션 빼고 1회 재시도, 저렴 모델이 안 되면 선택 모델로 재시도
+async function claudeFetch(payload,k){
+  let r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:apiHeaders(k,payload.model),body:JSON.stringify(payload)});
+  if(!r.ok){
+    const t=await r.text();
+    if(r.status===400&&/output_config|effort|thinking|fallbacks|anthropic-beta|beta/i.test(t)&&(payload.output_config||payload.thinking||payload.fallbacks)){
+      const p2=Object.assign({},payload);delete p2.output_config;delete p2.thinking;delete p2.fallbacks;console.warn('옵션 제거 후 재시도',t.slice(0,160));
+      r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:apiHeaders(k,''),body:JSON.stringify(p2)});
+      if(r.ok)return r;return {ok:false,status:r.status,text:()=>r.text()};
+    }
+    return {ok:false,status:r.status,text:async()=>t};
+  }
+  return r;
+}
+const api=async({sys,content,max=2000,model,effort})=>{
   const k=$k.value.trim();if(!k)throw Error('API 키');
-  const messages=[{role:'user',content}];let text='';
+  const mdl=model||$m.value;
+  const payload=Object.assign({model:mdl,max_tokens:max,system:sys,messages:[{role:'user',content}]},modelBody(mdl,effort));
+  console.log('%c[API 전송]','color:#0ea5e9;font-weight:bold',{model:mdl,effort,system:sys,userContent:content});
+  const r=await claudeFetch(payload,k);
+  if(!r.ok){const t=await r.text();
+    if(model&&model!==$m.value&&(r.status===404||(r.status===400&&/model/i.test(t)))){console.warn('절약 모델 사용 불가 → 선택 모델로',t.slice(0,120));return api({sys,content,max,effort})}
+    throw Error(friendlyApiError(r.status,t))}
+  const data=await r.json();addUsage(data.usage);console.log('%c[API 응답]','color:#22c55e',{model:data.model,usage:data.usage,stop:data.stop_reason});
+  const blocks=data.content||[];const textBlock=blocks.find(b=>b&&b.type==='text'&&typeof b.text==='string');const text=textBlock?textBlock.text:(blocks.map(b=>b&&b.text).filter(Boolean).join('\n'));
+  if(!text)throw Error(data.stop_reason==='refusal'?'요청이 거부되었습니다 (안전 정책) — 다른 기사로 시도하세요':'응답에 텍스트가 없습니다'+(data.stop_reason?' (stop: '+data.stop_reason+')':''));
+  return text};
+// 서버 도구(웹 검색 등) 포함 호출: stop_reason이 pause_turn이면 응답을 붙여 이어서 요청
+// 서버 도구 포함 호출 → {text, raw}: raw는 검색 결과 검증용(응답 블록 전체 JSON)
+const apiTools=async({sys,content,tools,max=2500,maxTurns=2,model,effort})=>{
+  const k=$k.value.trim();if(!k)throw Error('API 키');
+  const mdl=model||$m.value;
+  const messages=[{role:'user',content}];let text='',raw='';
   for(let turn=0;turn<maxTurns;turn++){
-    const payload={model:$m.value,max_tokens:max,system:sys,messages,tools};
-    console.log('%c[API+tools 전송]','color:#0ea5e9;font-weight:bold',{model:payload.model,tools:tools.map(t=>t.type)});
-    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':k,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify(payload)});
-    if(!r.ok){const t=await r.text();throw Error(friendlyApiError(r.status,t))}
-    const data=await r.json();const blocks=data.content||[];
-    console.log('%c[API+tools 응답]','color:#22c55e',{stop:data.stop_reason,blocks:blocks.map(b=>b.type)});
+    const payload=Object.assign({model:mdl,max_tokens:max,system:sys,messages,tools},modelBody(mdl,effort));
+    console.log('%c[API+tools 전송]','color:#0ea5e9;font-weight:bold',{model:mdl,tools:tools.map(t=>t.type)});
+    const r=await claudeFetch(payload,k);
+    if(!r.ok){const t=await r.text();
+      if(model&&model!==$m.value&&(r.status===404||(r.status===400&&/model|web_search/i.test(t)))){console.warn('절약 모델 사용 불가 → 선택 모델로',t.slice(0,120));const tl=tools.map(x=>x.name==='web_search'?Object.assign({},x,{type:WS_TOOL($m.value)}):x);return apiTools({sys,content,tools:tl,max,maxTurns,effort})}
+      throw Error(friendlyApiError(r.status,t))}
+    const data=await r.json();const blocks=data.content||[];addUsage(data.usage);
+    console.log('%c[API+tools 응답]','color:#22c55e',{stop:data.stop_reason,usage:data.usage,blocks:blocks.map(b=>b.type)});
+    raw+=JSON.stringify(blocks.filter(b=>b&&b.type!=='text')); // 검증은 검색 결과 블록만 (Claude 답변 텍스트 제외)
     text=blocks.filter(b=>b&&b.type==='text'&&typeof b.text==='string').map(b=>b.text).join('\n');
     if(data.stop_reason==='pause_turn'){messages.push({role:'assistant',content:blocks});continue}
-    if(data.stop_reason==='refusal')throw Error('요청이 거부되었습니다 (refusal)');
-    return text;
+    if(data.stop_reason==='refusal')throw Error('요청이 거부되었습니다 (안전 정책)');
+    return {text,raw};
   }
-  return text;
+  return {text,raw};
 };
 // 웹 검색 도구 종류: 구형 모델(Haiku 4.5 등)은 기본형
-const WS_TOOL=()=>/haiku-4-5|sonnet-4-5|opus-4-5|sonnet-3|opus-3/.test($m.value||'')?'web_search_20250305':'web_search_20260209';
+const WS_TOOL=m=>/haiku|sonnet-4-5|opus-4-5|sonnet-3|opus-3/.test(m||$m.value||'')?'web_search_20250305':'web_search_20260209';
 const pj=t=>{if(!t||typeof t!=='string')throw Error('빈 응답');const m=t.match(/\{[\s\S]*\}/);if(!m)throw Error('JSON 파싱 실패');return JSON.parse(m[0])};
 
 /* Analyze */
@@ -1094,7 +1145,7 @@ function hotTitlePrompt(art,weapon,note,fmt,lang){lang=lang||'ko';return `다음
 [기사 제목] ${art.title}
 [언론사] ${art.press||''}
 [기사 본문]
-${(art.text||'').slice(0,3500)}
+${(art.text||'').slice(0,2200)}
 
 ${HK_WEAPON[weapon]||HK_WEAPON.auto}
 ${note?'추가 지침(최우선): '+note:''}
@@ -1149,7 +1200,7 @@ JSON만 답변 (마크다운·설명 금지):
 중요: JSON 문자열 값 안에서 큰따옴표(")를 쓰지 마세요. 강조가 필요하면 작은따옴표(')나 홑화살괄호(〈 〉)를 쓰세요. 줄바꿈은 \\n으로.`});
     }
     if(!opts.silent)sStep(1);
-    const res=await api({sys:HOOK_SYS,content:uc,max:hotArt?4000:2200});
+    const res=await api({sys:HOOK_SYS,content:uc,max:hotArt?3500:2200,effort:'medium'});
     if(!opts.silent)sStep(2);
     const parsed=parseTitles(res);
     // 핫뉴스: 최고 점수 제목 + 요약을 카드에 자동 적용
@@ -3011,14 +3062,14 @@ function parseRanking(html,kind){
 /* --- Claude로 핫 주제 10개 선별 (키 없으면 휴리스틱) --- */
 async function pickHotTopics(items,excludeIds,n){
   const pool=items.filter(it=>!excludeIds.has(it.id)).sort((a,b)=>b.heat-a.heat);
-  const cand=pool.slice(0,160);
+  const cand=pool.slice(0,70); // 토큰 절약: 상위 70개만
   if(!cand.length)throw Error('더 보여줄 뉴스가 없습니다. "핫한 뉴스 찾기"로 새로 수집하세요');
   const topic=((document.getElementById('hotTopic')||{}).value||'').trim();
   const grams=s=>{const t=(s||'').replace(/[^0-9A-Za-z가-힣]/g,'');const g=new Set();for(let i=0;i<t.length-1;i++)g.add(t.slice(i,i+2));return g};
   const similar=(a,b)=>{const A=grams(a),B=grams(b);if(!A.size||!B.size)return false;let inter=0;A.forEach(x=>{if(B.has(x))inter++});return inter/Math.min(A.size,B.size)>0.45};
   const heuristic=()=>{const seen=new Set(),res=[];for(const it of cand){if(it.press&&seen.has(it.press))continue;if(res.some(r=>similar(r.title,it.title)))continue;seen.add(it.press);res.push(it);if(res.length>=n)break}return res};
   if(!$k.value.trim())return heuristic();
-  const listTxt=cand.map(it=>`[${it.id}] (${it.press||'언론사?'}${it.rank?' '+it.rank+'위':''}${it.kinds.has('view')?' 👁':''}${it.kinds.has('cmt')?' 💬':''}) ${it.title}`).join('\n');
+  const listTxt=cand.map((it,i)=>`${i+1}|${it.press||'-'}${it.rank?'|'+it.rank+'위':''}${it.kinds.has('view')?'|👁':''}${it.kinds.has('cmt')?'|💬':''}|${it.title}`).join('\n');
   const sys='당신은 인스타그램 카드뉴스/릴스용 뉴스 큐레이터입니다. 지금 가장 화제인 뉴스 중, 짧은 영상·카드 한 장으로 만들었을 때 사람들이 스크롤을 멈추고 볼 주제를 고릅니다.';
   const txt=`아래는 ${hotCC().poolDesc}에서 지금 수집한 기사 목록입니다.${S.hotCountry!=='kr'?' (기사 제목은 '+hotCC().langName+'이며, why는 한국어로 쓰세요)':''}
 ${topic?`사용자 관심 분야: "${topic}" — 이 분야와 관련된 기사를 우선 선택하세요. 관련 기사가 부족하면 가장 화제인 기사로 채우세요.\n`:''}
@@ -3033,12 +3084,12 @@ ${topic?`사용자 관심 분야: "${topic}" — 이 분야와 관련된 기사�
 기사 목록:
 ${listTxt}
 
-JSON만 답변: {"picks":[{"id":"oid/aid","why":"한 줄 이유(15자 내)"}]}`;
+JSON만 답변 (i는 목록 맨 앞 번호): {"picks":[{"i":1,"why":"한 줄 이유(15자 내)"}]}`;
   let picks=[];
   try{
-    const res=await api({sys,content:[{type:'text',text:txt}],max:1200});
+    const res=await api({sys,content:[{type:'text',text:txt}],max:600,model:saveOn()?MODEL_LITE:undefined,effort:'low'});
     const p=pj(res);const byId=new Map(cand.map(it=>[it.id,it]));
-    (p.picks||[]).forEach(x=>{const it=byId.get(String(x.id||'').trim());if(it&&!picks.includes(it)){it.why=x.why||'';picks.push(it)}});
+    (p.picks||[]).forEach(x=>{const it=(x.i!=null&&cand[(+x.i)-1])||byId.get(String(x.id||'').trim());if(it&&!picks.includes(it)){it.why=x.why||'';picks.push(it)}});
   }catch(e){console.warn('주제 선별 실패 → 휴리스틱',e);if(isFatalApiError(e.message))throw e;toast('AI 선별 실패, 랭킹 순으로 표시');}
   for(const it of cand){if(picks.length>=n)break;if(!picks.includes(it))picks.push(it)}
   return picks.slice(0,n);
@@ -3429,12 +3480,12 @@ async function genCaption(){
 기사 제목: ${a.title}
 언론사: ${a.press||''}
 기사 본문:
-${a.text.slice(0,3000)}
+${a.text.slice(0,1800)}
 
 위 내용으로 인스타그램 캡션을 ${lm[lang]||'한국어'}로 작성하세요.
 구성: 1) 첫 줄 후킹 한 문장 2) 핵심 내용 3~5문장 (기사 사실만, 쉬운 말) 3) 빈 줄 후 "출처: ${a.press||'네이버 뉴스'}" 4) 빈 줄 후 해시태그 12~15개 (공백 구분, # 포함${a.hashtags&&a.hashtags.length?', 참고: '+a.hashtags.join(' '):''})
 이모지는 2~3개만. 캡션 텍스트만 출력 (설명·마크다운·따옴표 금지).`;
-    const r=await api({sys,content:[{type:'text',text:txt}],max:900});
+    const r=await api({sys,content:[{type:'text',text:txt}],max:900,effort:'low'});
     a.caption=r.trim();hLoad();renderHotArticle();autoSave();toast('캡션 완성! 복사해서 붙여넣으세요');
   }catch(e){hLoad();toast('오류: '+e.message)}
 }
@@ -3558,7 +3609,7 @@ async function buildHotCard(it,style,opts){
   if(art.imgs.length){try{c.media=await imgToDataURL(art.imgs[0]);c.mediaType='image';c.img=null;art.bgIdx=0}catch(e){console.warn('대표 사진 실패',e)}}
   // 후킹 제목 5개 + 기승전결 요약
   prog('후킹 제목·요약 생성...');
-  const res=await api({sys:HOOK_SYS,content:[{type:'text',text:hotTitlePrompt(art,'auto',opts.note||'',S.hotFmt,hotOutLang())}],max:4000});
+  const res=await api({sys:HOOK_SYS,content:[{type:'text',text:hotTitlePrompt(art,'auto',opts.note||'',S.hotFmt,hotOutLang())}],max:3500,effort:'medium'});
   const parsed=parseTitles(res);
   const top=(parsed.candidates||[]).slice().sort((a,b)=>(b.score||0)-(a.score||0))[0];
   if(top&&top.title)c.title=top.title;
@@ -3645,7 +3696,7 @@ async function autoHot(){
   const {name:psName,style}=hotPickedStyle();
   const wantFill=document.getElementById('hotAutoFill').checked;
   if(wantFill&&!$oai.value.trim()){toast('AI 채우기를 쓰려면 OpenAI Key가 필요합니다 (체크를 끄거나 키 입력)');return}
-  const nonEmpty=S.cards.some(c=>c.media||c.img||(c.title&&c.title!=='제목'));
+  const nonEmpty=S.cards.some(c=>c.media||c.img||(c.title&&c.title!=='제목'));const tok0=tokSnap();
   if(nonEmpty&&!await uiConfirm(`지금 카드 ${S.cards.length}장을 지우고 핫뉴스 ${n}개를 새로 만들까요?\n(제목·위치·로고 스타일: ${psName||'현재 카드 스타일'})`,'새로 만들기'))return;
   const stBox=document.getElementById('hotAutoStatus');const lines=[];
   const log=s=>{lines.push(s);stBox.style.display='block';stBox.textContent=lines.join('\n');stBox.scrollTop=stBox.scrollHeight};
@@ -3697,6 +3748,7 @@ async function autoHot(){
     const noPic=cards.filter(c=>!c.media).length;
     log(`🎉 완료: 뉴스 ${made.length}개 · 카드 ${cards.length}장${cards.length>made.length?` (사진 여러 장 기사 ${cards.filter(c=>c.hotTotal>1&&!c.hotSlide).length}개 포함)`:''}${fails?` · 건너뜀 ${fails}`:''}${noPic?` · 사진 없는 카드 ${noPic}장은 배경을 직접 고르세요`:''}`);
     log(`⬇ 상단 "다운로드"를 누르면 ${S.hotFmt==='reels'?'릴스 MP4':'게시물 PNG'} ${cards.length}개 + ${hotMemoName()} 가 ZIP으로 저장됩니다`);
+    log('🔢 이번 실행 '+tokDiff(tok0));
     localStorage.setItem('hot_auto_last',JSON.stringify({at:Date.now(),n:cards.length}));
     hLoad();autoSave();
     toast(`핫뉴스 ${made.length}개 · 카드 ${cards.length}장 자동 생성 완료! 카드를 넘기며 확인하세요`);
@@ -3776,7 +3828,7 @@ function shopPrompt(src,n,note,useSearch){
 [제목] ${src.title||''}
 [언론사] ${src.press||''}
 [본문]
-${(src.text||'').slice(0,3000)}
+${(src.text||'').slice(0,1200)}
 ${note?'\n추가 지침(최우선): '+note+'\n':''}
 규칙:
 - 뉴스 내용·분위기와 자연스럽게 이어지는 상품만 (기사를 본 직후 사고 싶어질 것). 뉴스 속 인물·브랜드·장소와 직접 연결된 상품(책, 굿즈, 같은 제품)도 좋음
@@ -3785,20 +3837,22 @@ ${note?'\n추가 지침(최우선): '+note+'\n':''}
 - hook: 링크트리에 그대로 올릴 후킹 제목 18~32자. 뉴스와의 연결고리가 보이고 궁금증이나 이득을 자극. 이모지는 맨 앞 1개만, 과장·허위 금지
 - keyword: 쿠팡 검색창에 넣을 검색어 2~4단어
 - why: 이 뉴스와 왜 연결되는지 한 줄 / price: 예상 가격대 / tip: 상품 고를 때 팁 한 줄
-${useSearch?`- url·product: 아이템마다 web_search 도구로 "쿠팡 ${'${상품명}'}"처럼 검색해 실제 쿠팡 상품 페이지 1개를 고르세요 (URL에 coupang.com/vp/products/ 가 들어간 것). 검색 결과에 실제로 나온 URL만 쓰고 절대 지어내지 마세요. 적당한 상품 페이지를 못 찾으면 url은 빈 문자열로 두세요. product는 검색에서 찾은 실제 상품명, price는 보이면 실제 가격.`:''}
+${useSearch?`- url·product·status: 아이템마다 web_search를 1번씩만 써서 "쿠팡 상품명 로켓배송"처럼 검색하고, 검색 결과에 실제로 나온 쿠팡 상품 페이지(coupang.com/vp/products/ 포함) 1개를 고르세요. 반드시 지금 판매 중인 상품만: 검색 결과에 가격이 보이고 품절·일시품절·판매종료·판매중지 표시가 없으며 최근 결과인 것. 판매 중인지 확신이 없으면 url은 빈 문자열, status는 확인불가. URL은 검색 결과에 나온 그대로만 쓰고 절대 지어내지 마세요. product는 검색 결과의 실제 상품명, price는 결과에 보이는 실제 가격.`:''}
 
 JSON만 답변 (마크다운·설명 금지):
-{"items":[{"name":"상품명","keyword":"쿠팡 검색어","hook":"링크트리 후킹 제목","why":"연결 이유","price":"가격대","tip":"고르는 팁"${useSearch?',"url":"https://www.coupang.com/vp/products/...","product":"실제 상품명"':''}}]}
+{"items":[{"name":"상품명","keyword":"쿠팡 검색어","hook":"링크트리 후킹 제목","why":"연결 이유","price":"가격대","tip":"고르는 팁"${useSearch?',"url":"https://www.coupang.com/vp/products/...","product":"실제 상품명","status":"판매중 또는 확인불가"':''}}]}
 중요: JSON 문자열 값 안에서 큰따옴표(")를 쓰지 마세요.`;
 }
 // 기사 1건 → 아이템 배열 (useSearch면 Claude 웹 검색으로 실제 쿠팡 상품 URL)
 async function shopForArticle(src,n,note,useSearch){
-  let text;
+  let text,raw='';
   if(useSearch){
-    const tools=[{type:WS_TOOL(),name:'web_search',max_uses:Math.min(12,n*2+1),allowed_domains:['coupang.com']}];
-    text=await apiTools({sys:SHOP_SYS,content:[{type:'text',text:shopPrompt(src,n,note,true)}],tools,max:4000});
+    const mdl=saveOn()?MODEL_SHOP:undefined;
+    const tools=[{type:WS_TOOL(mdl),name:'web_search',max_uses:Math.max(2,Math.min(8,n)),allowed_domains:['coupang.com']}];
+    const res=await apiTools({sys:SHOP_SYS,content:[{type:'text',text:shopPrompt(src,n,note,true)}],tools,max:2500,maxTurns:2,model:mdl,effort:'low'});
+    text=res.text;raw=res.raw;
   }else{
-    text=await api({sys:SHOP_SYS,content:[{type:'text',text:shopPrompt(src,n,note,false)}],max:2600});
+    text=await api({sys:SHOP_SYS,content:[{type:'text',text:shopPrompt(src,n,note,false)}],max:1800,model:saveOn()?MODEL_SHOP:undefined,effort:'low'});
   }
   const p=pj(text);
   const items=(p.items||[]).filter(x=>x&&x.name).slice(0,n).map(x=>{
@@ -3806,7 +3860,41 @@ async function shopForArticle(src,n,note,useSearch){
     return {name:String(x.name).trim(),product:String(x.product||'').trim(),keyword:String(x.keyword||x.name).trim(),hook:String(x.hook||x.name).replace(/[{}]/g,'').trim(),why:String(x.why||'').trim(),price:String(x.price||'').trim(),tip:String(x.tip||'').trim(),url:m?m[0]:'',link:''};
   });
   if(!items.length)throw Error('아이템 없음');
+  if(useSearch)verifyCpItems(items,(p.items||[]),raw);
   return items;
+}
+/* "지금 판매 중" 검증: ① URL이 실제 검색 결과에 있었는지 ② 결과 제목에 품절·판매종료가 없는지 ③ 결과가 너무 오래되지 않았는지(약 10개월)
+   ④ Claude가 판매중으로 확인했는지. 하나라도 걸리면 상품 링크를 빼고 쿠팡 검색 링크(항상 현재 판매 상품)로 대체 */
+const SOLD_OUT_RE=/품절|일시품절|판매\s*종료|판매\s*중지|판매중단|단종|sold\s*out/i;
+function searchResultsOf(raw){
+  const out=[];const re=/\{[^{}]*"type":"web_search_result"[^{}]*\}/g;let m;
+  while((m=re.exec(raw||''))){try{const o=JSON.parse(m[0]);if(o.url)out.push(o)}catch(e){}}
+  return out;
+}
+function pageAgeDays(pa){
+  if(!pa)return null;const s=String(pa).trim();
+  let m=s.match(/(\d+)\s*(minute|hour|day|week|month|year)s?\s*ago/i);
+  if(m){const n=+m[1],u=m[2].toLowerCase();return n*({minute:0,hour:0,day:1,week:7,month:30,year:365}[u])}
+  const t=Date.parse(s);if(!isNaN(t))return Math.round((Date.now()-t)/864e5);
+  return null;
+}
+function verifyCpItems(items,rawItems,raw){
+  const results=searchResultsOf(raw);
+  items.forEach((it,i)=>{
+    const st=String((rawItems[i]||{}).status||'');
+    it.saleChecked='';
+    if(!it.url)return;
+    const id=(it.url.match(/\/vp\/products\/(\d+)/)||[])[1];
+    const reason=[];
+    if(!id||!String(raw||'').includes('/vp/products/'+id))reason.push('검색 결과에 없음');
+    const hits=results.filter(r=>String(r.url).includes('/vp/products/'+id));
+    if(hits.some(r=>SOLD_OUT_RE.test(r.title||'')))reason.push('품절/판매종료 표시');
+    const ages=hits.map(r=>pageAgeDays(r.page_age)).filter(a=>a!=null);
+    if(ages.length&&Math.min(...ages)>300)reason.push('오래된 결과');
+    if(/확인불가|품절|종료|중지/.test(st))reason.push('판매 확인 안 됨');
+    if(reason.length){console.warn('쿠팡 링크 제외',it.url,reason);it.url='';it.dropReason=reason.join(', ')}
+    else it.saleChecked=todayStr();
+  });
 }
 function shopLinesOf(items,ind){
   ind=ind||'';
@@ -3870,7 +3958,7 @@ function renderShop(){
   if(tb)tb.style.display=S.shop.srcMode==='text'?'':'none';if(ab)ab.style.display=S.shop.srcMode==='text'?'none':'';
   renderShopArtList();
   const groups=shopGroups();box.innerHTML='';
-  const total=groups.reduce((s,g)=>s+g.items.length,0),withUrl=groups.reduce((s,g)=>s+g.items.filter(x=>x.url||x.link).length,0);
+  const total=groups.reduce((s,g)=>s+g.items.length,0),withUrl=groups.reduce((s,g)=>s+g.items.filter(x=>x.url&&x.saleChecked).length,0);
   const st=document.getElementById('shopSummaryTxt'),opts=document.getElementById('shopOpts');
   if(!groups.length){
     const na=hotArticles().length;
@@ -3881,7 +3969,7 @@ function renderShop(){
     }
     if(opts)opts.open=false;return;
   }
-  if(st)st.innerHTML=`<b>기사 ${groups.length}개 · 아이템 ${total}개 · 상품 링크 ${withUrl}개</b><br><span style="color:var(--dim);font-size:11px">아이템의 <b>링크트리에 넣을 링크</b> 칸에 쿠팡 파트너스 링크를 붙여넣으면(비우면 상품 링크 사용) 아래 "링크트리용 전체 복사"로 한 번에 옮길 수 있습니다.</span>`;
+  if(st)st.innerHTML=`<b>기사 ${groups.length}개 · 아이템 ${total}개 · 판매 중 확인된 상품 링크 ${withUrl}개</b><br><span style="color:var(--dim);font-size:11px">확인 안 된 아이템은 쿠팡 검색 링크(지금 판매 중인 상품 목록)로 들어갑니다.</span><br><span style="color:var(--dim);font-size:11px">아이템의 <b>링크트리에 넣을 링크</b> 칸에 쿠팡 파트너스 링크를 붙여넣으면(비우면 상품 링크 사용) 아래 "링크트리용 전체 복사"로 한 번에 옮길 수 있습니다.</span>`;
   if(opts&&opts.open===undefined)opts.open=false;
   const head=document.createElement('div');head.className='row';head.style.marginBottom='8px';
   head.innerHTML=`<button id="shopCopyLT">📋 링크트리용 전체 복사</button><button class="gh" id="shopCopyAll">📋 상세 목록</button><button class="gh" id="shopMemo">📝 메모장</button><button class="gh" id="shopClear" style="flex:0 0 auto">🗑</button>`;
@@ -3894,7 +3982,7 @@ function renderShop(){
     g.items.forEach((it,i)=>{
       const d=document.createElement('div');d.className='shopItem';
       d.innerHTML=`<div class="row" style="align-items:center"><span class="n">${gi+1}-${i+1}</span><input class="hk" data-k="hook" value="${hEsc(it.hook)}" placeholder="링크트리 제목" title="링크트리에 올릴 제목 (수정 가능)"/></div>
-        <div class="meta">🛒 <b>${hEsc(it.product||it.name)}</b>${it.price?' · '+hEsc(it.price):''}${it.why?'<br>💡 '+hEsc(it.why):''}${it.tip?' <span style="opacity:.8">· '+hEsc(it.tip)+'</span>':''}</div>
+        <div class="meta">🛒 <b>${hEsc(it.product||it.name)}</b>${it.price?' · '+hEsc(it.price):''}${it.url&&it.saleChecked?` <span style="color:#22c55e;font-weight:700" title="검색 결과에 가격이 보이고 품절 표시가 없는 상품">✅ 판매 중 (${hEsc(it.saleChecked.slice(5).replace('-','/'))} 확인)</span>`:(it.dropReason?` <span style="color:var(--dim)" title="${hEsc(it.dropReason)}">· 판매 확인 안 돼 검색 링크로</span>`:'')}${it.why?'<br>💡 '+hEsc(it.why):''}${it.tip?' <span style="opacity:.8">· '+hEsc(it.tip)+'</span>':''}</div>
         <div class="row" style="align-items:center">${it.url?`<a class="cpprod" href="${hEsc(it.url)}" target="_blank" rel="noopener" style="font-size:11px;padding:8px 10px;border-radius:7px;background:var(--acc);color:#fff;text-decoration:none;font-weight:700;text-align:center">🛒 쿠팡 상품 보기 ↗</a>`:''}<a class="cpgo" href="${cpSearchUrl(it.keyword)}" target="_blank" rel="noopener" style="font-size:11px;padding:8px 10px;border-radius:7px;background:var(--panel);border:1px solid var(--brd);color:var(--txt);text-decoration:none;text-align:center">🔎 쿠팡에서 검색${it.url?'':' (상품 고르기)'} ↗</a></div>
         <div class="row" style="align-items:center"><input type="text" class="lk" data-k="link" value="${hEsc(it.link||'')}" placeholder="${it.url?'링크트리에 넣을 링크 — 비우면 위 상품 링크 사용 · 파트너스 링크 붙여넣기 권장':'링크트리에 넣을 링크 — 비우면 검색 링크 사용 · 파트너스 링크 붙여넣기'}"/><button class="gh cp1" style="flex:0 0 auto;font-size:11px" title="제목+링크 복사">📋</button><button class="gh rm" style="flex:0 0 auto;font-size:11px" title="아이템 제거">🗑</button></div>`;
       d.querySelectorAll('input[data-k]').forEach(inp=>inp.oninput=e=>{it[inp.dataset.k]=e.target.value;autoSave()});
